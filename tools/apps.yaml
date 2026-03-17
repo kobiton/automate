@@ -1,0 +1,56 @@
+tools:
+  - name: listApps
+    description: >
+      List uploaded app builds for the current user's organization.
+      Returns app ID, name, version, platform, upload date, and status.
+    inputSchema:
+      type: object
+      properties:
+        platform:
+          type: string
+          enum: [android, ios]
+          description: Filter by app platform
+        limit:
+          type: integer
+          description: Maximum number of apps to return
+          default: 20
+
+  - name: uploadAppToStore
+    description: >
+      Upload an app build to Kobiton Store for permanent storage and management.
+      The app appears in the portal's app repository. Two-step process:
+      1) Call this tool to get a pre-signed upload URL
+      2) Upload the file to that URL
+      Returns app_path for confirming the upload via POST /v2/apps.
+    inputSchema:
+      type: object
+      properties:
+        filename:
+          type: string
+          description: 'App filename with extension (e.g., "my-app.apk")'
+        platform:
+          type: string
+          enum: [android, ios]
+          description: App platform
+      required:
+        - filename
+        - platform
+
+  - name: uploadAppForRunner
+    description: >
+      Upload an app to S3 for test runner consumption. Not visible in the
+      portal app repository. Two-step process:
+      1) Call this tool to get a pre-signed upload URL and test_runner_id
+      2) Upload the file to that URL
+      Use the returned path or test_runner_id when starting sessions.
+    inputSchema:
+      type: object
+      properties:
+        filename:
+          type: string
+          description: 'App filename with extension (.apk, .ipa, .zip)'
+        testRunnerId:
+          type: string
+          description: Optional UUID v4. Auto-generated if not provided.
+      required:
+        - filename

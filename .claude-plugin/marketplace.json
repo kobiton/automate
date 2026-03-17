@@ -1,0 +1,7 @@
+{
+  "title": "Kobiton Skills",
+  "description": "Mobile testing platform - run Appium/XIUM test suites, manage devices, view session results",
+  "category": "testing",
+  "icon": "../assets/logo.svg",
+  "tags": ["mobile", "testing", "appium", "automation", "devices"]
+}

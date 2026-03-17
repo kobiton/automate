@@ -1,0 +1,55 @@
+tools:
+  - name: listSessions
+    description: >
+      List test sessions with filters for status, device, platform,
+      and date range. Returns session ID, status, device info, duration,
+      and timestamps.
+    inputSchema:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [running, passed, failed, errored, complete]
+          description: Filter by session status
+        deviceName:
+          type: string
+          description: Filter by device name (partial match)
+        platform:
+          type: string
+          enum: [android, ios]
+          description: Filter by platform
+        limit:
+          type: integer
+          description: Maximum number of sessions to return
+          default: 20
+        offset:
+          type: integer
+          description: Offset for pagination
+          default: 0
+
+  - name: getSession
+    description: >
+      Get detailed information about a specific test session including
+      commands executed, device info, desired capabilities, metadata,
+      and test results.
+    inputSchema:
+      type: object
+      properties:
+        sessionId:
+          type: integer
+          description: The session ID
+      required:
+        - sessionId
+
+  - name: getSessionArtifacts
+    description: >
+      Get download URLs for session artifacts including video recording,
+      device logs, screenshots, and test reports.
+    inputSchema:
+      type: object
+      properties:
+        sessionId:
+          type: integer
+          description: The session ID
+      required:
+        - sessionId

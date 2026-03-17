@@ -1,0 +1,124 @@
+tools:
+  - name: startNativeSession
+    description: >
+      Start a Kobiton native automation session. The server manages test
+      execution end-to-end. Use getExecutionStatus to poll for results.
+    inputSchema:
+      type: object
+      properties:
+        sessionName:
+          type: string
+          description: Session name (5-80 chars)
+        sessionDescription:
+          type: string
+          description: Session description (max 500 chars)
+        testFramework:
+          type: string
+          enum: [UIAUTOMATOR, XCUITEST, APPIUM, XIUM, GAMEDRIVER]
+          description: Test framework to use
+        deviceName:
+          type: string
+          description: Device identifier
+        udid:
+          type: string
+          description: Device UDID
+        platformVersion:
+          type: string
+          description: Device OS version
+        deviceGroup:
+          type: string
+          description: 'Device group (e.g., ORGANIZATION)'
+        groupId:
+          type: integer
+          description: Team/Group ID
+        app:
+          type: string
+          description: 'App reference (e.g., "kobiton-store:v123")'
+        testRunner:
+          type: string
+          description: S3 path from uploadAppForRunner
+        noReset:
+          type: boolean
+          default: false
+        fullReset:
+          type: boolean
+          default: false
+        sessionTimeout:
+          type: integer
+          description: Session timeout in milliseconds
+        testTimeout:
+          type: integer
+          description: Test timeout in milliseconds
+        deviceTags:
+          type: array
+          description: 'Tag groups, e.g., [["healthy"], ["project", "dev"]]'
+          items:
+            type: array
+            items:
+              type: string
+        deviceWaitTimeout:
+          type: integer
+          description: Device availability timeout
+        runCommand:
+          type: string
+          description: Command string for test execution
+        args:
+          type: object
+          description: Additional arguments
+        env:
+          type: object
+          description: Environment variables
+      required:
+        - testFramework
+
+  - name: startAppiumSession
+    description: >
+      Start an Appium WebDriver session on Kobiton. Supports both
+      desiredCapabilities (legacy) and W3C capabilities format
+      ({alwaysMatch, firstMatch}). Optionally accepts a local script
+      path to execute against the session. Kobiton vendor extensions
+      use the kobiton: prefix.
+    inputSchema:
+      type: object
+      properties:
+        desiredCapabilities:
+          type: object
+          description: >
+            Legacy Appium desired capabilities. Common fields: sessionName,
+            deviceName, platformName, platformVersion, udid, browserName,
+            deviceGroup, app, automationName, noReset, fullReset.
+            Kobiton extensions: kobiton:visualValidation,
+            kobiton:flexCorrect, kobiton:scriptlessEnable, etc.
+        capabilities:
+          type: object
+          description: W3C capabilities format.
+          properties:
+            alwaysMatch:
+              type: object
+              description: Capabilities that must be matched
+            firstMatch:
+              type: array
+              description: Array of capability sets, first match wins
+              items:
+                type: object
+        scriptPath:
+          type: string
+          description: >
+            Optional path to a local Appium test script (.js). If provided,
+            the agent injects hub URL and capabilities into the script and
+            executes it. Credentials are NOT injected. If omitted, returns
+            connection info for manual test execution.
+
+  - name: getExecutionStatus
+    description: >
+      Poll the status of a running automation execution started by
+      startNativeSession. Returns current status, progress, and
+      results when complete.
+    inputSchema:
+      type: object
+      properties:
+        executionId:
+          type: string
+          description: The execution ID returned by startNativeSession
+      required:
+        - executionId

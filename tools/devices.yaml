@@ -1,0 +1,53 @@
+tools:
+  - name: listDevices
+    description: >
+      List available devices filtered by platform, availability status,
+      or device group. Returns device name, UDID, platform, OS version,
+      and availability.
+    inputSchema:
+      type: object
+      properties:
+        platform:
+          type: string
+          enum: [android, ios]
+          description: Filter by device platform
+        available:
+          type: boolean
+          description: Only show currently available devices
+        groupId:
+          type: integer
+          description: Filter by device group ID
+        limit:
+          type: integer
+          description: Maximum number of devices to return
+          default: 50
+
+  - name: getDeviceStatus
+    description: >
+      Get the real-time status of a specific device including availability,
+      current session info, battery level, and connection state.
+    inputSchema:
+      type: object
+      properties:
+        deviceId:
+          type: integer
+          description: The device ID
+      required:
+        - deviceId
+
+  - name: reserveDevice
+    description: >
+      Reserve a device for exclusive use during testing. The reservation
+      prevents other users from starting sessions on the device.
+    inputSchema:
+      type: object
+      properties:
+        deviceId:
+          type: integer
+          description: The device ID to reserve
+        durationMinutes:
+          type: integer
+          description: Reservation duration in minutes
+          default: 30
+      required:
+        - deviceId
