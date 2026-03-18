@@ -41,7 +41,7 @@ claude plugins install kobiton-skills
 - "Show me the results for session 502"
 - "Start an Appium session on my iOS device"
 
-## Tools (12)
+## Tools (15)
 
 ### Devices
 
@@ -50,6 +50,13 @@ claude plugins install kobiton-skills
 | `listDevices` | List available devices filtered by platform, availability, or group |
 | `getDeviceStatus` | Get real-time status of a specific device |
 | `reserveDevice` | Reserve a device for exclusive testing |
+| `terminateReservation` | Release a reserved device by terminating its reservation |
+
+### Device Bundles
+
+| Tool | Description |
+|------|-------------|
+| `listDeviceBundles` | List device bundles for matrix testing across device/OS combinations |
 
 ### Sessions
 
@@ -58,6 +65,7 @@ claude plugins install kobiton-skills
 | `listSessions` | List test sessions with filters for status, device, platform |
 | `getSession` | Get session details including commands, capabilities, metadata |
 | `getSessionArtifacts` | Get download URLs for video, logs, screenshots, reports |
+| `terminateSession` | Stop a running test session |
 
 ### Apps
 
@@ -66,6 +74,7 @@ claude plugins install kobiton-skills
 | `listApps` | List uploaded app builds in your organization |
 | `uploadAppToStore` | Upload an app to Kobiton Store (permanent, visible in portal) |
 | `uploadAppForRunner` | Upload an app for test runner consumption (ephemeral) |
+| `getApp` | Get app details and version history |
 
 ### Automation
 
@@ -73,7 +82,6 @@ claude plugins install kobiton-skills
 |------|-------------|
 | `startNativeSession` | Start a server-managed native session (XIUM, UIAUTOMATOR, XCUITEST) |
 | `startAppiumSession` | Start an Appium WebDriver session (supports W3C and legacy capabilities) |
-| `getExecutionStatus` | Poll status of a running automation execution |
 
 ## Skills
 

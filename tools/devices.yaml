@@ -51,3 +51,16 @@ tools:
           default: 30
       required:
         - deviceId
+
+  - name: terminateReservation
+    description: >
+      Release a reserved device by terminating its reservation.
+      Use the reservationId returned by reserveDevice.
+    inputSchema:
+      type: object
+      properties:
+        reservationId:
+          type: integer
+          description: Reservation ID from reserveDevice
+      required:
+        - reservationId

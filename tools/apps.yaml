@@ -54,3 +54,20 @@ tools:
           description: Optional UUID v4. Auto-generated if not provided.
       required:
         - filename
+
+  - name: getApp
+    description: >
+      Get detailed information about an app including name, platform,
+      state, and optionally all version history.
+    inputSchema:
+      type: object
+      properties:
+        appId:
+          type: integer
+          description: App ID
+        includeAllVersions:
+          type: boolean
+          description: Include all app versions
+          default: false
+      required:
+        - appId

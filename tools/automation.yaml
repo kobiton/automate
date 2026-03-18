@@ -2,7 +2,7 @@ tools:
   - name: startNativeSession
     description: >
       Start a Kobiton native automation session. The server manages test
-      execution end-to-end. Use getExecutionStatus to poll for results.
+      execution end-to-end. Use getSession to poll for status.
     inputSchema:
       type: object
       properties:
@@ -108,17 +108,3 @@ tools:
             the agent injects hub URL and capabilities into the script and
             executes it. Credentials are NOT injected. If omitted, returns
             connection info for manual test execution.
-
-  - name: getExecutionStatus
-    description: >
-      Poll the status of a running automation execution started by
-      startNativeSession. Returns current status, progress, and
-      results when complete.
-    inputSchema:
-      type: object
-      properties:
-        executionId:
-          type: string
-          description: The execution ID returned by startNativeSession
-      required:
-        - executionId

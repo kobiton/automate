@@ -57,7 +57,7 @@ Then either:
 
 ### 5. Monitor (native session)
 
-If using `startNativeSession`, poll `getExecutionStatus` with the returned execution ID until the execution completes.
+If using `startNativeSession`, poll `getSession` with the returned session ID until the session state is COMPLETE or TERMINATED.
 
 ### 6. Collect results
 

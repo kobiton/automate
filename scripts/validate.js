@@ -56,7 +56,7 @@ export function validateProject(rootDir) {
   }
 
   // Validate tool YAML files
-  const toolFiles = ['devices.yaml', 'sessions.yaml', 'apps.yaml', 'automation.yaml']
+  const toolFiles = ['devices.yaml', 'device-bundles.yaml', 'sessions.yaml', 'apps.yaml', 'automation.yaml']
 
   for (const file of toolFiles) {
     const filePath = join(rootDir, 'tools', file)

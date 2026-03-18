@@ -1,0 +1,16 @@
+tools:
+  - name: listDeviceBundles
+    description: >
+      List device bundles for matrix testing. A bundle is a predefined
+      group of devices used for running test suites across multiple
+      device/OS combinations.
+    inputSchema:
+      type: object
+      properties:
+        platformName:
+          type: string
+          enum: [Android, iOS]
+          description: Filter by platform
+        category:
+          type: string
+          description: Bundle category filter

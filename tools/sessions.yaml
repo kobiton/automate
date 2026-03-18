@@ -53,3 +53,16 @@ tools:
           description: The session ID
       required:
         - sessionId
+
+  - name: terminateSession
+    description: >
+      Terminate a running test session. Use when a session needs
+      to be stopped before it completes naturally.
+    inputSchema:
+      type: object
+      properties:
+        sessionId:
+          type: integer
+          description: Session ID to terminate
+      required:
+        - sessionId
