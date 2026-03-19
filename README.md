@@ -13,10 +13,18 @@ claude plugins install kobiton-skills
 ### Manual Setup
 
 1. Clone this repo (or copy `.mcp.json`) into your project
-2. Update the `Authorization` header with your Kobiton credentials:
+2. Set your Kobiton credentials as an environment variable:
    - Username: your Kobiton username
    - API Key: generate at **Kobiton Portal > Settings > API Keys**
-   - Encode as Base64: `base64(username:apikey)`
+
+```bash
+# Add to ~/.zshrc, ~/.bashrc, or ~/.bash_profile
+export KOBITON_AUTH="Basic $(echo -n 'username:apikey' | base64)"
+```
+
+3. Reload your shell (or run `source ~/.zshrc`) and restart Claude Code.
+
+The `.mcp.json` already references `${KOBITON_AUTH}` — no further edits needed:
 
 ```json
 {
@@ -25,7 +33,7 @@ claude plugins install kobiton-skills
       "type": "http",
       "url": "https://api.kobiton.com/mcp",
       "headers": {
-        "Authorization": "Basic <base64-encoded-credentials>"
+        "Authorization": "${KOBITON_AUTH}"
       }
     }
   }

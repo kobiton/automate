@@ -4,7 +4,7 @@
       "type": "http",
       "url": "https://api.kobiton.com/mcp",
       "headers": {
-        "Authorization": "Basic <base64-encoded-username:apikey>"
+        "Authorization": "${KOBITON_AUTH}"
       }
     }
   }
