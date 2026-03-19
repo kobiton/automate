@@ -1,0 +1,228 @@
+tools:
+  - name: listTestCases
+    description: >
+      List scriptless test cases with pagination, search, and platform filter.
+      Test cases are recorded from manual sessions and can be replayed on
+      other devices via test runs.
+    inputSchema:
+      type: object
+      properties:
+        keyword:
+          type: string
+          description: Search by name, tags, or ID
+        platformName:
+          type: string
+          enum: [ANDROID, IOS]
+          description: Filter by platform
+        page:
+          type: integer
+          default: 1
+        rowsPerPage:
+          type: integer
+          default: 10
+
+  - name: getTestCase
+    description: >
+      Get detailed information about a scriptless test case including
+      test steps, app data, and device capabilities from the original
+      recording session.
+    inputSchema:
+      type: object
+      properties:
+        testCaseId:
+          type: string
+          description: Test case ID
+        version:
+          type: integer
+          description: Specific version number (latest if omitted)
+        includeAppData:
+          type: boolean
+          default: false
+          description: Include app package and version details
+      required:
+        - testCaseId
+
+  - name: listTestSuites
+    description: >
+      List test suites. A suite groups related test cases for
+      batch execution via test runs.
+    inputSchema:
+      type: object
+      properties:
+        keyword:
+          type: string
+          description: Search by name
+        platformName:
+          type: string
+          enum: [ANDROID, IOS]
+          description: Filter by platform
+        page:
+          type: integer
+          default: 1
+        rowsPerPage:
+          type: integer
+          default: 10
+
+  - name: getTestSuite
+    description: >
+      Get test suite details including its test cases and
+      recent test run history.
+    inputSchema:
+      type: object
+      properties:
+        testSuiteId:
+          type: string
+          description: Test suite ID
+        includeAppData:
+          type: boolean
+          default: false
+          description: Include app package details
+      required:
+        - testSuiteId
+
+  - name: createTestRun
+    description: >
+      Start a scriptless test run. Replays recorded test cases on
+      selected devices. Requires test selection (suite or individual
+      cases) and device selection (bundle or specific devices).
+    inputSchema:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Test run name
+        description:
+          type: string
+          description: Test run description
+        testSelection:
+          type: object
+          description: Which tests to run
+          properties:
+            type:
+              type: string
+              enum: [TEST_SUITE, TEST_CASE]
+              description: Selection type
+            testSuiteId:
+              type: string
+              description: Suite ID (required when type is TEST_SUITE)
+            testCaseSelections:
+              type: array
+              description: >
+                Individual test cases. Required when type is TEST_CASE,
+                optional for TEST_SUITE to select subset.
+              items:
+                type: object
+                properties:
+                  testCaseId:
+                    type: string
+                  version:
+                    type: integer
+          required:
+            - type
+        deviceSelection:
+          type: object
+          description: Which devices to run on
+          properties:
+            type:
+              type: string
+              enum: [DEVICE_BUNDLE, INDIVIDUAL_DEVICES]
+              description: Selection type
+            deviceBundleId:
+              type: integer
+              description: Bundle ID (required when type is DEVICE_BUNDLE)
+            specificDevices:
+              type: array
+              description: Individual devices (required when type is INDIVIDUAL_DEVICES)
+              items:
+                type: object
+                properties:
+                  isCloud:
+                    type: boolean
+                  deviceName:
+                    type: string
+                  platformName:
+                    type: string
+                  platformVersion:
+                    type: string
+                  udid:
+                    type: string
+          required:
+            - type
+        appSelections:
+          type: array
+          description: Optional app version overrides
+          items:
+            type: object
+            properties:
+              appPackage:
+                type: string
+              appVersionId:
+                type: integer
+        deviceAllocationStrategy:
+          type: string
+          enum: [CROSS_DEVICE, SINGLE_DEVICE]
+          default: CROSS_DEVICE
+          description: >
+            CROSS_DEVICE runs each test case on every device.
+            SINGLE_DEVICE assigns one test case per device.
+      required:
+        - testSelection
+        - deviceSelection
+
+  - name: listTestRuns
+    description: >
+      List scriptless test runs with pagination and filters.
+      Shows run status, device count, and pass/fail summary.
+    inputSchema:
+      type: object
+      properties:
+        keyword:
+          type: string
+          description: Search by name
+        platformName:
+          type: string
+          enum: [ANDROID, IOS]
+        page:
+          type: integer
+          default: 1
+        rowsPerPage:
+          type: integer
+          default: 10
+        sortBy:
+          type: string
+          enum: [NAME, CREATED_AT]
+          default: CREATED_AT
+        sortType:
+          type: string
+          enum: [ASC, DESC]
+          default: DESC
+
+  - name: getTestRun
+    description: >
+      Get test run details including per-device execution status,
+      test case results, and failure information.
+    inputSchema:
+      type: object
+      properties:
+        testRunId:
+          type: string
+          description: Test run ID
+        includeRevisitActions:
+          type: boolean
+          default: false
+          description: Include remediation actions for failed steps
+      required:
+        - testRunId
+
+  - name: terminateTestRun
+    description: >
+      Terminate a running scriptless test run. Stops all
+      in-progress device executions.
+    inputSchema:
+      type: object
+      properties:
+        testRunId:
+          type: string
+          description: Test run ID to terminate
+      required:
+        - testRunId

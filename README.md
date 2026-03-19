@@ -40,8 +40,9 @@ claude plugins install kobiton-skills
 - "Upload my-app.apk and run tests on the Pixel 6"
 - "Show me the results for session 502"
 - "Start an Appium session on my iOS device"
+- "List my scriptless test cases"
 
-## Tools (15)
+## Tools (23)
 
 ### Devices
 
@@ -76,6 +77,19 @@ claude plugins install kobiton-skills
 | `uploadAppForRunner` | Upload an app for test runner consumption (ephemeral) |
 | `getApp` | Get app details and version history |
 
+### Scriptless Test Management
+
+| Tool | Description |
+|------|-------------|
+| `listTestCases` | List scriptless test cases with search and platform filter |
+| `getTestCase` | Get test case details including steps and app data |
+| `listTestSuites` | List test suites that group test cases for batch execution |
+| `getTestSuite` | Get suite details with test cases and run history |
+| `createTestRun` | Start a scriptless test run on selected devices |
+| `listTestRuns` | List test runs with status and pass/fail summary |
+| `getTestRun` | Get test run execution status and results |
+| `terminateTestRun` | Stop a running test run |
+
 ### Automation
 
 | Tool | Description |
@@ -86,6 +100,7 @@ claude plugins install kobiton-skills
 ## Skills
 
 - **run-automation-suite** -- Guided workflow that walks you through app upload, device selection, session type choice, execution, and result collection.
+- **run-scriptless-test** -- Guided workflow for scriptless testing: select test cases/suites, choose target devices, start a test run, and monitor results.
 
 ## Upload Tools: Which One?
 
