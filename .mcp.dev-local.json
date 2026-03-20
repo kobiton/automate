@@ -2,7 +2,7 @@
   "mcpServers": {
     "kobiton": {
       "type": "http",
-      "url": "https://api.kobiton.com/mcp"
+      "url": "http://localhost:3000/mcp"
     }
   }
 }

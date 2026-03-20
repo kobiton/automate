@@ -155,4 +155,40 @@ describe('validateProject', () => {
     const {errors} = validateProject(tmpDir)
     expect(errors).toContainEqual(expect.stringContaining('does not exist'))
   })
+
+  it('passes with OAuth-format .mcp.json', () => {
+    setupValidProject(tmpDir)
+    writeFileSync(join(tmpDir, '.mcp.json'), JSON.stringify({
+      mcpServers: {kobiton: {type: 'http', url: 'https://api.kobiton.com/mcp', oauth: {authServerMetadataUrl: 'https://api.kobiton.com/.well-known/oauth-authorization-server'}}}
+    }))
+    const {errors} = validateProject(tmpDir)
+    expect(errors).toEqual([])
+  })
+
+  it('passes with API-key-format .mcp.json', () => {
+    setupValidProject(tmpDir)
+    writeFileSync(join(tmpDir, '.mcp.json'), JSON.stringify({
+      mcpServers: {kobiton: {type: 'http', url: 'https://api.kobiton.com/mcp', headers: {Authorization: '${KOBITON_AUTH}'}}}
+    }))
+    const {errors} = validateProject(tmpDir)
+    expect(errors).toEqual([])
+  })
+
+  it('passes with minimal-format .mcp.json', () => {
+    setupValidProject(tmpDir)
+    writeFileSync(join(tmpDir, '.mcp.json'), JSON.stringify({
+      mcpServers: {kobiton: {type: 'http', url: 'https://api.kobiton.com/mcp'}}
+    }))
+    const {errors} = validateProject(tmpDir)
+    expect(errors).toEqual([])
+  })
+
+  it('fails when oauth block is missing authServerMetadataUrl', () => {
+    setupValidProject(tmpDir)
+    writeFileSync(join(tmpDir, '.mcp.json'), JSON.stringify({
+      mcpServers: {kobiton: {type: 'http', url: 'https://api.kobiton.com/mcp', oauth: {}}}
+    }))
+    const {errors} = validateProject(tmpDir)
+    expect(errors).toContainEqual(expect.stringContaining('oauth block missing authServerMetadataUrl'))
+  })
 })

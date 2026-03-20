@@ -40,7 +40,7 @@ export function validateProject(rootDir) {
     if (!plugin.description) fail(`${pluginPath} missing "description"`)
   }
 
-  // Validate .mcp.json has server config
+  // Validate .mcp.json has server config (accepts OAuth, API key, or minimal format)
   const mcpPath = join(rootDir, '.mcp.json')
   if (existsSync(mcpPath)) {
     try {
@@ -49,6 +49,11 @@ export function validateProject(rootDir) {
         fail('.mcp.json missing mcpServers.kobiton')
       } else if (!mcp.mcpServers.kobiton.url) {
         fail('.mcp.json missing mcpServers.kobiton.url')
+      } else {
+        const kobiton = mcp.mcpServers.kobiton
+        if (kobiton.oauth != null && (typeof kobiton.oauth !== 'object' || typeof kobiton.oauth.authServerMetadataUrl !== 'string')) {
+          fail('.mcp.json oauth block missing authServerMetadataUrl (string)')
+        }
       }
     } catch {
       // Already caught by JSON validation above

@@ -13,32 +13,38 @@ claude plugins install kobiton-skills
 ### Manual Setup
 
 1. Clone this repo (or copy `.mcp.json`) into your project
-2. Set your Kobiton credentials as an environment variable:
-   - Username: your Kobiton username
-   - API Key: generate at **Kobiton Portal > Settings > API Keys**
+2. Start Claude Code — on first use, a browser window will open for Kobiton login
+3. Sign in with your Kobiton credentials. Tokens are managed automatically.
 
-```bash
-# Add to ~/.zshrc, ~/.bashrc, or ~/.bash_profile
-export KOBITON_AUTH="Basic $(echo -n 'username:apikey' | base64)"
-```
-
-3. Reload your shell (or run `source ~/.zshrc`) and restart Claude Code.
-
-The `.mcp.json` already references `${KOBITON_AUTH}` — no further edits needed:
+The `.mcp.json` points to the Kobiton MCP server. Authentication is handled automatically via OAuth 2.1 — the server advertises its auth endpoints and Claude Code opens a browser for login on first use.
 
 ```json
 {
   "mcpServers": {
     "kobiton": {
       "type": "http",
-      "url": "https://api.kobiton.com/mcp",
-      "headers": {
-        "Authorization": "${KOBITON_AUTH}"
-      }
+      "url": "https://api.kobiton.com/mcp"
     }
   }
 }
 ```
+
+### API Key Authentication (Alternative)
+
+For CI/CD pipelines or headless environments that cannot open a browser, use API key auth instead:
+
+1. Copy `.mcp.apikey-example.json` to `.mcp.json`
+2. Generate an API key at **Kobiton Portal > Settings > API Keys**
+3. Set the environment variable:
+
+```bash
+# Add to ~/.zshrc, ~/.bashrc, or ~/.bash_profile
+export KOBITON_AUTH="Basic $(echo -n 'username:apikey' | base64)"
+```
+
+4. Reload your shell and restart Claude Code.
+
+> **Note:** OAuth and API key auth cannot coexist in a single `.mcp.json`. The default config (no `headers` block) uses OAuth via browser login. The API key config uses a `headers` block with `${KOBITON_AUTH}`. To switch, replace `.mcp.json` with the appropriate format.
 
 ## What You Can Do
 
