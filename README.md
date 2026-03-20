@@ -148,9 +148,18 @@ For additional help, open an issue at [github.com/kobiton/kobiton-skills/issues]
 
 ## Privacy & Data
 
-This plugin connects to the Kobiton cloud API (`api.kobiton.com`). Your API credentials are sent via the `Authorization` header on each request. No data is stored locally by the plugin beyond what Claude Code retains in its conversation context.
+This plugin connects to the Kobiton cloud API (`api.kobiton.com`) over HTTPS (TLS 1.2+).
 
-For details on how Kobiton handles your data, see the [Kobiton Privacy Policy](https://kobiton.com/privacy).
+**Authentication:**
+- **OAuth 2.1 (default):** Claude Code opens a browser for Kobiton login. Short-lived access tokens are stored securely in the system keychain by Claude Code. No credentials are stored in the project.
+- **API Key (alternative):** The `KOBITON_AUTH` environment variable is sent via the `Authorization` header on each request. The value is stored only in your shell profile, never committed to the repo.
+
+**Data handling:**
+- The plugin does not store any data locally beyond what Claude Code retains in its conversation context.
+- Tool responses (device lists, session details, test results) pass through Claude Code's context window and are subject to [Anthropic's Privacy Policy](https://www.anthropic.com/privacy).
+- App binaries uploaded via `uploadAppToStore` or `uploadAppForRunner` are sent directly to Kobiton's pre-signed S3 URLs, not through Claude Code.
+
+For details on how Kobiton handles your data, see the [Kobiton Privacy Policy](https://kobiton.com/privacy-policy) and [Trust Center](https://kobiton.com/trust-center/).
 
 ## Development
 
