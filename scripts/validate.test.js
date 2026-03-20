@@ -17,9 +17,9 @@ function setupValidProject(dir) {
     skills: '../skills/'
   }))
   writeFileSync(join(dir, '.claude-plugin/marketplace.json'), JSON.stringify({
-    title: 'Kobiton Skills',
-    description: 'Test',
-    category: 'testing'
+    name: 'kobiton-skills',
+    owner: {name: 'Kobiton'},
+    plugins: [{name: 'kobiton-skills', source: './', description: 'Test', category: 'testing'}]
   }))
 
   mkdirSync(join(dir, '.cursor-plugin'))
@@ -40,7 +40,7 @@ function setupValidProject(dir) {
   }
 
   mkdirSync(join(dir, 'skills/run-automation-suite'), {recursive: true})
-  writeFileSync(join(dir, 'skills/run-automation-suite/skill.md'), [
+  writeFileSync(join(dir, 'skills/run-automation-suite/SKILL.md'), [
     '---',
     'name: run-automation-suite',
     'description: Test skill',
@@ -49,7 +49,7 @@ function setupValidProject(dir) {
   ].join('\n'))
 
   mkdirSync(join(dir, 'skills/run-scriptless-test'), {recursive: true})
-  writeFileSync(join(dir, 'skills/run-scriptless-test/skill.md'), [
+  writeFileSync(join(dir, 'skills/run-scriptless-test/SKILL.md'), [
     '---',
     'name: run-scriptless-test',
     'description: Test skill',
@@ -128,14 +128,14 @@ describe('validateProject', () => {
 
   it('fails when skill is missing frontmatter', () => {
     setupValidProject(tmpDir)
-    writeFileSync(join(tmpDir, 'skills/run-automation-suite/skill.md'), '## No frontmatter')
+    writeFileSync(join(tmpDir, 'skills/run-automation-suite/SKILL.md'), '## No frontmatter')
     const {errors} = validateProject(tmpDir)
     expect(errors).toContainEqual(expect.stringContaining('missing YAML frontmatter'))
   })
 
   it('fails when skill frontmatter is missing name', () => {
     setupValidProject(tmpDir)
-    writeFileSync(join(tmpDir, 'skills/run-automation-suite/skill.md'), [
+    writeFileSync(join(tmpDir, 'skills/run-automation-suite/SKILL.md'), [
       '---',
       'description: Test',
       '---',

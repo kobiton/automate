@@ -84,25 +84,25 @@ export function validateProject(rootDir) {
   // Validate skills have frontmatter
   const skillDirs = ['run-automation-suite', 'run-scriptless-test']
   for (const skill of skillDirs) {
-    const filePath = join(rootDir, 'skills', skill, 'skill.md')
+    const filePath = join(rootDir, 'skills', skill, 'SKILL.md')
     if (!existsSync(filePath)) {
-      fail(`skills/${skill}/skill.md does not exist`)
+      fail(`skills/${skill}/SKILL.md does not exist`)
       continue
     }
     const content = readFileSync(filePath, 'utf8')
     if (!content.startsWith('---')) {
-      fail(`skills/${skill}/skill.md missing YAML frontmatter`)
+      fail(`skills/${skill}/SKILL.md missing YAML frontmatter`)
       continue
     }
     const frontmatterEnd = content.indexOf('---', 3)
     if (frontmatterEnd === -1) {
-      fail(`skills/${skill}/skill.md has unclosed frontmatter`)
+      fail(`skills/${skill}/SKILL.md has unclosed frontmatter`)
       continue
     }
     const frontmatter = load(content.slice(3, frontmatterEnd))
-    if (!frontmatter.name) fail(`skills/${skill}/skill.md frontmatter missing "name"`)
-    if (!frontmatter.description) fail(`skills/${skill}/skill.md frontmatter missing "description"`)
-    else pass(`skills/${skill}/skill.md is valid`)
+    if (!frontmatter.name) fail(`skills/${skill}/SKILL.md frontmatter missing "name"`)
+    if (!frontmatter.description) fail(`skills/${skill}/SKILL.md frontmatter missing "description"`)
+    else pass(`skills/${skill}/SKILL.md is valid`)
   }
 
   // Validate referenced paths exist
