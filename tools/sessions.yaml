@@ -1,9 +1,13 @@
 tools:
   - name: listSessions
+    title: List Sessions
     description: >
       List test sessions with filters for status, device, platform,
       and date range. Returns session ID, status, device info, duration,
       and timestamps.
+    annotations:
+      readOnlyHint: true
+      destructiveHint: false
     inputSchema:
       type: object
       properties:
@@ -28,10 +32,14 @@ tools:
           default: 0
 
   - name: getSession
+    title: Get Session
     description: >
       Get detailed information about a specific test session including
       commands executed, device info, desired capabilities, metadata,
       and test results.
+    annotations:
+      readOnlyHint: true
+      destructiveHint: false
     inputSchema:
       type: object
       properties:
@@ -42,9 +50,13 @@ tools:
         - sessionId
 
   - name: getSessionArtifacts
+    title: Get Session Artifacts
     description: >
       Get download URLs for session artifacts including video recording,
       device logs, screenshots, and test reports.
+    annotations:
+      readOnlyHint: true
+      destructiveHint: false
     inputSchema:
       type: object
       properties:
@@ -55,9 +67,13 @@ tools:
         - sessionId
 
   - name: terminateSession
+    title: Terminate Session
     description: >
       Terminate a running test session. Use when a session needs
       to be stopped before it completes naturally.
+    annotations:
+      readOnlyHint: false
+      destructiveHint: true
     inputSchema:
       type: object
       properties:

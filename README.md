@@ -128,6 +128,24 @@ Both are two-step: call the tool to get a pre-signed URL, then upload the file.
 
 `startAppiumSession` supports an optional `scriptPath` parameter to execute a local Appium test script.
 
+## Troubleshooting
+
+| Issue | Cause | Fix |
+|-------|-------|-----|
+| `401 Unauthorized` | Invalid or missing `KOBITON_AUTH` env var | Re-run `export KOBITON_AUTH="Basic $(echo -n 'user:key' \| base64)"` and restart Claude Code |
+| `MCP server not connected` | Shell env not loaded | Run `source ~/.zshrc` (or your profile) then restart Claude Code |
+| `Device not found` | Device offline or reserved | Use `listDevices` with `available: true` to find online devices |
+| `Test run stuck` | Devices unavailable for execution | Use `terminateTestRun` and retry with different devices |
+| `Upload timeout` | Large app file or slow connection | Retry the upload; pre-signed URLs expire after 30 minutes |
+
+For additional help, open an issue at [github.com/kobiton/kobiton-skills/issues](https://github.com/kobiton/kobiton-skills/issues) or contact [support@kobiton.com](mailto:support@kobiton.com).
+
+## Privacy & Data
+
+This plugin connects to the Kobiton cloud API (`api.kobiton.com`). Your API credentials are sent via the `Authorization` header on each request. No data is stored locally by the plugin beyond what Claude Code retains in its conversation context.
+
+For details on how Kobiton handles your data, see the [Kobiton Privacy Policy](https://kobiton.com/privacy).
+
 ## Development
 
 ```bash

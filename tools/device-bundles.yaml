@@ -1,9 +1,13 @@
 tools:
   - name: listDeviceBundles
+    title: List Device Bundles
     description: >
       List device bundles for matrix testing. A bundle is a predefined
       group of devices used for running test suites across multiple
       device/OS combinations.
+    annotations:
+      readOnlyHint: true
+      destructiveHint: false
     inputSchema:
       type: object
       properties:

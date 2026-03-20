@@ -1,9 +1,13 @@
 tools:
   - name: listTestCases
+    title: List Test Cases
     description: >
       List scriptless test cases with pagination, search, and platform filter.
       Test cases are recorded from manual sessions and can be replayed on
       other devices via test runs.
+    annotations:
+      readOnlyHint: true
+      destructiveHint: false
     inputSchema:
       type: object
       properties:
@@ -22,10 +26,14 @@ tools:
           default: 10
 
   - name: getTestCase
+    title: Get Test Case
     description: >
       Get detailed information about a scriptless test case including
       test steps, app data, and device capabilities from the original
       recording session.
+    annotations:
+      readOnlyHint: true
+      destructiveHint: false
     inputSchema:
       type: object
       properties:
@@ -43,9 +51,13 @@ tools:
         - testCaseId
 
   - name: listTestSuites
+    title: List Test Suites
     description: >
       List test suites. A suite groups related test cases for
       batch execution via test runs.
+    annotations:
+      readOnlyHint: true
+      destructiveHint: false
     inputSchema:
       type: object
       properties:
@@ -64,9 +76,13 @@ tools:
           default: 10
 
   - name: getTestSuite
+    title: Get Test Suite
     description: >
       Get test suite details including its test cases and
       recent test run history.
+    annotations:
+      readOnlyHint: true
+      destructiveHint: false
     inputSchema:
       type: object
       properties:
@@ -81,10 +97,14 @@ tools:
         - testSuiteId
 
   - name: createTestRun
+    title: Create Test Run
     description: >
       Start a scriptless test run. Replays recorded test cases on
       selected devices. Requires test selection (suite or individual
       cases) and device selection (bundle or specific devices).
+    annotations:
+      readOnlyHint: false
+      destructiveHint: false
     inputSchema:
       type: object
       properties:
@@ -170,9 +190,13 @@ tools:
         - deviceSelection
 
   - name: listTestRuns
+    title: List Test Runs
     description: >
       List scriptless test runs with pagination and filters.
       Shows run status, device count, and pass/fail summary.
+    annotations:
+      readOnlyHint: true
+      destructiveHint: false
     inputSchema:
       type: object
       properties:
@@ -198,9 +222,13 @@ tools:
           default: DESC
 
   - name: getTestRun
+    title: Get Test Run
     description: >
       Get test run details including per-device execution status,
       test case results, and failure information.
+    annotations:
+      readOnlyHint: true
+      destructiveHint: false
     inputSchema:
       type: object
       properties:
@@ -215,9 +243,13 @@ tools:
         - testRunId
 
   - name: terminateTestRun
+    title: Terminate Test Run
     description: >
       Terminate a running scriptless test run. Stops all
       in-progress device executions.
+    annotations:
+      readOnlyHint: false
+      destructiveHint: true
     inputSchema:
       type: object
       properties:

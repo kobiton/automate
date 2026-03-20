@@ -1,9 +1,13 @@
 tools:
   - name: listDevices
+    title: List Devices
     description: >
       List available devices filtered by platform, availability status,
       or device group. Returns device name, UDID, platform, OS version,
       and availability.
+    annotations:
+      readOnlyHint: true
+      destructiveHint: false
     inputSchema:
       type: object
       properties:
@@ -23,9 +27,13 @@ tools:
           default: 50
 
   - name: getDeviceStatus
+    title: Get Device Status
     description: >
       Get the real-time status of a specific device including availability,
       current session info, battery level, and connection state.
+    annotations:
+      readOnlyHint: true
+      destructiveHint: false
     inputSchema:
       type: object
       properties:
@@ -36,9 +44,13 @@ tools:
         - deviceId
 
   - name: reserveDevice
+    title: Reserve Device
     description: >
       Reserve a device for exclusive use during testing. The reservation
       prevents other users from starting sessions on the device.
+    annotations:
+      readOnlyHint: false
+      destructiveHint: false
     inputSchema:
       type: object
       properties:
@@ -53,9 +65,13 @@ tools:
         - deviceId
 
   - name: terminateReservation
+    title: Terminate Reservation
     description: >
       Release a reserved device by terminating its reservation.
       Use the reservationId returned by reserveDevice.
+    annotations:
+      readOnlyHint: false
+      destructiveHint: true
     inputSchema:
       type: object
       properties:

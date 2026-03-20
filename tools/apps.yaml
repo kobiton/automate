@@ -1,8 +1,12 @@
 tools:
   - name: listApps
+    title: List Apps
     description: >
       List uploaded app builds for the current user's organization.
       Returns app ID, name, version, platform, upload date, and status.
+    annotations:
+      readOnlyHint: true
+      destructiveHint: false
     inputSchema:
       type: object
       properties:
@@ -16,12 +20,16 @@ tools:
           default: 20
 
   - name: uploadAppToStore
+    title: Upload App to Store
     description: >
       Upload an app build to Kobiton Store for permanent storage and management.
       The app appears in the portal's app repository. Two-step process:
       1) Call this tool to get a pre-signed upload URL
       2) Upload the file to that URL
       Returns app_path for confirming the upload via POST /v2/apps.
+    annotations:
+      readOnlyHint: false
+      destructiveHint: false
     inputSchema:
       type: object
       properties:
@@ -37,12 +45,16 @@ tools:
         - platform
 
   - name: uploadAppForRunner
+    title: Upload App for Runner
     description: >
       Upload an app to S3 for test runner consumption. Not visible in the
       portal app repository. Two-step process:
       1) Call this tool to get a pre-signed upload URL and test_runner_id
       2) Upload the file to that URL
       Use the returned path or test_runner_id when starting sessions.
+    annotations:
+      readOnlyHint: false
+      destructiveHint: false
     inputSchema:
       type: object
       properties:
@@ -56,9 +68,13 @@ tools:
         - filename
 
   - name: getApp
+    title: Get App
     description: >
       Get detailed information about an app including name, platform,
       state, and optionally all version history.
+    annotations:
+      readOnlyHint: true
+      destructiveHint: false
     inputSchema:
       type: object
       properties:

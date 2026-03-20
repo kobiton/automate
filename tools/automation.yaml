@@ -1,8 +1,12 @@
 tools:
   - name: startNativeSession
+    title: Start Native Session
     description: >
       Start a Kobiton native automation session. The server manages test
       execution end-to-end. Use getSession to poll for status.
+    annotations:
+      readOnlyHint: false
+      destructiveHint: false
     inputSchema:
       type: object
       properties:
@@ -72,12 +76,16 @@ tools:
         - testFramework
 
   - name: startAppiumSession
+    title: Start Appium Session
     description: >
       Start an Appium WebDriver session on Kobiton. Supports both
       desiredCapabilities (legacy) and W3C capabilities format
       ({alwaysMatch, firstMatch}). Optionally accepts a local script
       path to execute against the session. Kobiton vendor extensions
       use the kobiton: prefix.
+    annotations:
+      readOnlyHint: false
+      destructiveHint: false
     inputSchema:
       type: object
       properties:
