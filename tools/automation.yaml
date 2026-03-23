@@ -80,9 +80,10 @@ tools:
     description: >
       Start an Appium WebDriver session on Kobiton. Supports both
       desiredCapabilities (legacy) and W3C capabilities format
-      ({alwaysMatch, firstMatch}). Optionally accepts a local script
-      path to execute against the session. Kobiton vendor extensions
-      use the kobiton: prefix.
+      ({alwaysMatch, firstMatch}). Set useAppium to true to inject
+      kobiton:runtime "appium" into capabilities; without it the
+      default Kobiton runtime (xium) is used. Kobiton vendor
+      extensions use the kobiton: prefix.
     annotations:
       readOnlyHint: false
       destructiveHint: false
@@ -109,6 +110,12 @@ tools:
               description: Array of capability sets, first match wins
               items:
                 type: object
+        useAppium:
+          type: boolean
+          description: >
+            Set to true to inject kobiton:runtime "appium" into capabilities.
+            Required for non-native Appium tests. Default runtime is xium.
+          default: false
         scriptPath:
           type: string
           description: >

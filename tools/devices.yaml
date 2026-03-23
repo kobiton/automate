@@ -48,27 +48,30 @@ tools:
     description: >
       Reserve a device for exclusive use during testing. The reservation
       prevents other users from starting sessions on the device.
+      Use the device UDID from listDevices. Returns reservation_id
+      which is needed for terminateReservation.
     annotations:
       readOnlyHint: false
       destructiveHint: false
     inputSchema:
       type: object
       properties:
-        deviceId:
-          type: integer
-          description: The device ID to reserve
+        udid:
+          type: string
+          description: The device UDID to reserve (from listDevices)
         durationMinutes:
           type: integer
           description: Reservation duration in minutes
           default: 30
       required:
-        - deviceId
+        - udid
 
   - name: terminateReservation
     title: Terminate Reservation
     description: >
       Release a reserved device by terminating its reservation.
-      Use the reservationId returned by reserveDevice.
+      Use the reservation_id returned by reserveDevice or from
+      listDevices (reservation_id field on reserved devices).
     annotations:
       readOnlyHint: false
       destructiveHint: true
@@ -77,6 +80,6 @@ tools:
       properties:
         reservationId:
           type: integer
-          description: Reservation ID from reserveDevice
+          description: Reservation ID from reserveDevice or listDevices
       required:
         - reservationId
