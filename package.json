@@ -1,0 +1,17 @@
+{
+  "name": "automate",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "description": "Kobiton plugin manifests, tool schemas, and skills for AI coding assistants",
+  "scripts": {
+    "build": "node scripts/build-tool-definitions.js",
+    "validate": "node scripts/validate.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "js-yaml": "^4.1.0",
+    "vitest": "^3.0.0"
+  }
+}

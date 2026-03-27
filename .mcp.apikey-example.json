@@ -1,0 +1,12 @@
+{
+  "_comment": "API key auth for CI/headless environments. Copy to .mcp.json and set KOBITON_AUTH env var.",
+  "mcpServers": {
+    "kobiton": {
+      "type": "http",
+      "url": "https://api.kobiton.com/mcp",
+      "headers": {
+        "Authorization": "${KOBITON_AUTH}"
+      }
+    }
+  }
+}

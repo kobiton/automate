@@ -1,0 +1,9 @@
+.claude/
+node_modules/
+dist/
+resources/
+**plans/
+.DS_Store
+*.log
+*.local.json
+pnpm-debug.log*
