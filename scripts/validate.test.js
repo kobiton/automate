@@ -23,7 +23,7 @@ function setupValidProject(dir) {
   }))
 
   mkdirSync(join(dir, 'tools'))
-  for (const file of ['devices.yaml', 'device-bundles.yaml', 'sessions.yaml', 'apps.yaml', 'automation.yaml', 'scriptless-test-management.yaml']) {
+  for (const file of ['devices.yaml', 'sessions.yaml', 'apps.yaml']) {
     writeFileSync(join(dir, 'tools', file), [
       'tools:',
       '  - name: testTool',
@@ -42,14 +42,6 @@ function setupValidProject(dir) {
     '## Workflow',
   ].join('\n'))
 
-  mkdirSync(join(dir, 'skills/run-scriptless-test'), {recursive: true})
-  writeFileSync(join(dir, 'skills/run-scriptless-test/SKILL.md'), [
-    '---',
-    'name: run-scriptless-test',
-    'description: Test skill',
-    '---',
-    '## Workflow',
-  ].join('\n'))
 }
 
 describe('validateProject', () => {

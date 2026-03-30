@@ -53,10 +53,9 @@ export KOBITON_AUTH="Basic $(echo -n 'username:apikey' | base64)"
 - "List my available Android devices"
 - "Upload my-app.apk and run tests on the Pixel 6"
 - "Show me the results for session 502"
-- "Start an Appium session on my iOS device"
-- "List my scriptless test cases"
+- "Run my Appium test script on the Pixel 6"
 
-## Tools (23)
+## Tools (11)
 
 ### Devices
 
@@ -66,12 +65,6 @@ export KOBITON_AUTH="Basic $(echo -n 'username:apikey' | base64)"
 | `getDeviceStatus` | Get real-time status of a specific device |
 | `reserveDevice` | Reserve a device for exclusive testing |
 | `terminateReservation` | Release a reserved device by terminating its reservation |
-
-### Device Bundles
-
-| Tool | Description |
-|------|-------------|
-| `listDeviceBundles` | List device bundles for matrix testing across device/OS combinations |
 
 ### Sessions
 
@@ -88,51 +81,19 @@ export KOBITON_AUTH="Basic $(echo -n 'username:apikey' | base64)"
 |------|-------------|
 | `listApps` | List uploaded app builds in your organization |
 | `uploadAppToStore` | Upload an app to Kobiton Store (permanent, visible in portal) |
-| `uploadAppForRunner` | Upload an app for test runner consumption (ephemeral) |
 | `getApp` | Get app details and version history |
-
-### Scriptless Test Management
-
-| Tool | Description |
-|------|-------------|
-| `listTestCases` | List scriptless test cases with search and platform filter |
-| `getTestCase` | Get test case details including steps and app data |
-| `listTestSuites` | List test suites that group test cases for batch execution |
-| `getTestSuite` | Get suite details with test cases and run history |
-| `createTestRun` | Start a scriptless test run on selected devices |
-| `listTestRuns` | List test runs with status and pass/fail summary |
-| `getTestRun` | Get test run execution status and results |
-| `terminateTestRun` | Stop a running test run |
-
-### Automation
-
-| Tool | Description |
-|------|-------------|
-| `startNativeSession` | Start a server-managed native session (UIAUTOMATOR, XCUITEST) |
-| `startAppiumSession` | Start an Appium WebDriver session (supports W3C and legacy capabilities) |
 
 ## Skills
 
-- **run-automation-suite** -- Guided workflow that walks you through app upload, device selection, session type choice, execution, and result collection.
-- **run-scriptless-test** -- Guided workflow for scriptless testing: select test cases/suites, choose target devices, start a test run, and monitor results.
+- **run-automation-suite** -- Guided workflow that walks you through app upload, device selection, local Appium script execution (Node.js, Python, .NET, Java), and result collection.
 
-## Upload Tools: Which One?
+## Upload Flow
 
-| Use Case | Tool | Endpoint |
-|----------|------|----------|
-| App visible in Kobiton portal | `uploadAppToStore` | POST /v2/apps |
-| Quick test run, not stored | `uploadAppForRunner` | POST /v2/test-runners |
+Use `uploadAppToStore` to upload an app to Kobiton Store (POST /v2/apps). The process is three-step: call the tool to get a pre-signed URL, upload the file, then confirm.
 
-Both are two-step: call the tool to get a pre-signed URL, then upload the file.
+## Running Automation Tests
 
-## Session Tools: Which One?
-
-| Use Case | Tool | Endpoint |
-|----------|------|----------|
-| Server-managed test execution (CI/CD) | `startNativeSession` | POST /v2/sessions/native |
-| Run Appium scripts locally or via agent | `startAppiumSession` | POST /wd/hub/session |
-
-`startAppiumSession` supports an optional `scriptPath` parameter to execute a local Appium test script.
+Use the **run-automation-suite** skill to run local Appium test scripts. Claude reads your script, extracts capabilities, confirms the target device, and executes the script locally. Supports Node.js (`.js`), Python (`.py`), .NET (`.cs`), and Java (`.java`) scripts.
 
 ## Troubleshooting
 
@@ -141,7 +102,6 @@ Both are two-step: call the tool to get a pre-signed URL, then upload the file.
 | `401 Unauthorized` | Invalid or missing `KOBITON_AUTH` env var | Re-run `export KOBITON_AUTH="Basic $(echo -n 'user:key' \| base64)"` and restart Claude Code |
 | `MCP server not connected` | Shell env not loaded | Run `source ~/.zshrc` (or your profile) then restart Claude Code |
 | `Device not found` | Device offline or reserved | Use `listDevices` with `available: true` to find online devices |
-| `Test run stuck` | Devices unavailable for execution | Use `terminateTestRun` and retry with different devices |
 | `Upload timeout` | Large app file or slow connection | Retry the upload; pre-signed URLs expire after 30 minutes |
 
 For additional help, open an issue at [github.com/kobiton/automate/issues](https://github.com/kobiton/automate/issues) or contact [support@kobiton.com](mailto:support@kobiton.com).
@@ -159,7 +119,7 @@ This plugin connects to the Kobiton cloud API (`api.kobiton.com`) over HTTPS (TL
 
 - The plugin does not store any data locally beyond what Claude Code retains in its conversation context.
 - Tool responses (device lists, session details, test results) pass through Claude Code's context window and are subject to [Anthropic's Privacy Policy](https://www.anthropic.com/privacy).
-- App binaries uploaded via `uploadAppToStore` or `uploadAppForRunner` are sent directly to Kobiton's pre-signed S3 URLs, not through Claude Code.
+- App binaries uploaded via `uploadAppToStore` are sent directly to Kobiton's pre-signed S3 URLs, not through Claude Code.
 
 For details on how Kobiton handles your data, see the [Kobiton Privacy Policy](https://kobiton.com/privacy-policy) and [Trust Center](https://kobiton.com/trust-center/).
 

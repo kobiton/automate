@@ -54,11 +54,8 @@ Optional but recommended:
 | File | Scope |
 |------|-------|
 | `devices.yaml` | Device listing, status, reservations |
-| `device-bundles.yaml` | Device bundle / matrix configurations |
 | `sessions.yaml` | Session lifecycle and artifacts |
 | `apps.yaml` | App listing, details, uploads |
-| `automation.yaml` | Starting test sessions (native, Appium) |
-| `scriptless-test-management.yaml` | Test cases, suites, runs |
 
 Only create a new YAML file if the tool doesn't fit any existing group.
 
