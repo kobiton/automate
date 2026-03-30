@@ -55,7 +55,7 @@ export KOBITON_AUTH="Basic $(echo -n 'username:apikey' | base64)"
 - "Show me the results for session 502"
 - "Run my Appium test script on the Pixel 6"
 
-## Tools (11)
+## Tools (12)
 
 ### Devices
 
@@ -81,6 +81,7 @@ export KOBITON_AUTH="Basic $(echo -n 'username:apikey' | base64)"
 |------|-------------|
 | `listApps` | List uploaded app builds in your organization |
 | `uploadAppToStore` | Upload an app to Kobiton Store (permanent, visible in portal) |
+| `confirmAppUpload` | Confirm uploaded app for tracking record |
 | `getApp` | Get app details and version history |
 
 ## Skills
