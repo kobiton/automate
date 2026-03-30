@@ -10,7 +10,8 @@ A guide to every tool available in the Kobiton MCP server, organized by domain. 
 |---|--------|-------|
 | 1 | [Device Management](#1-device-management) | `listDevices`, `getDeviceStatus`, `reserveDevice`, `terminateReservation` |
 | 2 | [Session Management](#2-session-management) | `listSessions`, `getSession`, `getSessionArtifacts`, `terminateSession` |
-| 3 | [App Management](#3-app-management) | `listApps`, `getApp`, `uploadAppToStore` |
+| 3 | [App Management](#3-app-management) | `listApps`, `getApp`, `uploadAppToStore`, `confirmAppUpload` |
+| 4 | [Running Automation Tests](#4-running-automation-tests) | `run-automation-suite` skill |
 
 ---
 
@@ -155,5 +156,39 @@ Upload an app to Kobiton Store for permanent storage. The app appears in the por
 > "Upload resources/apps/GS.apk to the Kobiton app store as an Android app"
 
 > "Upload resources/apps/LeaderboardApp.ipa to the store for iOS"
+
+---
+
+### `confirmAppUpload`
+
+Confirm a previously uploaded app so it appears in the Kobiton portal's app repository with a tracking record.
+
+**Prompt examples:**
+
+> "Confirm the upload for app 42"
+
+> "Finish the upload process for the app I just uploaded"
+
+---
+
+## 4. Running Automation Tests
+
+### `run-automation-suite` skill
+
+Guided workflow that uploads your app, selects a device, parses capabilities from your local Appium script, and executes it. Supports Node.js, Python, .NET, and Java scripts.
+
+**Pattern:**
+
+```
+Test this app <PATH_TO_APP> by my script <PATH_TO_SCRIPT> on Kobiton <PLATFORM> device <DEVICE_NAME>
+```
+
+**Prompt examples:**
+
+> "Test this app resources/apps/GS.apk by my script resources/auto/Android_app_test.js on Kobiton Android device"
+
+> "Test this app resources/apps/LeaderboardApp.ipa by my script tests/ios_test.py on Kobiton iOS device iPhone 15"
+
+> "Test this app resources/apps/TurboTest.apk by my script tests/smoke_test.js on Kobiton Android device Pixel 6"
 
 
