@@ -1,4 +1,8 @@
-# Kobiton Automate
+# <img src="./assets/logo.svg" width="35" align="center" alt="Kobiton Logo" /> Kobiton Automate
+
+[![Discord](https://img.shields.io/discord/1486036652685267055?color=7289DA&label=Discord&logo=discord&logoColor=white)](https://discord.gg/uHvBFDZVP)
+[![Cloud](https://img.shields.io/badge/Cloud-☁️-blue)](https://kobiton.com)
+[![Twitter Follow](https://img.shields.io/twitter/follow/KobitonMobile?style=social)](https://x.com/KobitonMobile)
 
 Claude Code plugin for the [Kobiton](https://kobiton.com) mobile testing platform. Manage devices, upload apps, run automation sessions, and view test results directly from your AI coding assistant.
 
@@ -100,12 +104,10 @@ Use the **run-automation-suite** skill to run local Appium test scripts. Claude 
 
 | Issue | Cause | Fix |
 |-------|-------|-----|
-| `401 Unauthorized` | Invalid or missing `KOBITON_AUTH` env var | Re-run `export KOBITON_AUTH="Basic $(echo -n 'user:key' \| base64)"` and restart Claude Code |
-| `MCP server not connected` | Shell env not loaded | Run `source ~/.zshrc` (or your profile) then restart Claude Code |
 | `Device not found` | Device offline or reserved | Use `listDevices` with `available: true` to find online devices |
 | `Upload timeout` | Large app file or slow connection | Retry the upload; pre-signed URLs expire after 30 minutes |
 
-For additional help, open an issue at [github.com/kobiton/automate/issues](https://github.com/kobiton/automate/issues) or contact [support@kobiton.com](mailto:support@kobiton.com).
+For additional help, open an issue at [github.com/kobiton/automate/issues](https://github.com/kobiton/automate/issues/new?template=bug_report.md) or ask in [#general-discussion](https://discord.com/channels/1486036652685267055/1488189710248710327) on Discord. Feel free to share [feature requests](https://github.com/kobiton/automate/issues/new?template=feature_request.md). We welcome product feedback and will consider it as we continue to improve the platform.
 
 ## Privacy & Data
 
@@ -144,4 +146,4 @@ pnpm run build
 
 ## License
 
-MIT
+[MIT](https://opensource.org/license/mit)
