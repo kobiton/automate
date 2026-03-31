@@ -1,6 +1,6 @@
 ---
 name: run-automation-suite
-description: Run automation tests against Kobiton devices. Guides you through app upload, device selection, and choosing between native sessions or Appium WebDriver sessions.
+description: Run local Appium test scripts against Kobiton devices. Guides you through app upload, device selection, script capability parsing, and local execution.
 ---
 
 ## Workflow
@@ -9,14 +9,9 @@ description: Run automation tests against Kobiton devices. Guides you through ap
 
 Ask the user which app to test, or detect from the project context (look for .apk, .ipa, .zip files or build output directories).
 
-Call `listApps` to check if a matching build already exists on Kobiton.
+Upload via `uploadAppToStore` (permanent, visible in app repository).
 
-If no build exists, choose the upload path:
-
-- **Portal app** (permanent, visible in app repository) -> `uploadAppToStore`
-- **Quick test run** (ephemeral, for automation only) -> `uploadAppForRunner`
-
-Both are two-step: call the tool to get a pre-signed URL, then upload the file via PUT.
+This is a three-step process: call the tool to get a pre-signed URL, upload the file via PUT, then confirm the upload.
 
 ### 2. Select a device
 
@@ -28,42 +23,51 @@ If the user has a specific device in mind, confirm its availability with `getDev
 
 Reserve the device with `reserveDevice` if needed.
 
-### 3. Choose session type
+### 3. Identify script & parse capabilities
 
-Ask the user which session type to use (if not already clear from context):
+Ask the user for the path to their local Appium test script.
 
-- **Native session** (`startNativeSession`) — Server-managed execution via POST /v2/sessions/native. Best for CI/CD pipelines and server-side test frameworks (UIAUTOMATOR, XCUITEST, APPIUM, GAMEDRIVER).
-- **Appium WebDriver session** (`startAppiumSession`) — Standard Appium via POST /wd/hub/session. Best for running local Appium scripts or when the agent needs to generate and execute test code.
+Detect the language and runtime from the file extension:
 
-### 4. Execute
+| Extension | Runtime | Command |
+|-----------|---------|---------|
+| `.js` | Node.js | `node <script> <udid>` |
+| `.py` | Python | `python <script> <udid>` |
+| `.cs` / `.csproj` | .NET | `dotnet test` |
+| `.java` | Java | `mvn test` or `java -cp ...` |
 
-**If native session:**
+Read the script file and extract key capabilities from the source code:
 
-Call `startNativeSession` with:
+- `platformName` (Android / iOS)
+- `udid` (hardcoded or parameterized)
+- `app` (app URL or kobiton-store reference)
+- `sessionName`, `sessionDescription`
+- `automationName` (UiAutomator2, XCUITest, etc.)
+- `browserName` (if browser-based test)
+- `deviceOrientation`
+- Any `kobiton:*` vendor extensions (especially `kobiton:runtime`)
 
-- `testFramework` (required)
-- `app` or `testRunner` (from upload step)
-- Device targeting: `udid`, `deviceName`, `deviceGroup`, `deviceTags`
-- Session config: `sessionName`, `noReset`, `fullReset`, timeouts
+Identify how the UDID is passed into the script (CLI argument, environment variable, or hardcoded) so it can be overridden with the selected device.
 
-**If Appium WebDriver session:**
+**Appium runtime:** Check if the script contains `'kobiton:runtime': 'appium'` or equivalent. If it does NOT, do not inject it — the default Kobiton runtime will be used. Only if the user explicitly asks to use the Appium runtime should you suggest adding `'kobiton:runtime': 'appium'` to the script's capabilities.
 
-Call `startAppiumSession` with:
+### 4. Confirm & execute
 
-- `desiredCapabilities` (legacy format) or `capabilities` (W3C `{alwaysMatch, firstMatch}`)
-- Common capabilities: `sessionName`, `deviceName`, `platformName`, `platformVersion`, `udid`, `app`, `automationName`, `deviceGroup`
-- Kobiton extensions: `kobiton:visualValidation`, `kobiton:flexCorrect`, `kobiton:scriptlessEnable`, etc.
+Present a summary to the user before running:
 
-Then either:
+```
+Language:     Node.js
+Script:       /path/to/test.js
+Platform:     Android
+Device:       Pixel 4 (9B211FFAZ0017F)
+App:          kobiton-store:v72107
+Session Name: Verify Appium session
+Command:      node /path/to/test.js 9B211FFAZ0017F
+```
 
-- **No script**: The tool returns `hubUrl`, `sessionId`, `credentials`, and `capabilities`. The agent writes and executes an Appium test script using these.
-- **With script**: Pass `scriptPath` to a local .js test file. The agent injects the hub URL and capabilities (not credentials) and executes it. The tool returns `scriptOutput` and `exitCode`.
+Wait for user confirmation, then execute the command via the Bash tool.
 
-### 5. Monitor (native session)
-
-If using `startNativeSession`, poll `getSession` with the returned session ID until the session state is COMPLETE or TERMINATED.
-
-### 6. Collect results
+### 5. Collect results
 
 Call `getSession` with the session ID to get detailed results.
 
@@ -78,10 +82,11 @@ Call `getSessionArtifacts` with the session ID to retrieve:
 
 - `listDevices` returns empty: suggest broadening filters (remove platform/group constraints) or trying again later when devices free up.
 - Upload fails or times out: retry the upload. Pre-signed URLs expire after 30 minutes — if expired, call the upload tool again to get a fresh URL.
-- Session stuck in a non-terminal state: poll `getSession` with a reasonable timeout (e.g., 10 minutes for native sessions). If still running, offer to call `terminateSession` and retry.
+- Session stuck in a non-terminal state: poll `getSession` with a reasonable timeout. If still running, offer to call `terminateSession` and retry.
 - `reserveDevice` fails (device already taken): call `listDevices` again to find another available device.
+- Script execution fails: check error output for missing dependencies (e.g. `wd`, `appium`), incorrect UDID, or network issues. Suggest fixes.
 
-### 7. Summarize
+### 6. Summarize
 
 Present a summary to the user:
 
