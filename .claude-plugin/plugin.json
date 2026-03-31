@@ -6,7 +6,5 @@
   "license": "MIT",
   "repository": "https://github.com/kobiton/automate",
   "homepage": "https://kobiton.com",
-  "keywords": ["mobile", "testing", "appium", "automation", "devices", "kobiton"],
-  "mcpServers": "../.mcp.json",
-  "skills": "../skills/"
+  "keywords": ["mobile", "testing", "appium", "automation", "devices", "kobiton"]
 }

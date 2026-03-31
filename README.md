@@ -11,7 +11,11 @@ Claude Code plugin for the [Kobiton](https://kobiton.com) mobile testing platfor
 ### From Claude Code Marketplace
 
 ```bash
-claude plugins install automate
+# add kobiton marketplace
+/plugin marketplace add kobiton/automate
+
+# then install the automate plugin
+/plugin install automate@kobiton
 ```
 
 ### Manual Setup
