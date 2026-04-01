@@ -7,11 +7,19 @@ description: Run local Appium test scripts against Kobiton devices. Guides you t
 
 ### 1. Identify the app
 
-Ask the user which app to test, or detect from the project context (look for .apk, .ipa, .zip files or build output directories).
+**IMPORTANT: Always ask the user this question, even if they already provided an app file path. Do NOT skip ahead or start uploading automatically.**
 
-Upload via `uploadAppToStore` (permanent, visible in app repository).
+Ask the user:
 
-This is a three-step process: call the tool to get a pre-signed URL, upload the file via PUT, then confirm the upload.
+> "Would you like to:"
+> 1. Upload a new app build
+> 2. Use an existing app from Kobiton Store or a provided URL
+
+Wait for their response before proceeding. Do not call any upload or app-related tools until the user responds.
+
+**If uploading a new app:** Look for .apk, .ipa, .zip files in the project context, or ask the user for the file path. Upload via `uploadAppToStore` (permanent, visible in app repository). This is a three-step process: call the tool to get a pre-signed URL, upload the file via PUT, then confirm the upload.
+
+**If reusing an existing app:** Check `appium:app` field of capabilities in the test script. Call `listApps` with that app version as keywork to check uploaded or not. Let the user pick the version to use (e.g., `kobiton-store:v72107`) if needed
 
 ### 2. Select a device
 
@@ -65,9 +73,57 @@ Session Name: Verify Appium session
 Command:      node /path/to/test.js 9B211FFAZ0017F
 ```
 
-Wait for user confirmation, then execute the command via the Bash tool.
+Wait for user confirmation, then execute the command via the Bash tool **in the background** (use `run_in_background: true`). This allows the user to review the running session in the browser while the script executes.
 
-### 5. Collect results
+### 5. Open running session in browser
+
+Ask the user:
+
+> "Would you like me to open the running session in the browser?"
+
+Wait for their response. If they decline, skip to Step 6.
+
+If they agree, wait **2 seconds** after the script was launched in Step 4 (to allow the session to initialize on Kobiton), then open the session in the user's browser.
+
+**Determine the portal URL:** Read `.mcp.json` to get the MCP server URL, then map it to the portal base URL:
+
+| MCP Server | Portal Base URL |
+|------------|----------------|
+| `api.kobiton.com` | `https://portal.kobiton.com` |
+| `api-test-green.kobiton.com` | `https://portal-test.kobiton.com` |
+
+**Build the launch URL:**
+
+```
+<portal-base-url>/devices/launch?id=<deviceId>
+```
+
+Where `<deviceId>` is the ID of the selected device from Step 2 (returned by `listDevices`, `getDeviceStatus`, or `reserveDevice`).
+
+**Browser preference:** Check auto memory for a saved browser preference. If none exists, ask the user which browser to use:
+
+> "Which browser should I open the session in?"
+> 1. Google Chrome
+> 2. Safari
+> 3. Firefox
+> 4. Default browser
+
+Save their choice to auto memory so they are not asked again in future sessions.
+
+**Open the link:**
+
+| Choice | Command |
+|--------|---------|
+| Google Chrome | `open -na "Google Chrome" --args --new-window <url>` |
+| Safari | `open -a "Safari" <url>` |
+| Firefox | `open -a "Firefox" <url>` |
+| Default browser | `open <url>` |
+
+On Linux, use `xdg-open <url>` (browser selection is not supported — always opens the default).
+
+### 6. Collect results
+
+Wait for the background script to complete, then collect results.
 
 Call `getSession` with the session ID to get detailed results.
 
@@ -86,7 +142,7 @@ Call `getSessionArtifacts` with the session ID to retrieve:
 - `reserveDevice` fails (device already taken): call `listDevices` again to find another available device.
 - Script execution fails: check error output for missing dependencies (e.g. `wd`, `appium`), incorrect UDID, or network issues. Suggest fixes.
 
-### 6. Summarize
+### 7. Summarize
 
 Present a summary to the user:
 
