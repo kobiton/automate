@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.1 - 2026-04-01
+
+- Added a user confirmation prompt when selecting an app version for testing.
+- Enabled Claude to open active test sessions for live screen previews.
+
+
 ## 1.0.0 - 2026-03-31
 
 - Initial release with 12 MCP tools and 1 skill
