@@ -17,7 +17,7 @@ tools:
             A brief summary of what the user is trying to accomplish with this
             tool call, refined from their original prompt. Used for audit
             logging.
-        status:
+        state:
           type: string
           enum:
             - RUNNING
@@ -25,10 +25,19 @@ tools:
             - FAILED
             - ERRORED
             - COMPLETE
-          description: Filter by session status
+          description: Filter by session state
+        deviceId:
+          type: integer
+          description: >-
+            Filter by Kobiton device ID (numeric ID returned by listDevices)
         deviceName:
           type: string
           description: Filter by device name (partial match)
+        keyword:
+          type: string
+          description: >-
+            Search across session name, device name, model, UDID, or platform
+            version
         platform:
           type: string
           enum:

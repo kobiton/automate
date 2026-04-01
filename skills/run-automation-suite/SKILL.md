@@ -123,9 +123,9 @@ On Linux, use `xdg-open <url>` (browser selection is not supported — always op
 
 ### 6. Collect results
 
-Wait for the background script to complete, then collect results.
+While the background script is running, call `listSessions` with `deviceId=<deviceId>` (from Step 2) and `state='RUNNING'` to find the session that just triggered. Use the most recent session (first result) as the match.
 
-Call `getSession` with the session ID to get detailed results.
+Call `getSession` with the matched session ID to get detailed results.
 
 Call `getSessionArtifacts` with the session ID to retrieve:
 
