@@ -120,7 +120,55 @@ Where `<deviceId>` is the ID of the selected device from Step 2 (returned by `li
 | macOS | `open <url>` |
 | Linux | `xdg-open <url>` |
 
-### 5. Collect results
+### 5. Open running session in browser
+
+Ask the user:
+
+> "Would you like me to open the running session in the browser?"
+
+Wait for their response. If they decline, skip to Step 6.
+
+If they agree, wait **2 seconds** after the script was launched in Step 4 (to allow the session to initialize on Kobiton), then open the session in the user's browser.
+
+**Determine the portal URL:** Read `.mcp.json` to get the MCP server URL, then map it to the portal base URL:
+
+| MCP Server | Portal Base URL |
+|------------|----------------|
+| `api.kobiton.com` | `https://portal.kobiton.com` |
+| `api-test-green.kobiton.com` | `https://portal-test.kobiton.com` |
+
+**Build the launch URL:**
+
+```
+<portal-base-url>/devices/launch?id=<deviceId>
+```
+
+Where `<deviceId>` is the ID of the selected device from Step 2 (returned by `listDevices`, `getDeviceStatus`, or `reserveDevice`).
+
+**Browser preference:** Check auto memory for a saved browser preference. If none exists, ask the user which browser to use:
+
+> "Which browser should I open the session in?"
+> 1. Google Chrome
+> 2. Safari
+> 3. Firefox
+> 4. Default browser
+
+Save their choice to auto memory so they are not asked again in future sessions.
+
+**Open the link:**
+
+| Choice | Command |
+|--------|---------|
+| Google Chrome | `open -na "Google Chrome" --args --new-window <url>` |
+| Safari | `open -a "Safari" <url>` |
+| Firefox | `open -a "Firefox" <url>` |
+| Default browser | `open <url>` |
+
+On Linux, use `xdg-open <url>` (browser selection is not supported — always opens the default).
+
+### 6. Collect results
+
+Wait for the background script to complete, then collect results.
 
 After opening the browser, call `listSessions` with `deviceId=<deviceId>` (from Step 2) and `state='START'` to find the session that just triggered. Use the most recent session (first result) as the match.
 
@@ -141,7 +189,7 @@ Call `getSessionArtifacts` with the session ID to retrieve:
 - `reserveDevice` fails (device already taken): call `listDevices` again to find another available device.
 - Script execution fails: check error output for missing dependencies (e.g. `wd`, `appium`), incorrect UDID, or network issues. Suggest fixes.
 
-### 6. Summarize
+### 7. Summarize
 
 Present a summary to the user:
 
