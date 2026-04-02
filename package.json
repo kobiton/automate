@@ -13,5 +13,8 @@
   "devDependencies": {
     "js-yaml": "^4.1.0",
     "vitest": "^3.0.0"
+  },
+  "dependencies": {
+    "ejs": "^5.0.1"
   }
 }

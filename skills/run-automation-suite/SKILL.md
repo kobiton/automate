@@ -59,6 +59,27 @@ Identify how the UDID is passed into the script (CLI argument, environment varia
 
 **Appium runtime:** Check if the script contains `'kobiton:runtime': 'appium'` or equivalent. If it does NOT, do not inject it — the default Kobiton runtime will be used. Only if the user explicitly asks to use the Appium runtime should you suggest adding `'kobiton:runtime': 'appium'` to the script's capabilities.
 
+**Validate capabilities:** After parsing the script, run the render script to generate the correct capabilities for the selected device and app:
+
+```
+node skills/run-automation-suite/scripts/render-capabilities.js \
+  --platformName <platform> \
+  --udid <udid> \
+  --deviceName "<deviceName>" \
+  --platformVersion <version> \
+  --automationName <automationName> \
+  --app <app> \
+  --testingType app
+```
+
+For web testing, replace `--app <app>` with `--browserName <browser> --testingType web`.
+
+Compare the JSON output against the parsed script capabilities:
+
+- **Must-match** (`platformName`, `platformVersion`, `appium:udid`, `appium:deviceName`, `appium:app`/`browserName`, `appium:automationName`): If different, show what will change and edit the script automatically. These must match the selected device/app.
+- **Suggested defaults** (`kobiton:sessionName`, `kobiton:sessionDescription`, `kobiton:deviceOrientation`, `kobiton:captureScreenshots`, `appium:noReset`, `appium:fullReset`): If different or missing, show the diff and ask the user before changing. The user may have intentionally set different values.
+- **User-controlled**: Any capabilities in the user's script that are not in the rendered output — leave untouched. Never inject or modify `kobiton:runtime` unless the user explicitly asks.
+
 ### 4. Confirm & execute
 
 Present a summary to the user before running:
@@ -123,7 +144,7 @@ On Linux, use `xdg-open <url>` (browser selection is not supported — always op
 
 ### 6. Collect results
 
-While the background script is running, call `listSessions` with `deviceId=<deviceId>` (from Step 2) and `state='RUNNING'` to find the session that just triggered. Use the most recent session (first result) as the match.
+While the background script is running, call `listSessions` with `deviceId=<deviceId>` (from Step 2) and `state='START'` to find the session that just triggered. Use the most recent session (first result) as the match.
 
 Call `getSession` with the matched session ID to get detailed results.
 

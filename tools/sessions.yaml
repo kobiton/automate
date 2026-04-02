@@ -20,11 +20,13 @@ tools:
         state:
           type: string
           enum:
-            - RUNNING
+            - START
+            - COMPLETE
             - PASSED
             - FAILED
-            - ERRORED
-            - COMPLETE
+            - TIMEOUT
+            - ERROR
+            - TERMINATED
           description: Filter by session state
         deviceId:
           type: integer
