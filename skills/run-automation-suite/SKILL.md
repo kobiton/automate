@@ -168,7 +168,7 @@ On Linux, use `xdg-open <url>` (browser selection is not supported — always op
 
 ### 6. Collect results
 
-While the background script is running, call `listSessions` with `deviceId=<deviceId>` (from Step 2) and `state='RUNNING'` to find the session that just triggered. Use the most recent session (first result) as the match.
+While the background script is running, call `listSessions` with `deviceId=<deviceId>` (from Step 2) and `state='START'` to find the session that just triggered. Use the most recent session (first result) as the match.
 
 After opening the browser, call `listSessions` with `deviceId=<deviceId>` (from Step 2) and `state='START'` to find the session that just triggered. Use the most recent session (first result) as the match.
 
