@@ -63,6 +63,20 @@ export KOBITON_AUTH="Basic $(echo -n 'username:apikey' | base64)"
 
 > **Note:** OAuth and API key auth cannot coexist in a single `.mcp.json`. The default config (no `headers` block) uses OAuth via browser login. The API key config uses a `headers` block with `${KOBITON_AUTH}`. To switch, replace `.mcp.json` with the appropriate format.
 
+## Getting Started
+
+After installation, run the setup command to configure the CLI and credentials:
+
+```
+/automate:setup
+```
+
+This walks you through:
+1. Verifying the Kobiton CLI is installed
+2. Configuring your API credentials (`~/.kobiton/.credentials`)
+
+You only need to do this once. Run it again anytime to verify or update your configuration.
+
 ## What You Can Do
 
 **Ask Claude naturally:**
@@ -103,12 +117,31 @@ export KOBITON_AUTH="Basic $(echo -n 'username:apikey' | base64)"
 
 ## Skills
 
-- **run-automation-suite** -- Guided workflow that walks you through app upload, device selection, local Appium script execution (Node.js, Python, .NET, Java), and result collection.
+| Skill | Description |
+|-------|-------------|
+| **run-automation-suite** | Guided workflow for app upload, device selection, local Appium script execution (Node.js, Python, .NET, Java), and result collection. |
+| **run-interactive-test** | Guided workflow for interactive testing using natural language. WebDriver actions, device operations (adb shell, logs, screen), file management (push/pull), and more. |
+
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| `/automate:setup` | First-time setup — verifies CLI installation and guides credentials configuration |
 
 
 ## Running Automation Tests
 
 Use the **run-automation-suite** skill to run local Appium test scripts. Claude reads your script, extracts capabilities, confirms the target device, and executes the script locally. Supports Node.js (`.js`), Python (`.py`), .NET (`.cs`), and Java (`.java`) scripts.
+
+## Interactive Device Testing
+
+Use the **run-interactive-test** skill to interact with devices using natural language. Describe what you want — "tap the login button", "type hello in the search field", "swipe down" — and Claude translates your intent into CLI commands.
+
+Beyond WebDriver, the skill also supports device operations (adb shell, logs, screen capture), file management (push/pull files to device), and app management.
+
+## Examples
+
+See [docs/EXAMPLES.md](docs/EXAMPLES.md) for prompt examples covering every tool and skill — device management, session management, app management, automation, and interactive testing.
 
 ## Troubleshooting
 

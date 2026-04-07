@@ -42,6 +42,15 @@ function setupValidProject(dir) {
     '## Workflow',
   ].join('\n'))
 
+  mkdirSync(join(dir, 'skills/run-interactive-test'), {recursive: true})
+  writeFileSync(join(dir, 'skills/run-interactive-test/SKILL.md'), [
+    '---',
+    'name: run-interactive-test',
+    'description: Test skill',
+    '---',
+    '## Setup',
+  ].join('\n'))
+
 }
 
 describe('validateProject', () => {
