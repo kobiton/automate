@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.3 - 2026-04-08
+
+- Added `run-interactive-test` skill for natural-language interactive testing on Kobiton devices
+- Added `/setup` command for guided Kobiton credential and portal configuration
+- Added `SessionStart` hook to auto-configure the WebDriver session environment
+- Fixed path injection vulnerability in `run.sh` MCP URL resolution
+- Improved `run-automation-suite` with mandatory app selection, background execution, and browser session integration
+- Added capability rendering tool with EJS template support for Appium scripts
+
+
 ## 1.0.2 - 2026-04-02
 
 - Improved the accuracy of fetching Appium capabilities supported by Kobiton

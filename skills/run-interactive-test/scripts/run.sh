@@ -43,8 +43,8 @@ chmod +x "$BINARY" 2>/dev/null
 if [ -z "${KOBITON_PORTAL:-}" ]; then
   MCP_FILE="$PROJECT_ROOT/.mcp.json"
   if [ -f "$MCP_FILE" ]; then
-    MCP_URL=$(node -e "
-      const m=JSON.parse(require('fs').readFileSync('$MCP_FILE','utf8'));
+    MCP_URL=$(MCP_FILE="$MCP_FILE" node -e "
+      const m=JSON.parse(require('fs').readFileSync(process.env.MCP_FILE,'utf8'));
       const s=m.mcpServers?.kobiton;
       console.log(s?.url || '');
     " 2>/dev/null || true)
