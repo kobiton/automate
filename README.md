@@ -18,11 +18,10 @@ Claude Code plugin for the [Kobiton](https://kobiton.com) mobile testing platfor
 /plugin install automate@kobiton
 ```
 
-### Manual Setup
+### Login
 
-1. Clone this repo (or copy `.mcp.json`) into your project
-2. Start Claude Code — on first use, a browser window will open for Kobiton login
-3. Sign in with your Kobiton credentials. Tokens are managed automatically.
+1. Start Claude Code — on first use, a browser window will open for Kobiton login
+2. Sign in with your Kobiton credentials. Tokens are managed automatically.
 
 The `.mcp.json` points to the Kobiton MCP server. Authentication is handled automatically via OAuth 2.1 — the server advertises its auth endpoints and Claude Code opens a browser for login on first use.
 
