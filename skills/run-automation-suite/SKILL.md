@@ -94,17 +94,9 @@ Session Name: Verify Appium session
 Command:      node /path/to/test.js 9B211FFAZ0017F
 ```
 
-Wait for user confirmation, then execute the command via the Bash tool **in the background** (use `run_in_background: true`). This allows the user to review the running session in the browser while the script executes.
+Wait for user confirmation, then execute the command via the Bash tool **in the background** (use `run_in_background: true`).
 
-### 5. Open running session in browser
-
-Ask the user:
-
-> "Would you like me to open the running session in the browser?"
-
-Wait for their response. If they decline, skip to Step 6.
-
-If they agree, wait **2 seconds** after the script was launched in Step 4 (to allow the session to initialize on Kobiton), then open the session in the user's browser.
+**Immediately after launching the script**, wait **2 seconds** (to allow the session to initialize on Kobiton), then open the running session in the user's browser.
 
 **Determine the portal URL:** Read `.mcp.json` to get the MCP server URL, then map it to the portal base URL:
 
@@ -121,30 +113,16 @@ If they agree, wait **2 seconds** after the script was launched in Step 4 (to al
 
 Where `<deviceId>` is the ID of the selected device from Step 2 (returned by `listDevices`, `getDeviceStatus`, or `reserveDevice`).
 
-**Browser preference:** Check auto memory for a saved browser preference. If none exists, ask the user which browser to use:
+**Open the link** in the user's default browser:
 
-> "Which browser should I open the session in?"
-> 1. Google Chrome
-> 2. Safari
-> 3. Firefox
-> 4. Default browser
+| Platform | Command |
+|----------|---------|
+| macOS | `open <url>` |
+| Linux | `xdg-open <url>` |
 
-Save their choice to auto memory so they are not asked again in future sessions.
+### 5. Collect results
 
-**Open the link:**
-
-| Choice | Command |
-|--------|---------|
-| Google Chrome | `open -na "Google Chrome" --args --new-window <url>` |
-| Safari | `open -a "Safari" <url>` |
-| Firefox | `open -a "Firefox" <url>` |
-| Default browser | `open <url>` |
-
-On Linux, use `xdg-open <url>` (browser selection is not supported — always opens the default).
-
-### 6. Collect results
-
-While the background script is running, call `listSessions` with `deviceId=<deviceId>` (from Step 2) and `state='START'` to find the session that just triggered. Use the most recent session (first result) as the match.
+After opening the browser, call `listSessions` with `deviceId=<deviceId>` (from Step 2) and `state='START'` to find the session that just triggered. Use the most recent session (first result) as the match.
 
 Call `getSession` with the matched session ID to get detailed results.
 
@@ -163,7 +141,7 @@ Call `getSessionArtifacts` with the session ID to retrieve:
 - `reserveDevice` fails (device already taken): call `listDevices` again to find another available device.
 - Script execution fails: check error output for missing dependencies (e.g. `wd`, `appium`), incorrect UDID, or network issues. Suggest fixes.
 
-### 7. Summarize
+### 6. Summarize
 
 Present a summary to the user:
 
