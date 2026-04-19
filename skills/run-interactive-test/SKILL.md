@@ -7,15 +7,15 @@ description: Perform interactive testing on Kobiton devices using natural langua
 
 All commands go through a single wrapper script that automatically handles:
 - Platform-specific binary resolution
-- Portal URL (derived from `.mcp.json`)
+- Portal URL (from `KOBITON_PORTAL` in credentials, or derived from `.mcp.json` as fallback)
 - Credentials (loaded from `~/.kobiton/.credentials` using AWS-style profiles)
 - Session token (loaded by the CLI from `~/.kobiton/.session`)
 
 Every command is self-contained — no env vars to manage between calls:
 
-    ~/.kobiton/bin/kobiton-wd <cli-args>
+    ~/.kobiton/bin/kobiton <cli-args>
 
-`$KOBITON_BIN` is used as shorthand throughout this document. In every Bash command, substitute it with the literal path `~/.kobiton/bin/kobiton-wd` — the variable does not persist between Bash calls.
+`$KOBITON_BIN` is used as shorthand throughout this document. In every Bash command, substitute it with the literal path `~/.kobiton/bin/kobiton` — the variable does not persist between Bash calls.
 
 ## Prerequisites
 

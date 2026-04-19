@@ -1,9 +1,12 @@
 #!/bin/bash
 # Wrapper that resolves binary, portal URL, and credentials automatically.
-# Usage: kobiton-wd [kobiton-cli args...]
-# Install: ln -sf <plugin-path>/skills/run-interactive-test/scripts/run.sh ~/.kobiton/bin/kobiton-wd
+# Usage: kobiton [kobiton-cli args...]
+# Install: ln -sf <plugin-path>/skills/run-interactive-test/scripts/run.sh ~/.kobiton/bin/kobiton
 
 set -euo pipefail
+
+# --- Helper: trim leading and trailing whitespace (pure bash) ---
+trim() { local v="$1"; v="${v#"${v%%[![:space:]]*}"}"; v="${v%"${v##*[![:space:]]}"}"; printf '%s' "$v"; }
 
 # Resolve symlinks so SCRIPT_DIR points to the real location, not the symlink
 SOURCE="$0"
@@ -39,7 +42,54 @@ if [ ! -f "$BINARY" ]; then
 fi
 chmod +x "$BINARY" 2>/dev/null
 
-# --- 2. Auto-derive portal URL from .mcp.json ---
+# --- 2. Load credentials from ~/.kobiton/.credentials (INI profile format) ---
+CRED_FILE="$HOME/.kobiton/.credentials"
+if [ -z "${KOBITON_USER:-}" ] && [ -f "$CRED_FILE" ]; then
+  PROFILE="${KOBITON_PROFILE:-default}"
+  IN_PROFILE=false
+  FOUND_PROFILE=false
+  while IFS= read -r line || [ -n "$line" ]; do
+    # Strip trailing whitespace from the raw line
+    line="$(trim "$line")"
+    # Skip blank lines and comments
+    [[ -z "$line" || "$line" == \#* ]] && continue
+    # Section header
+    if [[ "$line" == \[*\] ]]; then
+      section="${line#[}"
+      section="${section%]}"
+      section="$(trim "$section")"
+      if [ "$section" = "$PROFILE" ]; then
+        IN_PROFILE=true
+        FOUND_PROFILE=true
+      else
+        # If we were in our profile, we've passed it — stop
+        $IN_PROFILE && break
+        IN_PROFILE=false
+      fi
+      continue
+    fi
+    # Key=Value inside our profile
+    if $IN_PROFILE; then
+      key="$(trim "${line%%=*}")"
+      value="$(trim "${line#*=}")"
+      case "$key" in
+        KOBITON_USER)   KOBITON_USER="$value" ;;
+        KOBITON_API_KEY) KOBITON_API_KEY="$value" ;;
+        KOBITON_PORTAL)  KOBITON_PORTAL="$value" ;;
+      esac
+    fi
+  done < "$CRED_FILE"
+
+  if ! $FOUND_PROFILE; then
+    echo "Error: Profile [$PROFILE] not found in $CRED_FILE" >&2
+    exit 1
+  fi
+
+  export KOBITON_USER KOBITON_API_KEY
+  [ -n "${KOBITON_PORTAL:-}" ] && export KOBITON_PORTAL
+fi
+
+# --- 3. Auto-derive portal URL from .mcp.json (fallback if not in credentials) ---
 if [ -z "${KOBITON_PORTAL:-}" ]; then
   MCP_FILE="$PROJECT_ROOT/.mcp.json"
   if [ -f "$MCP_FILE" ]; then
@@ -54,58 +104,16 @@ if [ -z "${KOBITON_PORTAL:-}" ]; then
   fi
 fi
 
-# --- 3. Load credentials from ~/.kobiton/.credentials (INI profile format) ---
-CRED_FILE="$HOME/.kobiton/.credentials"
-if [ -z "${KOBITON_USER:-}" ] && [ -f "$CRED_FILE" ]; then
-  PROFILE="${KOBITON_PROFILE:-default}"
-  IN_PROFILE=false
-  FOUND_PROFILE=false
-  while IFS= read -r line || [ -n "$line" ]; do
-    # Skip blank lines and comments
-    [[ -z "$line" || "$line" == \#* ]] && continue
-    # Section header
-    if [[ "$line" == \[*\] ]]; then
-      section="${line#[}"
-      section="${section%]}"
-      if [ "$section" = "$PROFILE" ]; then
-        IN_PROFILE=true
-        FOUND_PROFILE=true
-      else
-        # If we were in our profile, we've passed it — stop
-        $IN_PROFILE && break
-        IN_PROFILE=false
-      fi
-      continue
-    fi
-    # Key=Value inside our profile
-    if $IN_PROFILE; then
-      key="${line%%=*}"
-      value="${line#*=}"
-      case "$key" in
-        KOBITON_USERNAME) KOBITON_USER="$value" ;;
-        KOBITON_API_KEY)  KOBITON_API_KEY="$value" ;;
-      esac
-    fi
-  done < "$CRED_FILE"
-
-  if ! $FOUND_PROFILE; then
-    echo "Error: Profile [$PROFILE] not found in $CRED_FILE" >&2
-    exit 1
-  fi
-
-  export KOBITON_USER KOBITON_API_KEY
-fi
-
 # --- 4. Validate minimum requirements ---
-if [ -z "${KOBITON_PORTAL:-}" ]; then
-  echo "Error: Cannot determine portal URL. Set KOBITON_PORTAL or ensure .mcp.json exists." >&2
-  exit 1
-fi
-
-if [ -z "${KOBITON_USER:-}" ] || [ -z "${KOBITON_API_KEY:-}" ]; then
-  echo "Error: Credentials not found. Create ~/.kobiton/.credentials with:" >&2
+MISSING=()
+[ -z "${KOBITON_PORTAL:-}" ]  && MISSING+=("KOBITON_PORTAL")
+[ -z "${KOBITON_USER:-}" ]    && MISSING+=("KOBITON_USER")
+[ -z "${KOBITON_API_KEY:-}" ] && MISSING+=("KOBITON_API_KEY")
+if [ ${#MISSING[@]} -gt 0 ]; then
+  echo "Error: Missing ${MISSING[*]}. Create ~/.kobiton/.credentials with:" >&2
   echo "  [default]" >&2
-  echo "  KOBITON_USERNAME=<your-username>" >&2
+  echo "  KOBITON_PORTAL=<your-portal-url>" >&2
+  echo "  KOBITON_USER=<your-username>" >&2
   echo "  KOBITON_API_KEY=<your-api-key>" >&2
   exit 1
 fi

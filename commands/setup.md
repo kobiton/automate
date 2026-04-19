@@ -14,12 +14,12 @@ Walk the user through first-time setup for the Kobiton automate plugin. This com
 Run:
 
 ```bash
-test -x ~/.kobiton/bin/kobiton-wd && echo "INSTALLED" || echo "MISSING"
+test -x ~/.kobiton/bin/kobiton && echo "INSTALLED" || echo "MISSING"
 ```
 
 **If MISSING:**
 
-> "The `kobiton-wd` CLI is not installed yet. It's set up automatically when a Claude Code session starts with the Kobiton plugin loaded. Please restart your Claude Code session and try `/automate:setup` again."
+> "The `kobiton` CLI is not installed yet. It's set up automatically when a Claude Code session starts with the Kobiton plugin loaded. Please restart your Claude Code session and try `/automate:setup` again."
 
 Stop here — do not proceed to credentials until the CLI is available.
 
@@ -42,19 +42,22 @@ Show the user the expected file path and format. Ask them to create it themselve
 > **Format:**
 > ```
 > [default]
-> KOBITON_USERNAME=<your-username>
+> KOBITON_USER=<your-username>
 > KOBITON_API_KEY=<your-api-key>
+> KOBITON_PORTAL=<your-portal-url>
 > ```
 >
 > **Multiple profiles** (optional):
 > ```
 > [default]
-> KOBITON_USERNAME=myuser
+> KOBITON_USER=myuser
 > KOBITON_API_KEY=abc123
+> KOBITON_PORTAL=https://api.kobiton.com 
 >
 > [test-green]
-> KOBITON_USERNAME=myuser
+> KOBITON_USER=myuser
 > KOBITON_API_KEY=xyz789
+> KOBITON_PORTAL=https://api.kobiton.com
 > ```
 >
 > The `[default]` profile is used automatically. To switch profiles, set `export KOBITON_PROFILE=<profile-name>` before running commands.
@@ -74,7 +77,7 @@ Proceed to Step 3.
 Run:
 
 ```bash
-~/.kobiton/bin/kobiton-wd --help
+~/.kobiton/bin/kobiton --help
 ```
 
 **If succeeds:** Setup is complete.
@@ -84,3 +87,7 @@ Run:
 **If fails:** Report the error and suggest troubleshooting.
 
 > "The CLI returned an error. Try restarting your Claude Code session. If the issue persists, check that the Kobiton plugin is installed correctly."
+
+## Troubleshooting
+
+**Authentication fails after editing credentials:** The parser strips whitespace automatically, but double-check that each line follows the `KEY=value` format with no stray characters. Run `/automate:setup` again to verify the CLI can authenticate.

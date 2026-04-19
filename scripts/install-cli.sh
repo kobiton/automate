@@ -1,5 +1,5 @@
 #!/bin/bash
-# SessionStart hook: ensures ~/.kobiton/bin/kobiton-wd symlink points to
+# SessionStart hook: ensures ~/.kobiton/bin/kobiton symlink points to
 # the current plugin version's run.sh. Re-creates on every session start
 # so upgrades are picked up automatically.
 
@@ -9,7 +9,7 @@ set -euo pipefail
 [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] || exit 0
 
 TARGET="${CLAUDE_PLUGIN_ROOT}/skills/run-interactive-test/scripts/run.sh"
-LINK="$HOME/.kobiton/bin/kobiton-wd"
+LINK="$HOME/.kobiton/bin/kobiton"
 
 # Only act if the target script exists in this plugin
 [ -f "$TARGET" ] || exit 0
