@@ -309,6 +309,42 @@ copilot plugin list
 /mcp show
 ```
 
+If the `kobiton` MCP server doesn't appear, add it manually:
+
+```bash
+/mcp add --name kobiton --type http --url https://api.kobiton.com/mcp
+```
+</details>
+
+<details>
+<summary><strong>Tool calls are blocked</strong></summary>
+
+Copilot CLI requires explicit tool permissions. Allow Kobiton tools:
+
+```bash
+# Allow all Kobiton MCP tools
+copilot --allow-tool='kobiton'
+
+# Or allow specific tools
+copilot --allow-tool='kobiton:listDevices' --allow-tool='kobiton:getSession'
+```
+</details>
+
+### Copilot CLI
+
+<details>
+<summary><strong>MCP tools not available after plugin install</strong></summary>
+
+Verify the plugin is installed and the MCP server is configured:
+
+```bash
+# Check installed plugins
+copilot plugin list
+
+# Check MCP server status
+/mcp show
+```
+
 If the `kobiton` MCP server doesn't appear, add it manually by running `/mcp add` and entering the following when prompted:
 
 - **Server name:** `kobiton`
