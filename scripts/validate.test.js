@@ -19,7 +19,39 @@ function setupValidProject(dir) {
   writeFileSync(join(dir, '.claude-plugin/marketplace.json'), JSON.stringify({
     name: 'kobiton',
     owner: {name: 'Kobiton'},
-    plugins: [{name: 'automate', source: './', description: 'Test', category: 'testing'}]
+    plugins: [{
+      name: 'automate',
+      source: './',
+      description: 'Test',
+      category: 'testing',
+      policy: {installation: 'AVAILABLE', authentication: 'ON_INSTALL'}
+    }]
+  }))
+  mkdirSync(join(dir, '.agents/plugins'), {recursive: true})
+  writeFileSync(join(dir, '.agents/plugins/marketplace.json'), JSON.stringify({
+    name: 'kobiton',
+    plugins: [{
+      name: 'automate',
+      source: './.codex',
+      category: 'testing',
+      policy: {installation: 'AVAILABLE', authentication: 'ON_INSTALL'}
+    }]
+  }))
+  mkdirSync(join(dir, '.codex/.codex-plugin'), {recursive: true})
+  writeFileSync(join(dir, '.codex/.codex-plugin/plugin.json'), JSON.stringify({
+    name: 'automate',
+    version: '1.0.2',
+    description: 'Test',
+    mcpServers: './.mcp.json'
+  }))
+  writeFileSync(join(dir, '.codex/.mcp.json'), JSON.stringify({
+    mcpServers: {kobiton: {url: 'https://api.kobiton.com/mcp'}}
+  }))
+  writeFileSync(join(dir, 'gemini-extension.json'), JSON.stringify({
+    name: 'kobiton-automate',
+    version: '1.0.2',
+    description: 'Test',
+    mcpServers: {kobiton: {httpUrl: 'https://api.kobiton.com/mcp'}}
   }))
   writeFileSync(join(dir, 'gemini-extension.json'), JSON.stringify({
     name: 'kobiton-automate',

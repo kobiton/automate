@@ -18,6 +18,9 @@ export function validateProject(rootDir) {
     '.mcp.json',
     '.claude-plugin/plugin.json',
     '.claude-plugin/marketplace.json',
+    '.agents/plugins/marketplace.json',
+    '.codex/.codex-plugin/plugin.json',
+    '.codex/.mcp.json',
     'gemini-extension.json'
   ]
 
@@ -37,7 +40,7 @@ export function validateProject(rootDir) {
   }
 
   // Validate plugin.json required fields
-  for (const pluginPath of ['.claude-plugin/plugin.json']) {
+  for (const pluginPath of ['.claude-plugin/plugin.json', '.codex/.codex-plugin/plugin.json']) {
     const filePath = join(rootDir, pluginPath)
     if (!existsSync(filePath)) {
       continue
@@ -68,6 +71,23 @@ export function validateProject(rootDir) {
         if (kobiton.oauth != null && (typeof kobiton.oauth !== 'object' || typeof kobiton.oauth.authServerMetadataUrl !== 'string')) {
           fail('.mcp.json oauth block missing authServerMetadataUrl (string)')
         }
+      }
+    }
+    catch {
+      // Already caught by JSON validation above
+    }
+  }
+
+  // Validate .codex/.mcp.json (Codex plugin loader uses camelCase wrapper + snake_case server fields)
+  const codexMcpPath = join(rootDir, '.codex/.mcp.json')
+  if (existsSync(codexMcpPath)) {
+    try {
+      const mcp = JSON.parse(readFileSync(codexMcpPath, 'utf8'))
+      if (!mcp.mcpServers?.kobiton) {
+        fail('.codex/.mcp.json missing mcpServers.kobiton')
+      }
+      else if (!mcp.mcpServers.kobiton.url) {
+        fail('.codex/.mcp.json missing mcpServers.kobiton.url')
       }
     }
     catch {
@@ -160,22 +180,25 @@ export function validateProject(rootDir) {
     }
   }
 
-  // Validate referenced paths exist
-  const claudePluginPath = join(rootDir, '.claude-plugin/plugin.json')
-  if (existsSync(claudePluginPath)) {
-    const claudePlugin = JSON.parse(readFileSync(claudePluginPath, 'utf8'))
+  // Validate referenced paths exist (Claude + Codex plugin manifests)
+  for (const pluginPath of ['.claude-plugin/plugin.json', '.codex/.codex-plugin/plugin.json']) {
+    const filePath = join(rootDir, pluginPath)
+    if (!existsSync(filePath)) {
+      continue
+    }
+    const plugin = JSON.parse(readFileSync(filePath, 'utf8'))
 
-    if (typeof claudePlugin.mcpServers === 'string') {
-      const ref = resolve(rootDir, claudePlugin.mcpServers)
+    if (typeof plugin.mcpServers === 'string') {
+      const ref = resolve(rootDir, plugin.mcpServers)
       if (!existsSync(ref)) {
-        fail(`plugin.json references ${claudePlugin.mcpServers} but it does not exist`)
+        fail(`${pluginPath} references ${plugin.mcpServers} but it does not exist`)
       }
     }
 
-    if (typeof claudePlugin.skills === 'string') {
-      const ref = resolve(rootDir, claudePlugin.skills)
+    if (typeof plugin.skills === 'string') {
+      const ref = resolve(rootDir, plugin.skills)
       if (!existsSync(ref)) {
-        fail(`plugin.json references ${claudePlugin.skills} but it does not exist`)
+        fail(`${pluginPath} references ${plugin.skills} but it does not exist`)
       }
     }
   }

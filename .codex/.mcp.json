@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "kobiton": {
+      "url": "https://api.kobiton.com/mcp"
+    }
+  }
+}

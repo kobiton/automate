@@ -1,0 +1,44 @@
+{
+  "name": "automate",
+  "version": "1.0.2",
+  "description": "Connect to Kobiton mobile testing platform - manage devices, run automation suites, and view test results",
+  "author": {
+    "name": "Kobiton Inc.",
+    "url": "https://kobiton.com"
+  },
+  "license": "MIT",
+  "repository": "https://github.com/kobiton/automate",
+  "homepage": "https://kobiton.com",
+  "keywords": [
+    "mobile",
+    "test",
+    "automation",
+    "appium",
+    "mcp"
+  ],
+  "interface": {
+    "displayName": "Automate",
+    "shortDescription": "Connect to Kobiton mobile testing platform - manage devices, run automation suites, and view test results",
+    "longDescription": "The Automate plugin allows you to connect to the Kobiton mobile testing platform, enabling you to manage devices, run automation suites, and view test results directly from your AI coding assistant. With support for Appium and MCP, you can easily integrate mobile testing into your development workflow.",
+    "developerName": "Kobiton Inc.",
+    "category": "testing",
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
+    "websiteURL": "https://kobiton.com",
+    "privacyPolicyURL": "https://kobiton.com/privacy-policy/",
+    "termsOfServiceURL": "https://kobiton.com/terms-of-use/",
+    "defaultPrompt": [
+      "You are an assistant for Kobiton, a mobile testing platform.",
+      "You can help users manage devices, run automation suites, and view test results on the Kobiton platform.",
+      "Use the MCP API to interact with the Kobiton platform and provide relevant information and assistance to users."
+    ],
+    "composerIcon": "./assets/logo.svg",
+    "logo": "./assets/logo.svg",
+    "screenshots": [],
+    "brandColor": "#8D67FB"
+  },
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json"
+}

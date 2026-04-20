@@ -4,14 +4,34 @@
 [![Cloud](https://img.shields.io/badge/Cloud-☁️-blue)](https://kobiton.com)
 [![Twitter Follow](https://img.shields.io/twitter/follow/KobitonMobile?style=social)](https://x.com/KobitonMobile)
 
-Plugin for the [Kobiton](https://kobiton.com) mobile testing platform. Works with [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview), [GitHub Copilot CLI](https://docs.github.com/en/copilot/github-copilot-in-the-cli), and [Gemini CLI](https://github.com/google-gemini/gemini-cli). Manage devices, upload apps, run automation sessions, and view test results directly from your AI coding assistant.
+Plugin for the [Kobiton](https://kobiton.com) mobile testing platform. Works with [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview), [GitHub Copilot CLI](https://docs.github.com/en/copilot/github-copilot-in-the-cli), [Gemini CLI](https://github.com/google-gemini/gemini-cli), and [Codex CLI](https://github.com/openai/codex). Manage devices, upload apps, run automation sessions, and view test results directly from your AI coding assistant.
+
+## Contents
+
+- [Before You Begin](#before-you-begin)
+- [Installation](#installation)
+  - [Claude Code](#claude-code)
+  - [GitHub Copilot CLI](#github-copilot-cli)
+  - [Gemini CLI](#gemini-cli)
+  - [Codex CLI](#codex-cli)
+- [Login](#login)
+  - [API Key Authentication (Alternative)](#api-key-authentication-alternative)
+- [Getting Started](#getting-started)
+- [What You Can Do](#what-you-can-do)
+- [Tools](#tools-12)
+- [Skills](#skills)
+- [Running Automation Tests](#running-automation-tests)
+- [Troubleshooting](#troubleshooting)
+- [Privacy & Data](#privacy--data)
+- [Development](#development)
+- [License](#license)
 
 ## Before You Begin
 
 Make sure you have:
 
 - **A Kobiton account** - sign up at [kobiton.com](https://kobiton.com) if you don't have one
-- **A supported AI CLI** - install [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview), [Copilot CLI](https://docs.github.com/en/copilot/github-copilot-in-the-cli), or [Gemini CLI](https://github.com/google-gemini/gemini-cli)
+- **A supported AI CLI** - install [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview), [Copilot CLI](https://docs.github.com/en/copilot/github-copilot-in-the-cli), [Gemini CLI](https://github.com/google-gemini/gemini-cli), or [Codex CLI](https://github.com/openai/codex)
 - **A project directory** - your AI assistant must launch from a workspace, not from your home folder
 
 ## Installation
@@ -65,6 +85,41 @@ gemini
 
 The `kobiton` MCP server and the `run-automation-suite` skill are auto-discovered. Confirm the extension is active with `/extensions list` and the MCP server with `/mcp`.
 
+### Codex CLI
+
+Add the Kobiton marketplace and install the plugin from the in-session browser. Codex opens a browser for Kobiton OAuth login on the first tool call — no API key setup required.
+
+```bash
+codex plugin marketplace add kobiton/automate
+codex
+```
+
+Inside Codex:
+
+1. Type `/plugins` to open the plugin browser
+2. Select the **kobiton** marketplace, then install the **automate** plugin
+3. The system browser should open for Kobiton OAuth login. After sign-in, tokens are cached in the OS keychain (macOS Keychain / Linux Secret Service / Windows Credential Manager) with automatic refresh.
+4. Run `/mcp` to confirm `kobiton` is **Connected**.
+
+<details>
+<summary><strong>Fallback: manual <code>config.toml</code> setup</strong></summary>
+
+If you prefer not to use the marketplace, register the MCP server directly in `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.kobiton]
+url = "https://api.kobiton.com/mcp"
+```
+
+Then copy `AGENTS.md` into your workspace so Codex picks up the tool list and skill reference:
+
+```bash
+curl -sLO https://raw.githubusercontent.com/kobiton/automate/main/AGENTS.md
+```
+
+Launch `codex` and run `/mcp` to confirm. The OAuth flow still applies on the first tool call.
+</details>
+
 ## Login
 
 The first time your AI assistant calls a Kobiton tool, a browser window opens for OAuth login. Sign in with your Kobiton credentials — tokens are then managed automatically by the assistant.
@@ -73,7 +128,8 @@ You can also trigger or inspect authentication explicitly:
 
 - **Claude Code**: type `/mcp` and select **kobiton** to start the OAuth flow
 - **GitHub Copilot CLI**: type `/mcp auth kobiton` to start the OAuth flow; use `/mcp` (or `/mcp show`) to inspect server status
-- **Gemini CLI**: type `/mcp auth kobiton` to start the OAuth flow; use `/mcp` to inspect server status. OAuth uses dynamic discovery via RFC 9728
+- **Gemini CLI**: type `/mcp auth kobiton` to start the OAuth flow; use `/mcp` to inspect server status
+- **Codex CLI**: browser opens automatically on the first MCP tool call (e.g. *"List my Kobiton devices"*) after plugin install. Tokens are cached in the OS keychain with automatic refresh. Use `/mcp` (or `/mcp verbose`) to inspect server status
 
 Behind the scenes, `.mcp.json` points to the Kobiton MCP server and authentication uses OAuth 2.1:
 
@@ -131,6 +187,12 @@ To verify everything is wired correctly, run the diagnostic:
 `/automate:doctor` is read-only. It checks the CLI installation (symlink + target), the credentials file, the active profile, and required fields, and prints actionable remediation hints for any failures.
 >
 > **Gemini CLI:** API key auth requires editing `gemini-extension.json` instead of `.mcp.json`. Add a `headers` block under `mcpServers.kobiton` with `"Authorization": "${KOBITON_AUTH}"`.
+>
+> **Codex CLI:** OAuth is the default. For CI/headless environments where a browser cannot open, switch to API key auth by adding an `env_http_headers` block to the installed plugin's `.mcp.json` at `~/.codex/.tmp/marketplaces/kobiton/.codex/.mcp.json` (or maintain a fork), then export `KOBITON_AUTH` in the shell that launches `codex`:
+>
+> ```json
+> "env_http_headers": { "Authorization": "KOBITON_AUTH" }
+> ```
 
 ## What You Can Do
 
@@ -207,6 +269,7 @@ After the plugin is updated upstream, pull the latest version:
 
 - **Claude Code / Copilot CLI:** run `/plugin install automate@kobiton` again
 - **Gemini CLI:** run `gemini extensions update kobiton-automate` from your shell
+- **Codex CLI:** run `codex plugin marketplace upgrade` to refresh the marketplace catalog, then reinstall the plugin from the browser to pull the latest manifest
 
 To make sure the assistant picks up the changes with no stale cache:
 
@@ -219,7 +282,7 @@ To make sure the assistant picks up the changes with no stale cache:
 <details>
 <summary><strong>MCP server doesn't appear in <code>/mcp</code> after install</strong></summary>
 
-All three CLIs cache plugin state when the session starts. After installing or updating the plugin, the `kobiton` MCP server may not show up in the server list immediately. Force a reload:
+All four CLIs cache plugin state when the session starts. After installing or updating the plugin, the `kobiton` MCP server may not show up in the server list immediately. Force a reload:
 
 **Claude Code** — reload plugins in the current session:
 
@@ -242,7 +305,18 @@ gemini extensions list
 gemini
 ```
 
-Then check the server list (`/mcp` in Claude Code and Gemini CLI, `/mcp show` in Copilot CLI). `kobiton` should now appear.
+**Codex CLI** — exit and relaunch; if still missing, verify the marketplace was added and the plugin was installed:
+
+```bash
+exit
+codex plugin marketplace list
+codex plugin list
+codex
+```
+
+If using the manual fallback config, also check `grep -A 4 "mcp_servers.kobiton" ~/.codex/config.toml`.
+
+Then check the server list (`/mcp` in Claude Code, Gemini CLI, and Codex CLI, `/mcp show` in Copilot CLI). `kobiton` should now appear.
 </details>
 
 <details>
@@ -413,58 +487,44 @@ Note: `kobiton` here is the **MCP server name** (declared inside the extension),
 <details>
 <summary><strong>OAuth doesn't open a browser on first tool call</strong></summary>
 
-Gemini CLI's extension uses `authProviderType: "dynamic_discovery"` (the default). The Kobiton MCP server advertises OAuth metadata via RFC 9728 `.well-known/oauth-protected-resource`, so the browser flow should kick in automatically the first time a tool needs auth.
+Gemini CLI's extension uses dynamic OAuth discovery by default. The Kobiton MCP server advertises OAuth metadata at a standard well-known endpoint, so the browser flow should kick in automatically the first time a tool needs auth.
 
 If nothing happens, try `/mcp auth kobiton` to trigger it explicitly. Check that your terminal can launch a browser. For headless environments, switch to API key auth by editing `gemini-extension.json` directly (see the **API Key Authentication** section above).
 </details>
 
-### Copilot CLI
+### Codex CLI
 
 <details>
-<summary><strong>MCP tools not available after plugin install</strong></summary>
+<summary><strong>Tools not appearing or "MCP server kobiton not initialized"</strong></summary>
 
-Verify the plugin is installed and the MCP server is configured:
+Verify each step:
 
-```bash
-# Check installed plugins
-copilot plugin list
+1. **Plugin installed** — open `/plugins` inside Codex and confirm `automate` is listed under the `kobiton` marketplace as **Installed**. If missing, run `codex plugin marketplace add kobiton/automate` and reinstall from the plugin browser.
+2. **Codex version recent enough** — update with `npm install -g @openai/codex@latest`.
 
-# Check MCP server status
-/mcp show
-```
-
-If the `kobiton` MCP server doesn't appear, add it manually by running `/mcp add` and entering the following when prompted:
-
-- **Server name:** `kobiton`
-- **Type:** `http`
-- **URL:** `https://api.kobiton.com/mcp`
-
-Alternatively, edit `~/.copilot/mcp-config.json` directly:
-
-```json
-{
-  "mcpServers": {
-    "kobiton": {
-      "type": "http",
-      "url": "https://api.kobiton.com/mcp"
-    }
-  }
-}
-```
+After fixing, exit Codex and relaunch; the server should show in `/mcp` (or `/mcp verbose`).
 </details>
 
 <details>
-<summary><strong>Tool calls are blocked</strong></summary>
+<summary><strong>Browser does not open for OAuth login</strong></summary>
 
-Copilot CLI requires explicit tool permissions. Allow Kobiton tools:
+Codex tries to launch your system browser when Kobiton requires sign-in. If nothing opens, check:
 
-```bash
-# Allow all Kobiton MCP tools
-copilot --allow-tool='kobiton'
+1. **Default browser is set** — your OS needs a default browser. SSH sessions without X forwarding cannot open one.
+2. **Localhost ports not blocked** — Codex listens on a local port to receive the login callback. Firewall rules that block all localhost ports will break the flow.
+3. **Headless environment** — switch to API key auth (see the **API Key Authentication** section above) and add `env_http_headers` to the installed plugin's `.mcp.json`.
+</details>
 
-# Or allow specific tools
-copilot --allow-tool='kobiton(listDevices)' --allow-tool='kobiton(getSession)'
-```
+<details>
+<summary><strong>OAuth login completes but <code>/mcp</code> still shows Disconnected</strong></summary>
+
+This usually means the cached token is stale and refresh failed. Force a re-login by clearing the OS keychain entry and reconnecting:
+
+- **macOS:** open Keychain Access, search for `codex-mcp` or `kobiton`, delete the entry, then trigger a tool call to re-run OAuth.
+- **Linux:** `secret-tool clear service codex-mcp` (or use Seahorse to remove the entry).
+- **Windows:** open Credential Manager, find the Codex entry under Generic Credentials, remove it.
+
+After clearing, run any Kobiton tool prompt; the browser should reopen for fresh login.
 </details>
 
 ### Still Stuck?
@@ -483,7 +543,7 @@ This plugin connects to the Kobiton cloud API (`api.kobiton.com`) over HTTPS (TL
 **Data handling:**
 
 - The plugin does not store any data locally beyond what your AI assistant retains in its conversation context.
-- Tool responses (device lists, session details, test results) pass through your assistant's context window and are subject to [Anthropic's Privacy Policy](https://www.anthropic.com/privacy), [GitHub Copilot's Privacy Statement](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement), or [Google's Gemini Privacy Notice](https://ai.google.dev/gemini-api/terms), depending on which assistant you use.
+- Tool responses (device lists, session details, test results) pass through your assistant's context window and are subject to [Anthropic's Privacy Policy](https://www.anthropic.com/privacy), [GitHub Copilot's Privacy Statement](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement), [Google's Gemini Privacy Notice](https://ai.google.dev/gemini-api/terms), or [OpenAI's Privacy Policy](https://openai.com/policies/privacy-policy), depending on which assistant you use.
 - App binaries uploaded via `uploadAppToStore` are sent directly to Kobiton's pre-signed S3 URLs, not through your AI assistant.
 
 For details on how Kobiton handles your data, see the [Kobiton Privacy Policy](https://kobiton.com/privacy-policy) and [Trust Center](https://kobiton.com/trust-center/).
