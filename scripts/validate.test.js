@@ -13,8 +13,8 @@ function setupValidProject(dir) {
   writeFileSync(join(dir, '.claude-plugin/plugin.json'), JSON.stringify({
     name: 'automate',
     description: 'Test',
-    mcpServers: '../.mcp.json',
-    skills: '../skills/'
+    mcpServers: './.mcp.json',
+    skills: './skills/'
   }))
   writeFileSync(join(dir, '.claude-plugin/marketplace.json'), JSON.stringify({
     name: 'kobiton',
@@ -96,8 +96,8 @@ describe('validateProject', () => {
     setupValidProject(tmpDir)
     writeFileSync(join(tmpDir, '.claude-plugin/plugin.json'), JSON.stringify({
       description: 'Test',
-      mcpServers: '../.mcp.json',
-      skills: '../skills/'
+      mcpServers: './.mcp.json',
+      skills: './skills/'
     }))
     const {errors} = validateProject(tmpDir)
     expect(errors).toContainEqual(expect.stringContaining('missing "name"'))
@@ -144,8 +144,8 @@ describe('validateProject', () => {
     writeFileSync(join(tmpDir, '.claude-plugin/plugin.json'), JSON.stringify({
       name: 'test',
       description: 'Test',
-      mcpServers: '../nonexistent.json',
-      skills: '../skills/'
+      mcpServers: './nonexistent.json',
+      skills: './skills/'
     }))
     const {errors} = validateProject(tmpDir)
     expect(errors).toContainEqual(expect.stringContaining('does not exist'))

@@ -1,13 +1,17 @@
-import {readFileSync, existsSync} from 'fs'
-import {resolve, join} from 'path'
+import {readFileSync, existsSync, readdirSync} from 'node:fs'
+import {resolve, join} from 'node:path'
 import {load} from 'js-yaml'
 
 export function validateProject(rootDir) {
   const errors = []
   const passes = []
 
-  function fail(msg) { errors.push(msg) }
-  function pass(msg) { passes.push(msg) }
+  function fail(msg) {
+    errors.push(msg)
+  }
+  function pass(msg) {
+    passes.push(msg)
+  }
 
   // Validate JSON files exist and parse
   const jsonFiles = [
@@ -25,7 +29,8 @@ export function validateProject(rootDir) {
     try {
       JSON.parse(readFileSync(filePath, 'utf8'))
       pass(`${file} is valid JSON`)
-    } catch (e) {
+    }
+    catch (e) {
       fail(`${file} is not valid JSON: ${e.message}`)
     }
   }
@@ -33,10 +38,17 @@ export function validateProject(rootDir) {
   // Validate plugin.json required fields
   for (const pluginPath of ['.claude-plugin/plugin.json']) {
     const filePath = join(rootDir, pluginPath)
-    if (!existsSync(filePath)) continue
+    if (!existsSync(filePath)) {
+      continue
+    }
+
     const plugin = JSON.parse(readFileSync(filePath, 'utf8'))
-    if (!plugin.name) fail(`${pluginPath} missing "name"`)
-    if (!plugin.description) fail(`${pluginPath} missing "description"`)
+    if (!plugin.name) {
+      fail(`${pluginPath} missing "name"`)
+    }
+    if (!plugin.description) {
+      fail(`${pluginPath} missing "description"`)
+    }
   }
 
   // Validate .mcp.json has server config (accepts OAuth, API key, or minimal format)
@@ -44,82 +56,126 @@ export function validateProject(rootDir) {
   if (existsSync(mcpPath)) {
     try {
       const mcp = JSON.parse(readFileSync(mcpPath, 'utf8'))
-      if (!mcp.mcpServers || !mcp.mcpServers.kobiton) {
+      if (!mcp.mcpServers?.kobiton) {
         fail('.mcp.json missing mcpServers.kobiton')
-      } else if (!mcp.mcpServers.kobiton.url) {
+      }
+      else if (!mcp.mcpServers.kobiton.url) {
         fail('.mcp.json missing mcpServers.kobiton.url')
-      } else {
+      }
+      else {
         const kobiton = mcp.mcpServers.kobiton
         if (kobiton.oauth != null && (typeof kobiton.oauth !== 'object' || typeof kobiton.oauth.authServerMetadataUrl !== 'string')) {
           fail('.mcp.json oauth block missing authServerMetadataUrl (string)')
         }
       }
-    } catch {
+    }
+    catch {
       // Already caught by JSON validation above
     }
   }
 
-  // Validate tool YAML files
-  const toolFiles = ['devices.yaml', 'sessions.yaml', 'apps.yaml', 'user.yaml']
-
-  for (const file of toolFiles) {
-    const filePath = join(rootDir, 'tools', file)
-    if (!existsSync(filePath)) {
-      fail(`tools/${file} does not exist`)
-      continue
+  // Validate tool YAML files (auto-discovered from tools/)
+  const toolsDir = join(rootDir, 'tools')
+  if (!existsSync(toolsDir)) {
+    fail('tools/ directory does not exist')
+  }
+  else {
+    const toolFiles = readdirSync(toolsDir).filter((f) => f.endsWith('.yaml'))
+    if (toolFiles.length === 0) {
+      fail('tools/ contains no YAML files')
     }
-    try {
-      const doc = load(readFileSync(filePath, 'utf8'))
-      if (!doc.tools || !Array.isArray(doc.tools)) {
-        fail(`tools/${file} missing "tools" array`)
-        continue
+    for (const file of toolFiles) {
+      const filePath = join(toolsDir, file)
+      try {
+        const doc = load(readFileSync(filePath, 'utf8'))
+
+        if (!doc.tools || !Array.isArray(doc.tools)) {
+          fail(`tools/${file} missing "tools" array`)
+          continue
+        }
+
+        for (const tool of doc.tools) {
+          if (!tool.name) {
+            fail(`tools/${file} has tool without "name"`)
+          }
+          if (!tool.description) {
+            fail(`tools/${file} tool "${tool.name}" missing "description"`)
+          }
+          if (!tool.inputSchema) {
+            fail(`tools/${file} tool "${tool.name}" missing "inputSchema"`)
+          }
+        }
+        pass(`tools/${file} is valid (${doc.tools.length} tools)`)
       }
-      for (const tool of doc.tools) {
-        if (!tool.name) fail(`tools/${file} has tool without "name"`)
-        if (!tool.description) fail(`tools/${file} tool "${tool.name}" missing "description"`)
-        if (!tool.inputSchema) fail(`tools/${file} tool "${tool.name}" missing "inputSchema"`)
+      catch (e) {
+        fail(`tools/${file} is not valid YAML: ${e.message}`)
       }
-      pass(`tools/${file} is valid (${doc.tools.length} tools)`)
-    } catch (e) {
-      fail(`tools/${file} is not valid YAML: ${e.message}`)
     }
   }
 
-  // Validate skills have frontmatter
-  const skillDirs = ['run-automation-suite', 'run-interactive-test']
-  for (const skill of skillDirs) {
-    const filePath = join(rootDir, 'skills', skill, 'SKILL.md')
-    if (!existsSync(filePath)) {
-      fail(`skills/${skill}/SKILL.md does not exist`)
-      continue
+  // Validate skills have frontmatter (auto-discovered from skills/)
+  const skillsDir = join(rootDir, 'skills')
+  if (!existsSync(skillsDir)) {
+    fail('skills/ directory does not exist')
+  }
+  else {
+    const skillDirs = readdirSync(skillsDir, {withFileTypes: true})
+      .filter((d) => d.isDirectory())
+      .map((d) => d.name)
+
+    if (skillDirs.length === 0) {
+      fail('skills/ contains no skill subdirectories')
     }
-    const content = readFileSync(filePath, 'utf8')
-    if (!content.startsWith('---')) {
-      fail(`skills/${skill}/SKILL.md missing YAML frontmatter`)
-      continue
+
+    for (const skill of skillDirs) {
+      const filePath = join(skillsDir, skill, 'SKILL.md')
+      if (!existsSync(filePath)) {
+        fail(`skills/${skill}/SKILL.md does not exist`)
+        continue
+      }
+
+      const content = readFileSync(filePath, 'utf8')
+      if (!content.startsWith('---')) {
+        fail(`skills/${skill}/SKILL.md missing YAML frontmatter`)
+        continue
+      }
+
+      const frontmatterEnd = content.indexOf('---', 3)
+      if (frontmatterEnd === -1) {
+        fail(`skills/${skill}/SKILL.md has unclosed frontmatter`)
+        continue
+      }
+
+      const frontmatter = load(content.slice(3, frontmatterEnd))
+      if (!frontmatter.name) {
+        fail(`skills/${skill}/SKILL.md frontmatter missing "name"`)
+      }
+      if (!frontmatter.description) {
+        fail(`skills/${skill}/SKILL.md frontmatter missing "description"`)
+      }
+      else {
+        pass(`skills/${skill}/SKILL.md is valid`)
+      }
     }
-    const frontmatterEnd = content.indexOf('---', 3)
-    if (frontmatterEnd === -1) {
-      fail(`skills/${skill}/SKILL.md has unclosed frontmatter`)
-      continue
-    }
-    const frontmatter = load(content.slice(3, frontmatterEnd))
-    if (!frontmatter.name) fail(`skills/${skill}/SKILL.md frontmatter missing "name"`)
-    if (!frontmatter.description) fail(`skills/${skill}/SKILL.md frontmatter missing "description"`)
-    else pass(`skills/${skill}/SKILL.md is valid`)
   }
 
   // Validate referenced paths exist
   const claudePluginPath = join(rootDir, '.claude-plugin/plugin.json')
   if (existsSync(claudePluginPath)) {
     const claudePlugin = JSON.parse(readFileSync(claudePluginPath, 'utf8'))
-    if (claudePlugin.mcpServers) {
-      const ref = resolve(join(rootDir, '.claude-plugin'), claudePlugin.mcpServers)
-      if (!existsSync(ref)) fail(`plugin.json references ${claudePlugin.mcpServers} but it does not exist`)
+
+    if (typeof claudePlugin.mcpServers === 'string') {
+      const ref = resolve(rootDir, claudePlugin.mcpServers)
+      if (!existsSync(ref)) {
+        fail(`plugin.json references ${claudePlugin.mcpServers} but it does not exist`)
+      }
     }
-    if (claudePlugin.skills) {
-      const ref = resolve(join(rootDir, '.claude-plugin'), claudePlugin.skills)
-      if (!existsSync(ref)) fail(`plugin.json references ${claudePlugin.skills} but it does not exist`)
+
+    if (typeof claudePlugin.skills === 'string') {
+      const ref = resolve(rootDir, claudePlugin.skills)
+      if (!existsSync(ref)) {
+        fail(`plugin.json references ${claudePlugin.skills} but it does not exist`)
+      }
     }
   }
 
@@ -132,9 +188,17 @@ if (isMainModule) {
   const ROOT = resolve(import.meta.dirname, '..')
   const {errors, passes} = validateProject(ROOT)
 
-  for (const msg of passes) console.log(`OK:   ${msg}`)
-  for (const msg of errors) console.error(`FAIL: ${msg}`)
+  for (const msg of passes) {
+    console.log(`OK:   ${msg}`)
+  }
+  for (const msg of errors) {
+    console.error(`FAIL: ${msg}`)
+  }
 
-  console.log(`\n${errors.length === 0 ? 'All checks passed.' : `${errors.length} error(s) found.`}`)
+  const summary = errors.length === 0
+    ? 'All checks passed.'
+    : `${errors.length} error(s) found.`
+  console.log(`\n${summary}`)
+
   process.exit(errors.length === 0 ? 0 : 1)
 }
