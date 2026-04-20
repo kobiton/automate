@@ -94,7 +94,7 @@ Session Name: Verify Appium session
 Command:      node /path/to/test.js 9B211FFAZ0017F
 ```
 
-Wait for user confirmation, then execute the command via the Bash tool **in the background** (use `run_in_background: true`).
+Wait for user confirmation, then execute the command **in the background** using your shell execution tool.
 
 **Immediately after launching the script**, wait **2 seconds** (to allow the session to initialize on Kobiton), then open the running session in the user's browser.
 
