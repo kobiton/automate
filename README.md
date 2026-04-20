@@ -4,15 +4,15 @@
 [![Cloud](https://img.shields.io/badge/Cloud-☁️-blue)](https://kobiton.com)
 [![Twitter Follow](https://img.shields.io/twitter/follow/KobitonMobile?style=social)](https://x.com/KobitonMobile)
 
-Claude Code plugin for the [Kobiton](https://kobiton.com) mobile testing platform. Manage devices, upload apps, run automation sessions, and view test results directly from your AI coding assistant.
+Plugin for the [Kobiton](https://kobiton.com) mobile testing platform. Works with [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview) and [GitHub Copilot CLI](https://docs.github.com/en/copilot/github-copilot-in-the-cli). Manage devices, upload apps, run automation sessions, and view test results directly from your AI coding assistant.
 
 ## Before You Begin
 
 Make sure you have:
 
 - **A Kobiton account** — sign up at [kobiton.com](https://kobiton.com) if you don't have one
-- **Claude Code installed and working** — verify by running `claude` in your terminal ([install guide](https://docs.anthropic.com/en/docs/claude-code/overview))
-- **A workspace folder opened** — Claude Code must be launched from a project directory (e.g. `cd my-project && claude`)
+- **Claude Code or GitHub Copilot CLI** — install [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview) or [Copilot CLI](https://docs.github.com/en/copilot/github-copilot-in-the-cli)
+- **A workspace folder opened** — launch your AI assistant from a project directory (e.g. `cd my-project && claude` or `cd my-project && copilot`)
 
 ## Installation
 
@@ -24,6 +24,12 @@ Make sure you have:
 
 # then install the automate plugin
 /plugin install automate@kobiton
+```
+
+### From Copilot CLI
+
+```bash
+copilot plugin install kobiton/automate
 ```
 
 ### Login
@@ -204,6 +210,42 @@ The device may be offline, reserved by another user, or no longer in your device
 Large app files or slow connections can cause uploads to time out. Retry the upload — pre-signed URLs expire after 30 minutes, so a new URL will be generated automatically.
 </details>
 
+### Copilot CLI
+
+<details>
+<summary><strong>MCP tools not available after plugin install</strong></summary>
+
+Verify the plugin is installed and the MCP server is configured:
+
+```bash
+# Check installed plugins
+copilot plugin list
+
+# Check MCP server status
+/mcp show
+```
+
+If the `kobiton` MCP server doesn't appear, add it manually:
+
+```bash
+/mcp add --name kobiton --type http --url https://api.kobiton.com/mcp
+```
+</details>
+
+<details>
+<summary><strong>Tool calls are blocked</strong></summary>
+
+Copilot CLI requires explicit tool permissions. Allow Kobiton tools:
+
+```bash
+# Allow all Kobiton MCP tools
+copilot --allow-tool='kobiton'
+
+# Or allow specific tools
+copilot --allow-tool='kobiton:listDevices' --allow-tool='kobiton:getSession'
+```
+</details>
+
 ### Still Stuck?
 
 For additional help, open an issue at [github.com/kobiton/automate/issues](https://github.com/kobiton/automate/issues/new?template=bug_report.md) or ask in [#general-discussion](https://discord.com/channels/1486036652685267055/1488189710248710327) on Discord. Feel free to share [feature requests](https://github.com/kobiton/automate/issues/new?template=feature_request.md). We welcome product feedback and will consider it as we continue to improve the platform.
@@ -214,14 +256,14 @@ This plugin connects to the Kobiton cloud API (`api.kobiton.com`) over HTTPS (TL
 
 **Authentication:**
 
-- **OAuth 2.1 (default):** Claude Code opens a browser for Kobiton login. Short-lived access tokens are stored securely in the system keychain by Claude Code. No credentials are stored in the project.
+- **OAuth 2.1 (default):** Your AI assistant opens a browser for Kobiton login. Short-lived access tokens are stored securely in the system keychain. No credentials are stored in the project.
 - **API Key (alternative):** The `KOBITON_AUTH` environment variable is sent via the `Authorization` header on each request. The value is stored only in your shell profile, never committed to the repo.
 
 **Data handling:**
 
-- The plugin does not store any data locally beyond what Claude Code retains in its conversation context.
-- Tool responses (device lists, session details, test results) pass through Claude Code's context window and are subject to [Anthropic's Privacy Policy](https://www.anthropic.com/privacy).
-- App binaries uploaded via `uploadAppToStore` are sent directly to Kobiton's pre-signed S3 URLs, not through Claude Code.
+- The plugin does not store any data locally beyond what your AI assistant retains in its conversation context.
+- Tool responses (device lists, session details, test results) pass through your assistant's context window and are subject to [Anthropic's Privacy Policy](https://www.anthropic.com/privacy) or [GitHub Copilot's Privacy Statement](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement), depending on which assistant you use.
+- App binaries uploaded via `uploadAppToStore` are sent directly to Kobiton's pre-signed S3 URLs, not through your AI assistant.
 
 For details on how Kobiton handles your data, see the [Kobiton Privacy Policy](https://kobiton.com/privacy-policy) and [Trust Center](https://kobiton.com/trust-center/).
 
