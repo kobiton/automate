@@ -6,6 +6,14 @@
 
 Claude Code plugin for the [Kobiton](https://kobiton.com) mobile testing platform. Manage devices, upload apps, run automation sessions, and view test results directly from your AI coding assistant.
 
+## Before You Begin
+
+Make sure you have:
+
+- **A Kobiton account** — sign up at [kobiton.com](https://kobiton.com) if you don't have one
+- **Claude Code installed and working** — verify by running `claude` in your terminal ([install guide](https://docs.anthropic.com/en/docs/claude-code/overview))
+- **A workspace folder opened** — Claude Code must be launched from a project directory (e.g. `cd my-project && claude`)
+
 ## Installation
 
 ### From Claude Code Marketplace
@@ -20,10 +28,11 @@ Claude Code plugin for the [Kobiton](https://kobiton.com) mobile testing platfor
 
 ### Login
 
-1. Start Claude Code — on first use, a browser window will open for Kobiton login
-2. Sign in with your Kobiton credentials. Tokens are managed automatically.
+1. In Claude Code, type `/mcp` to open the MCP server list
+2. Select the **kobiton** server — a browser window will open for Kobiton login
+3. Sign in with your Kobiton credentials. Tokens are managed automatically.
 
-The `.mcp.json` points to the Kobiton MCP server. Authentication is handled automatically via OAuth 2.1 — the server advertises its auth endpoints and Claude Code opens a browser for login on first use.
+The `.mcp.json` points to the Kobiton MCP server. Authentication is handled via OAuth 2.1 — when you connect to the server through `/mcp`, Claude Code opens a browser for login.
 
 ```json
 {
@@ -35,6 +44,7 @@ The `.mcp.json` points to the Kobiton MCP server. Authentication is handled auto
   }
 }
 ```
+After installation and authentication, verify the plugin loaded by asking Claude: *"List my Kobiton devices"*. If tools aren't recognized, see [Troubleshooting](#troubleshooting).
 
 ### API Key Authentication (Alternative)
 
@@ -95,9 +105,6 @@ export KOBITON_AUTH="Basic $(echo -n 'username:apikey' | base64)"
 
 - **run-automation-suite** -- Guided workflow that walks you through app upload, device selection, local Appium script execution (Node.js, Python, .NET, Java), and result collection.
 
-## Upload Flow
-
-Use `uploadAppToStore` to upload an app to Kobiton Store (POST /v2/apps). The process is three-step: call the tool to get a pre-signed URL, upload the file, then confirm.
 
 ## Running Automation Tests
 
@@ -105,10 +112,99 @@ Use the **run-automation-suite** skill to run local Appium test scripts. Claude 
 
 ## Troubleshooting
 
-| Issue | Cause | Fix |
-|-------|-------|-----|
-| `Device not found` | Device offline or reserved | Use `listDevices` with `available: true` to find online devices |
-| `Upload timeout` | Large app file or slow connection | Retry the upload; pre-signed URLs expire after 30 minutes |
+### Updating the Plugin
+
+After the plugin is updated upstream, pull the latest version:
+
+```bash
+/plugin install automate@kobiton
+```
+
+To make sure Claude picks up the changes with no stale cache:
+
+1. Run `/reload-plugins` to reload all plugins in the current session
+2. If tools still behave unexpectedly, run `/clear` to reset the session context
+3. As a last resort, quit Claude Code and start a new session
+
+### Common Issues
+
+<details>
+<summary><strong>Plugin features not working or behaving unexpectedly</strong></summary>
+
+Some older versions of Claude Code don't support the plugin features this plugin relies on. Make sure you're on the latest version:
+
+```bash
+npm install -g @anthropic-ai/claude-code@latest
+```
+
+Then restart Claude Code and try again.
+</details>
+
+<details>
+<summary><strong>"It keeps asking me to open a folder"</strong></summary>
+
+Claude Code requires a working directory. Launch it from inside a project folder:
+
+```bash
+cd my-project
+claude
+```
+
+If you see this prompt repeatedly, make sure you are not running `claude` from your home directory or root (`/`).
+</details>
+
+<details>
+<summary><strong>"Plugin not found in marketplace"</strong></summary>
+
+The Kobiton marketplace must be added before installing:
+
+```bash
+/plugin marketplace add kobiton/automate
+/plugin install automate@kobiton
+```
+
+If it still isn't found, check your internet connection and ensure you're running the latest version of Claude Code (`claude update`).
+</details>
+
+<details>
+<summary><strong>"claude: command not found"</strong></summary>
+
+Claude Code is not installed or not in your PATH.
+
+- **Install:** follow the [official install guide](https://docs.anthropic.com/en/docs/claude-code/overview)
+- **PATH issue:** if you installed via npm, make sure your npm global bin directory is in your PATH:
+
+  ```bash
+  npm install -g @anthropic-ai/claude-code
+  ```
+
+  Then open a new terminal window and try `claude` again.
+</details>
+
+<details>
+<summary><strong>"Nothing happens after install"</strong></summary>
+
+The plugin installed but tools don't appear or Claude doesn't recognize Kobiton commands.
+
+1. Run `/reload-plugins` to force Claude to pick up the new plugin
+2. Try asking: *"List my Kobiton devices"*
+3. If still not working, quit Claude Code entirely and start a fresh session
+4. Verify `.mcp.json` exists in the plugin directory — it tells Claude where the Kobiton MCP server lives
+</details>
+
+<details>
+<summary><strong>"Device not found"</strong></summary>
+
+The device may be offline, reserved by another user, or no longer in your device list. Use `listDevices` with `available: true` to find currently online devices.
+</details>
+
+<details>
+<summary><strong>"Upload timeout"</strong></summary>
+
+Large app files or slow connections can cause uploads to time out. Retry the upload — pre-signed URLs expire after 30 minutes, so a new URL will be generated automatically.
+</details>
+
+### Still Stuck?
 
 For additional help, open an issue at [github.com/kobiton/automate/issues](https://github.com/kobiton/automate/issues/new?template=bug_report.md) or ask in [#general-discussion](https://discord.com/channels/1486036652685267055/1488189710248710327) on Discord. Feel free to share [feature requests](https://github.com/kobiton/automate/issues/new?template=feature_request.md). We welcome product feedback and will consider it as we continue to improve the platform.
 
