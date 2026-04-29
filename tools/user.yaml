@@ -1,0 +1,17 @@
+domain: USER
+tools:
+  - name: getCredential
+    title: Get Credential
+    description: >
+      Return the current OAuth-authenticated user's username, an API key
+      (existing or newly generated with alias "claude-code"), and the
+      canonical portal URL of the API environment. Used by the
+      /automate:setup command to bootstrap ~/.kobiton/.credentials. Does
+      not accept any input — operates on the authenticated user from the
+      OAuth context.
+    annotations:
+      readOnlyHint: false
+      destructiveHint: false
+    inputSchema:
+      type: object
+      properties: {}

@@ -3,7 +3,7 @@ import {join, resolve} from 'path'
 import {load, dump} from 'js-yaml'
 
 const ROOT = resolve(import.meta.dirname, '..')
-const toolFiles = ['devices.yaml', 'sessions.yaml', 'apps.yaml']
+const toolFiles = ['devices.yaml', 'sessions.yaml', 'apps.yaml', 'user.yaml']
 
 const combined = {
   files: toolFiles.map((file) => {

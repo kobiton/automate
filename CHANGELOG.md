@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.3 - 2026-04-28
+
+- Added `run-interactive-test` skill for natural-language interactive testing on Kobiton devices
+- Added MCP tool `getCredential` — returns the authenticated user's username, API key (existing or auto-generated with alias `claude-code`), and the canonical portal URL
+- Added `/automate:doctor` command — read-only diagnostic that checks CLI installation, credentials file, active profile, and required fields
+- Added `/automate:setup` to auto-fetch credentials via the new MCP tool and write them atomically to `~/.kobiton/.credentials` (mode 0600)
+- Added `SessionStart` hook to auto-configure the WebDriver session environment
+- Improved `run-automation-suite` with mandatory app selection, background execution, and browser session integration
+
+
 ## 1.0.2 - 2026-04-02
 
 - Improved the accuracy of fetching Appium capabilities supported by Kobiton

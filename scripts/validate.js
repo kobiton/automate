@@ -60,7 +60,7 @@ export function validateProject(rootDir) {
   }
 
   // Validate tool YAML files
-  const toolFiles = ['devices.yaml', 'sessions.yaml', 'apps.yaml']
+  const toolFiles = ['devices.yaml', 'sessions.yaml', 'apps.yaml', 'user.yaml']
 
   for (const file of toolFiles) {
     const filePath = join(rootDir, 'tools', file)
@@ -86,7 +86,7 @@ export function validateProject(rootDir) {
   }
 
   // Validate skills have frontmatter
-  const skillDirs = ['run-automation-suite']
+  const skillDirs = ['run-automation-suite', 'run-interactive-test']
   for (const skill of skillDirs) {
     const filePath = join(rootDir, 'skills', skill, 'SKILL.md')
     if (!existsSync(filePath)) {
