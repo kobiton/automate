@@ -4,15 +4,15 @@
 [![Cloud](https://img.shields.io/badge/Cloud-☁️-blue)](https://kobiton.com)
 [![Twitter Follow](https://img.shields.io/twitter/follow/KobitonMobile?style=social)](https://x.com/KobitonMobile)
 
-Plugin for the [Kobiton](https://kobiton.com) mobile testing platform. Works with [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview) and [GitHub Copilot CLI](https://docs.github.com/en/copilot/github-copilot-in-the-cli). Manage devices, upload apps, run automation sessions, and view test results directly from your AI coding assistant.
+Plugin for the [Kobiton](https://kobiton.com) mobile testing platform. Works with [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview), [GitHub Copilot CLI](https://docs.github.com/en/copilot/github-copilot-in-the-cli), and [Gemini CLI](https://github.com/google-gemini/gemini-cli). Manage devices, upload apps, run automation sessions, and view test results directly from your AI coding assistant.
 
 ## Before You Begin
 
 Make sure you have:
 
-- **A Kobiton account** — sign up at [kobiton.com](https://kobiton.com) if you don't have one
-- **Claude Code or GitHub Copilot CLI** — install [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview) or [Copilot CLI](https://docs.github.com/en/copilot/github-copilot-in-the-cli)
-- **A project directory** — your AI assistant must launch from a workspace, not from your home folder
+- **A Kobiton account** - sign up at [kobiton.com](https://kobiton.com) if you don't have one
+- **A supported AI CLI** - install [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview), [Copilot CLI](https://docs.github.com/en/copilot/github-copilot-in-the-cli), or [Gemini CLI](https://github.com/google-gemini/gemini-cli)
+- **A project directory** - your AI assistant must launch from a workspace, not from your home folder
 
 ## Installation
 
@@ -48,6 +48,23 @@ Inside the session, add the Kobiton marketplace and install the plugin:
 /plugin install automate@kobiton
 ```
 
+### Gemini CLI
+
+From your project directory, install the extension directly from GitHub:
+
+```bash
+cd my-project
+gemini extensions install https://github.com/kobiton/automate
+```
+
+Then launch Gemini CLI:
+
+```bash
+gemini
+```
+
+The `kobiton` MCP server and the `run-automation-suite` skill are auto-discovered. Confirm the extension is active with `/extensions list` and the MCP server with `/mcp`.
+
 ## Login
 
 The first time your AI assistant calls a Kobiton tool, a browser window opens for OAuth login. Sign in with your Kobiton credentials — tokens are then managed automatically by the assistant.
@@ -55,7 +72,8 @@ The first time your AI assistant calls a Kobiton tool, a browser window opens fo
 You can also trigger or inspect authentication explicitly:
 
 - **Claude Code**: type `/mcp` and select **kobiton** to start the OAuth flow
-- **GitHub Copilot CLI**: type `/mcp` (or `/mcp show`) to inspect the MCP server status
+- **GitHub Copilot CLI**: type `/mcp auth kobiton` to start the OAuth flow; use `/mcp` (or `/mcp show`) to inspect server status
+- **Gemini CLI**: type `/mcp auth kobiton` to start the OAuth flow; use `/mcp` to inspect server status. OAuth uses dynamic discovery via RFC 9728
 
 Behind the scenes, `.mcp.json` points to the Kobiton MCP server and authentication uses OAuth 2.1:
 
@@ -90,7 +108,7 @@ For CI/CD pipelines or headless environments that cannot open a browser, use API
    export KOBITON_AUTH="Basic $(echo -n 'username:apikey' | base64)"
    ```
 
-4. Reload your shell and restart Claude Code.
+4. Reload your shell and restart your AI CLI.
 
 > **Note:** OAuth and API key auth cannot coexist in a single `.mcp.json`. The default OAuth config uses a `headers` block containing only `X-AI-Tool-Name`. The API key config adds `Authorization: ${KOBITON_AUTH}` to the same `headers` block. To switch, replace `.mcp.json` with the appropriate format.
 
@@ -111,6 +129,8 @@ To verify everything is wired correctly, run the diagnostic:
 ```
 
 `/automate:doctor` is read-only. It checks the CLI installation (symlink + target), the credentials file, the active profile, and required fields, and prints actionable remediation hints for any failures.
+>
+> **Gemini CLI:** API key auth requires editing `gemini-extension.json` instead of `.mcp.json`. Add a `headers` block under `mcpServers.kobiton` with `"Authorization": "${KOBITON_AUTH}"`.
 
 ## What You Can Do
 
@@ -185,22 +205,21 @@ See [docs/EXAMPLES.md](docs/EXAMPLES.md) for prompt examples covering every tool
 
 After the plugin is updated upstream, pull the latest version:
 
-```bash
-/plugin install automate@kobiton
-```
+- **Claude Code / Copilot CLI:** run `/plugin install automate@kobiton` again
+- **Gemini CLI:** run `gemini extensions update kobiton-automate` from your shell
 
-To make sure Claude picks up the changes with no stale cache:
+To make sure the assistant picks up the changes with no stale cache:
 
-1. Run `/reload-plugins` to reload all plugins in the current session
+1. Run `/reload-plugins` (Claude Code) to reload all plugins in the current session
 2. If tools still behave unexpectedly, run `/clear` to reset the session context
-3. As a last resort, quit Claude Code and start a new session
+3. As a last resort, quit your CLI session and start a new one
 
 ### Common Issues
 
 <details>
 <summary><strong>MCP server doesn't appear in <code>/mcp</code> after install</strong></summary>
 
-Both Claude Code and Copilot CLI cache plugin state when the session starts. After installing or updating the plugin, the `kobiton` MCP server may not show up in the server list immediately. Force a reload:
+All three CLIs cache plugin state when the session starts. After installing or updating the plugin, the `kobiton` MCP server may not show up in the server list immediately. Force a reload:
 
 **Claude Code** — reload plugins in the current session:
 
@@ -215,7 +234,15 @@ exit
 copilot
 ```
 
-Then check the server list (`/mcp` in Claude Code, `/mcp show` in Copilot CLI). `kobiton` should now appear.
+**Gemini CLI** — exit and relaunch; if still missing, verify the extension is enabled:
+
+```bash
+exit
+gemini extensions list
+gemini
+```
+
+Then check the server list (`/mcp` in Claude Code and Gemini CLI, `/mcp show` in Copilot CLI). `kobiton` should now appear.
 </details>
 
 <details>
@@ -309,10 +336,23 @@ copilot plugin list
 /mcp show
 ```
 
-If the `kobiton` MCP server doesn't appear, add it manually:
+If the `kobiton` MCP server doesn't appear, add it manually by running `/mcp add` and entering the following when prompted:
 
-```bash
-/mcp add --name kobiton --type http --url https://api.kobiton.com/mcp
+- **Server name:** `kobiton`
+- **Type:** `http`
+- **URL:** `https://api.kobiton.com/mcp`
+
+Alternatively, edit `~/.copilot/mcp-config.json` directly:
+
+```json
+{
+  "mcpServers": {
+    "kobiton": {
+      "type": "http",
+      "url": "https://api.kobiton.com/mcp"
+    }
+  }
+}
 ```
 </details>
 
@@ -326,8 +366,56 @@ Copilot CLI requires explicit tool permissions. Allow Kobiton tools:
 copilot --allow-tool='kobiton'
 
 # Or allow specific tools
-copilot --allow-tool='kobiton:listDevices' --allow-tool='kobiton:getSession'
+copilot --allow-tool='kobiton(listDevices)' --allow-tool='kobiton(getSession)'
 ```
+</details>
+
+### Gemini CLI
+
+<details>
+<summary><strong>Extension installed but tools or skills don't appear</strong></summary>
+
+Verify the extension is registered and enabled:
+
+```bash
+gemini extensions list
+```
+
+If `kobiton-automate` is missing, reinstall:
+
+```bash
+gemini extensions install https://github.com/kobiton/automate
+```
+
+If listed but disabled, enable it:
+
+```bash
+gemini extensions enable kobiton-automate
+```
+
+Then relaunch `gemini` and check `/mcp` for the `kobiton` server. The `run-automation-suite` skill is auto-discovered from `skills/` at the extension root, no separate registration needed.
+</details>
+
+<details>
+<summary><strong><code>/mcp</code> shows <code>kobiton</code> as Disconnected (OAuth not authenticated)</strong></summary>
+
+The extension is installed but you haven't completed OAuth yet. Trigger the flow manually:
+
+```
+/mcp auth kobiton
+```
+
+A browser window opens for Kobiton login. After signing in, run `/mcp` again — the status should change to 🟢 Connected.
+
+Note: `kobiton` here is the **MCP server name** (declared inside the extension), not the extension name `kobiton-automate`. `/mcp` commands always take the server name.
+</details>
+
+<details>
+<summary><strong>OAuth doesn't open a browser on first tool call</strong></summary>
+
+Gemini CLI's extension uses `authProviderType: "dynamic_discovery"` (the default). The Kobiton MCP server advertises OAuth metadata via RFC 9728 `.well-known/oauth-protected-resource`, so the browser flow should kick in automatically the first time a tool needs auth.
+
+If nothing happens, try `/mcp auth kobiton` to trigger it explicitly. Check that your terminal can launch a browser. For headless environments, switch to API key auth by editing `gemini-extension.json` directly (see the **API Key Authentication** section above).
 </details>
 
 ### Copilot CLI
@@ -395,7 +483,7 @@ This plugin connects to the Kobiton cloud API (`api.kobiton.com`) over HTTPS (TL
 **Data handling:**
 
 - The plugin does not store any data locally beyond what your AI assistant retains in its conversation context.
-- Tool responses (device lists, session details, test results) pass through your assistant's context window and are subject to [Anthropic's Privacy Policy](https://www.anthropic.com/privacy) or [GitHub Copilot's Privacy Statement](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement), depending on which assistant you use.
+- Tool responses (device lists, session details, test results) pass through your assistant's context window and are subject to [Anthropic's Privacy Policy](https://www.anthropic.com/privacy), [GitHub Copilot's Privacy Statement](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement), or [Google's Gemini Privacy Notice](https://ai.google.dev/gemini-api/terms), depending on which assistant you use.
 - App binaries uploaded via `uploadAppToStore` are sent directly to Kobiton's pre-signed S3 URLs, not through your AI assistant.
 
 For details on how Kobiton handles your data, see the [Kobiton Privacy Policy](https://kobiton.com/privacy-policy) and [Trust Center](https://kobiton.com/trust-center/).

@@ -17,7 +17,8 @@ export function validateProject(rootDir) {
   const jsonFiles = [
     '.mcp.json',
     '.claude-plugin/plugin.json',
-    '.claude-plugin/marketplace.json'
+    '.claude-plugin/marketplace.json',
+    'gemini-extension.json'
   ]
 
   for (const file of jsonFiles) {
