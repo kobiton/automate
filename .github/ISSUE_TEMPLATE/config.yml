@@ -4,7 +4,9 @@ contact_links:
     url: mailto:security@kobiton.com
     about: |
       Found a security issue in the plugin? Email security@kobiton.com — DO NOT
-      open a public GitHub issue. We will respond within 3 business days.
+      open a public GitHub issue. We acknowledge receipt within 48 hours and
+      provide a detailed response within 5 business days. See SECURITY.md for
+      the full policy.
   - name: 🔒 Security vulnerability in the Kobiton platform (API, portal, devices)
     url: https://kobiton.com/trust-center
     about: |
