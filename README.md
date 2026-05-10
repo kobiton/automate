@@ -39,11 +39,17 @@ The `.mcp.json` points to the Kobiton MCP server. Authentication is handled via 
   "mcpServers": {
     "kobiton": {
       "type": "http",
-      "url": "https://api.kobiton.com/mcp"
+      "url": "https://api.kobiton.com/mcp",
+      "headers": {
+        "X-AI-Tool-Name": "Claude"
+      }
     }
   }
 }
 ```
+
+The `X-AI-Tool-Name` header tells Kobiton's MCP server that the request originates from Claude Code so usage can be attributed correctly in adoption analytics. It is not used for authentication or routing — only for telemetry.
+
 After installation and authentication, verify the plugin loaded by asking Claude: *"List my Kobiton devices"*. If tools aren't recognized, see [Troubleshooting](#troubleshooting).
 
 ### API Key Authentication (Alternative)
@@ -61,7 +67,7 @@ export KOBITON_AUTH="Basic $(echo -n 'username:apikey' | base64)"
 
 1. Reload your shell and restart Claude Code.
 
-> **Note:** OAuth and API key auth cannot coexist in a single `.mcp.json`. The default config (no `headers` block) uses OAuth via browser login. The API key config uses a `headers` block with `${KOBITON_AUTH}`. To switch, replace `.mcp.json` with the appropriate format.
+> **Note:** OAuth and API key auth cannot coexist in a single `.mcp.json`. The default OAuth config uses a `headers` block containing only `X-AI-Tool-Name`. The API key config adds `Authorization: ${KOBITON_AUTH}` to the same `headers` block. To switch, replace `.mcp.json` with the appropriate format.
 
 ## What You Can Do
 

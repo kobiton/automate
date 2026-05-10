@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.0 - 2026-05-10
+
+- Plugin now sends an `X-AI-Tool-Name: Claude` header on every MCP request so Kobiton can attribute sessions to Claude Code in adoption analytics. Set automatically in all three shipped configs (OAuth, API-key, dev-local) — no end-user action required (KOB-52724)
+
+
 ## 1.0.2 - 2026-04-02
 
 - Improved the accuracy of fetching Appium capabilities supported by Kobiton

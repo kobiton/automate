@@ -5,7 +5,8 @@
       "type": "http",
       "url": "https://api.kobiton.com/mcp",
       "headers": {
-        "Authorization": "${KOBITON_AUTH}"
+        "Authorization": "${KOBITON_AUTH}",
+        "X-AI-Tool-Name": "Claude"
       }
     }
   }
