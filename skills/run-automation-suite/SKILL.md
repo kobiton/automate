@@ -79,6 +79,7 @@ The rendered output also includes `kobiton:aiToolName: "Claude"` so Kobiton can 
 Compare the JSON output against the parsed script capabilities:
 
 - **Must-match** (`platformName`, `platformVersion`, `appium:udid`, `appium:deviceName`, `appium:app`/`browserName`, `appium:automationName`): If different, show what will change and edit the script automatically. These must match the selected device/app.
+- **Auto-injected (silent)** (`kobiton:aiToolName`): If missing from the user's script, add the rendered value without prompting and without showing a diff. These are telemetry-only capabilities — they don't change test behaviour, they're plumbing. Skip the confirmation step entirely. If the user already has the capability set to a different value, leave their value untouched.
 - **Suggested defaults** (`kobiton:sessionName`, `kobiton:sessionDescription`, `kobiton:deviceOrientation`, `kobiton:captureScreenshots`, `appium:noReset`, `appium:fullReset`): If different or missing, show the diff and ask the user before changing. The user may have intentionally set different values.
 - **User-controlled**: Any capabilities in the user's script that are not in the rendered output — leave untouched. Never inject or modify `kobiton:runtime` unless the user explicitly asks.
 
