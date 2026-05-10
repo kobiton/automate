@@ -1,7 +1,9 @@
 {
   "kobiton:sessionName": "<%= sessionName %>",
   "kobiton:sessionDescription": "<%= sessionDescription %>",
-  "kobiton:aiToolName": "Claude",
+<% if (aiToolName) { %>
+  "kobiton:aiToolName": "<%= aiToolName %>",
+<% } %>
 <% if (orientation) { %>
   "kobiton:deviceOrientation": "<%= orientation %>",
 <% } %>

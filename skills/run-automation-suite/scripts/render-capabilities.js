@@ -16,10 +16,28 @@ const {values: flags} = parseArgs({
     automationName:  {type: 'string'},
     app:             {type: 'string'},
     browserName:     {type: 'string'},
-    testingType:     {type: 'string', default: 'app'}
+    testingType:     {type: 'string', default: 'app'},
+    aiToolName:      {type: 'string'}
   },
   strict: false
 })
+
+// AI workspace identifier shipped on every wdio session as
+// `kobiton:aiToolName`, used by Kobiton for adoption analytics
+// (KOB-52724). Resolution order:
+//   1. --aiToolName CLI arg (lets Kobiton's parallel plugins for other
+//      AI tools pass their own canonical name when they reuse this
+//      skill — Cursor, VS Code Copilot, Gemini CLI, Codex CLI, etc.)
+//   2. KOBITON_AI_TOOL_NAME env var (host plugin can configure once
+//      per process rather than threading the flag at every call site)
+//   3. 'Claude' default — this plugin ships inside the Claude Code
+//      marketplace (.claude-plugin/plugin.json), so the only host that
+//      actually runs this script today IS Claude Code.
+// Set explicitly to an empty string ('--aiToolName ""') to opt out and
+// emit no `kobiton:aiToolName` capability at all.
+const aiToolName = flags.aiToolName !== undefined
+  ? flags.aiToolName
+  : (process.env.KOBITON_AI_TOOL_NAME ?? 'Claude')
 
 // Validate required flags
 const errors = []
@@ -59,7 +77,10 @@ const templateVars = {
   cleanUpDeviceOnExit: false,
   useSpecificDevice: true,
   deviceGroup: 'ORGANIZATION',
-  showDeviceGroup: false
+  showDeviceGroup: false,
+
+  // Resolved above (CLI > env > 'Claude' default)
+  aiToolName
 }
 
 // Render template and output JSON

@@ -74,6 +74,8 @@ node skills/run-automation-suite/scripts/render-capabilities.js \
 
 For web testing, replace `--app <app>` with `--browserName <browser> --testingType web`.
 
+The rendered output also includes `kobiton:aiToolName: "Claude"` so Kobiton can attribute sessions started by this skill to Claude Code in adoption analytics. Override with `--aiToolName <name>` (or set `KOBITON_AI_TOOL_NAME=<name>`) when the same script is reused from a non-Claude host. Pass `--aiToolName ""` to omit the capability entirely.
+
 Compare the JSON output against the parsed script capabilities:
 
 - **Must-match** (`platformName`, `platformVersion`, `appium:udid`, `appium:deviceName`, `appium:app`/`browserName`, `appium:automationName`): If different, show what will change and edit the script automatically. These must match the selected device/app.
