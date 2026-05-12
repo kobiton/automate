@@ -48,8 +48,12 @@ tools:
           description: Filter by platform
         limit:
           type: integer
-          description: Maximum number of sessions to return
-          default: 20
+          description: >-
+            Maximum number of sessions to return. Default lowered from 20 to 10
+            to stay within the 25k-token plugin response cap; sessions with
+            verbose `execution_data` can otherwise overflow and silently
+            truncate at the client. Raise carefully and verify response size.
+          default: 10
         offset:
           type: integer
           description: Offset for pagination
