@@ -73,28 +73,9 @@ Reserve the device with `reserveDevice` if needed.
 
 Ask the user for the path to their local Appium test script.
 
-Detect the language and runtime from the file extension:
+Detect the language and runtime from the file extension. See [references/capabilities.md](references/capabilities.md#runtime-detection) for the full extension -> runtime -> common commands lookup and the manifest-based runner selection guidance.
 
-| Extension | Runtime | Common commands |
-|-----------|---------|-----------------|
-| `.js` / `.ts` / `.mjs` | Node.js | `node <script> <udid>`, `npm test`, `npx wdio`, `yarn test`, `pnpm test` |
-| `.py` | Python | `python <script> <udid>`, `python3 <script> <udid>`, `pytest` |
-| `.cs` / `.csproj` | .NET | `dotnet test` |
-| `.java` / `.kt` | Java / Kotlin | `mvn test`, `gradle test`, `./gradlew test`, `java -cp ...` |
-| `.rb` | Ruby | `ruby <script>`, `bundle exec rspec` |
-
-**Picking the right command:** if the project has a manifest file (`package.json`, `pyproject.toml`, `pom.xml`, `build.gradle`, `Gemfile`), prefer the matching test runner (`npm test`, `pytest`, `mvn test`, `gradle test`, `bundle exec rspec`). Otherwise default to invoking the runtime directly on the script (e.g. `node <script>`, `python3 <script>`, `ruby <script>`).
-
-Read the script file and extract key capabilities from the source code:
-
-- `platformName` (Android / iOS)
-- `udid` (hardcoded or parameterized)
-- `app` (app URL or kobiton-store reference)
-- `sessionName`, `sessionDescription`
-- `automationName` (UiAutomator2, XCUITest, etc.)
-- `browserName` (if browser-based test)
-- `deviceOrientation`
-- Any `kobiton:*` vendor extensions (especially `kobiton:runtime`)
+Read the script file and extract the [key capability fields](references/capabilities.md#capability-fields) used by Appium and Kobiton (`platformName`, `udid`, `app`, automation/browser names, vendor `kobiton:*` extensions, etc.).
 
 Identify how the UDID is passed into the script (CLI argument, environment variable, or hardcoded) so it can be overridden with the selected device.
 
@@ -115,14 +96,9 @@ node skills/run-automation-suite/scripts/render-capabilities.js \
 
 For web testing, replace `--app <app>` with `--browserName <browser> --testingType web`.
 
+Compare the JSON output against the parsed script capabilities using the [reconciliation rules](references/capabilities.md#reconciliation-rules): must-match fields are autocorrected to the rendered values, suggested defaults require user confirmation before changing, and user-controlled capabilities are left untouched.
+
 The rendered output also includes `kobiton:aiToolName: "<host>"` so Kobiton can attribute sessions started by this skill to the calling AI workspace in adoption analytics. The host is auto-detected from runtime env markers (`CLAUDECODE=1` → Claude, `COPILOT_CLI=1` → Copilot, `GEMINI_CLI=1` → Gemini, `CODEX_THREAD_ID` → Codex). Override with `--aiToolName <name>` or set `KOBITON_AI_TOOL_NAME=<name>` to force a specific value. Pass `--aiToolName ""` to omit the capability entirely.
-
-Compare the JSON output against the parsed script capabilities:
-
-- **Must-match** (`platformName`, `platformVersion`, `appium:udid`, `appium:deviceName`, `appium:app`/`browserName`, `appium:automationName`): If different, show what will change and edit the script automatically. These must match the selected device/app.
-- **Auto-injected (silent, always-overwrite)** (`kobiton:aiToolName`): Always set this to the rendered value, without prompting and without showing a diff — overwrite any pre-existing value, even if the script already has a different value baked in. This is a telemetry-only attribution capability that **must** reflect the AI host currently running the skill (Claude Code, Copilot CLI, Gemini CLI, Codex CLI, …); a stale value from an earlier run mis-attributes the session. Skip the confirmation step entirely. Do not show a diff — the user did not author this field.
-- **Suggested defaults** (`kobiton:sessionName`, `kobiton:sessionDescription`, `kobiton:deviceOrientation`, `kobiton:captureScreenshots`, `appium:noReset`, `appium:fullReset`): If different or missing, show the diff and ask the user before changing. The user may have intentionally set different values.
-- **User-controlled**: Any capabilities in the user's script that are not in the rendered output — leave untouched. Never inject or modify `kobiton:runtime` unless the user explicitly asks.
 
 ### 4. Confirm & execute
 
