@@ -18,8 +18,8 @@ version: 1.0.2
 author: Kobiton Inc.
 license: MIT
 compatibility: >-
-  Designed for Claude Code; requires Node.js >= 18 and Appium 2.x.
-  Test scripts must use Appium WebDriver protocol.
+  Compatible with any MCP-aware AI coding assistant. Requires Node.js >= 18
+  and Appium 2.x. Test scripts must use Appium WebDriver protocol.
 tags: [mobile, testing, appium, automation, devices, kobiton]
 ---
 
@@ -98,7 +98,7 @@ Read the script file and extract key capabilities from the source code:
 
 Identify how the UDID is passed into the script (CLI argument, environment variable, or hardcoded) so it can be overridden with the selected device.
 
-**Appium runtime:** Check if the script contains `'kobiton:runtime': 'appium'` or equivalent. If it does NOT, do not inject it — the default Kobiton runtime will be used. Only if the user explicitly asks to use the Appium runtime should you suggest adding `'kobiton:runtime': 'appium'` to the script's capabilities.
+**Appium runtime:** Check if the script contains `'kobiton:runtime': 'appium'` or equivalent. If it does NOT, do not inject it - the default Kobiton runtime will be used. Only if the user explicitly asks to use the Appium runtime should you suggest adding `'kobiton:runtime': 'appium'` to the script's capabilities.
 
 **Validate capabilities:** After parsing the script, run the render script to generate the correct capabilities for the selected device and app:
 
@@ -239,17 +239,17 @@ Present a summary to the user:
 
 On successful completion, the skill returns:
 
-- **Live session URL** — `https://portal.kobiton.com/devices/launch?id=<deviceId>`, opened automatically in the user's default browser as the script starts.
-- **Session metadata** — session ID, device ID, app version, start time, and final pass/fail status (via `getSession`).
-- **Session artifacts** — video recording URL, device logs URL, screenshots, and test reports (via `getSessionArtifacts`).
-- **Execution duration** — wall-clock time from script launch to completion.
+- **Live session URL**: `https://portal.kobiton.com/devices/launch?id=<deviceId>`, opened automatically in the user's default browser as the script starts.
+- **Session metadata**: session ID, device ID, app version, start time, and final pass/fail status (via `getSession`).
+- **Session artifacts**: video recording URL, device logs URL, screenshots, and test reports (via `getSessionArtifacts`).
+- **Execution duration**: wall-clock time from script launch to completion.
 
 On failure, the skill surfaces error output from the test runner, the session URL if the session reached Kobiton (useful for portal-side debugging), and suggested next steps drawn from the categories in `## Error Handling`.
 
 ## Error Handling
 
 - `listDevices` returns empty: suggest broadening filters (remove platform/group constraints) or trying again later when devices free up.
-- Upload fails or times out: retry the upload. Pre-signed URLs expire after 30 minutes — if expired, call the upload tool again to get a fresh URL.
+- Upload fails or times out: retry the upload. Pre-signed URLs expire after 30 minutes - if expired, call the upload tool again to get a fresh URL.
 - Session stuck in a non-terminal state: poll `getSession` with a reasonable timeout. If still running, offer to call `terminateSession` and retry.
 - `reserveDevice` fails (device already taken): call `listDevices` again to find another available device.
 - Script execution fails: check error output for missing dependencies (e.g. `wd`, `appium`), incorrect UDID, or network issues. Suggest fixes.
@@ -258,26 +258,19 @@ On failure, the skill surfaces error output from the test runner, the session UR
 
 ### Run a single test on the first available Android device
 
-> "Run `./tests/checkout.js` on a Pixel 7 — upload the latest APK from `./build/app.apk` first."
+> "Run `./tests/checkout.js` on a Pixel 7 - upload the latest APK from `./build/app.apk` first."
 
 The skill detects the `.apk` build, uploads it via `uploadAppToStore`, queries `listDevices` filtered to Pixel 7, reserves the device with `reserveDevice`, parses the script's capabilities, confirms the launch summary with the user, runs `node ./tests/checkout.js <udid>` in the background, opens the live session URL in the user's browser, and returns the session ID plus artifacts when the run completes.
 
-### Reuse a Kobiton Store build and run a Python web test
+### Run an attached IPA with an attached script on a specific iOS device
 
-> "Run `./tests/safari.py` on any iPhone with iOS 17 or higher, using `kobiton-store:v72107`."
+> "Test this app @TestApp.ipa by this script @automation.js on Kobiton iOS iPhone 15 Pro"
 
-The skill skips the upload step (existing store reference), filters `listDevices` to iOS 17+ devices, reserves the first available, parses Python script capabilities (browser-based), confirms with the user, runs `python3 ./tests/safari.py <udid>` in the background, opens the portal URL, and surfaces the video plus logs once the session ends.
-
-### Re-run a prior session on the same device
-
-> "Session `abc123` ended but the screenshots showed a layout regression — run the same test on the same device so I can compare side by side."
-
-The skill calls `getSession` for `abc123` to recover the device ID and app reference, calls `reserveDevice` for the same device, re-runs the original script with the recorded capabilities, opens a fresh portal session URL, and returns the new artifacts ready for diff against the prior run.
+The skill resolves the two `@`-referenced files from the chat context, uploads `TestApp.ipa` via `uploadAppToStore`, queries `listDevices` filtered to iOS iPhone 15 Pro, reserves the matching device, parses `automation.js` for capabilities, reconciles them against the rendered defaults for the selected device, confirms the launch summary with the user, runs `node automation.js <udid>` in the background, opens the live session URL in the user's browser, and surfaces the session ID plus artifacts when the run completes.
 
 ## Resources
 
 - [Kobiton available capabilities reference](https://docs.kobiton.com/automation-testing/capabilities/available-capabilities) - canonical list of `kobiton:*` and supported `appium:*` capabilities the skill's `render-capabilities` step compares against.
 - [Appium 2.x documentation](https://appium.io/docs/en/2.0/) - driver-specific capability docs (UiAutomator2, XCUITest) and Appium client libraries for each runtime.
-- [Kobiton platform overview](https://kobiton.com) - the device cloud this skill targets; covers account setup, billing, and quota.
 - [`kobiton/automate` plugin source](https://github.com/kobiton/automate) - issue tracker, contribution guide, and the tool YAML schemas this skill orchestrates.
 - [Sample prompt patterns](../../docs/examples.md) - natural-language prompt examples organized per MCP tool, useful for crafting requests that trigger this skill cleanly.
