@@ -23,7 +23,15 @@ Execute Appium-based mobile test automation suites on Kobiton's device cloud. Gi
 
 Use this skill when the user asks to run mobile tests on Kobiton, validate an APK or IPA on real devices, or trigger a Kobiton-hosted automation run from a local script directory.
 
-## Workflow
+## Prerequisites
+
+Before beginning the workflow, confirm:
+
+- A Kobiton MCP server connection is configured (one of `.mcp.json`, `.mcp.apikey-example.json`, or `.mcp.dev-local.json`).
+- The user has a directory of Appium test scripts (`.js`, `.py`, `.cs` / `.csproj`, or `.java`) ready to execute.
+- The render-capabilities helper at `skills/run-automation-suite/scripts/render-capabilities.js` is reachable from the working directory.
+
+## Instructions
 
 ### 1. Identify the app
 
@@ -125,7 +133,11 @@ Where `<deviceId>` is the ID of the selected device from Step 2 (returned by `li
 | macOS | `open <url>` |
 | Linux | `xdg-open <url>` |
 
-### 5. Collect results
+## Output
+
+After the test executes, collect session artifacts and summarize the run for the user.
+
+### Collect session artifacts
 
 After opening the browser, call `listSessions` with `deviceId=<deviceId>` (from Step 2) and `state='START'` to find the session that just triggered. Use the most recent session (first result) as the match.
 
@@ -138,15 +150,7 @@ Call `getSessionArtifacts` with the session ID to retrieve:
 - Screenshots
 - Test reports
 
-### Error handling
-
-- `listDevices` returns empty: suggest broadening filters (remove platform/group constraints) or trying again later when devices free up.
-- Upload fails or times out: retry the upload. Pre-signed URLs expire after 30 minutes — if expired, call the upload tool again to get a fresh URL.
-- Session stuck in a non-terminal state: poll `getSession` with a reasonable timeout. If still running, offer to call `terminateSession` and retry.
-- `reserveDevice` fails (device already taken): call `listDevices` again to find another available device.
-- Script execution fails: check error output for missing dependencies (e.g. `wd`, `appium`), incorrect UDID, or network issues. Suggest fixes.
-
-### 6. Summarize
+### Summarize
 
 Present a summary to the user:
 
@@ -155,3 +159,19 @@ Present a summary to the user:
 - Video recording link
 - Key error messages (if failed)
 - Execution duration
+
+## Error Handling
+
+- `listDevices` returns empty: suggest broadening filters (remove platform/group constraints) or trying again later when devices free up.
+- Upload fails or times out: retry the upload. Pre-signed URLs expire after 30 minutes — if expired, call the upload tool again to get a fresh URL.
+- Session stuck in a non-terminal state: poll `getSession` with a reasonable timeout. If still running, offer to call `terminateSession` and retry.
+- `reserveDevice` fails (device already taken): call `listDevices` again to find another available device.
+- Script execution fails: check error output for missing dependencies (e.g. `wd`, `appium`), incorrect UDID, or network issues. Suggest fixes.
+
+## Examples
+
+<!-- Worked end-to-end examples are addressed in a separate PR (closes fork #6 / upstream kobiton/automate#15). -->
+
+## Resources
+
+<!-- Curated reference links are addressed in a separate PR (closes fork #8 / upstream kobiton/automate#14). -->
