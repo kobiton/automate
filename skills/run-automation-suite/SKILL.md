@@ -23,6 +23,14 @@ compatibility: >-
 tags: [mobile, testing, appium, automation, devices, kobiton]
 ---
 
+# Run Automation Suite
+
+## Overview
+
+Execute Appium-based mobile test automation suites on Kobiton's device cloud. Given a local Appium test script, this skill identifies the target app, selects an available device, parses and reconciles capabilities, runs the script in the background, and surfaces the resulting session URL plus artifacts (video, logs, screenshots, reports).
+
+Use this skill when the user asks to run mobile tests, validate an APK or IPA across real devices, or trigger a Kobiton-hosted automation run from a local script directory.
+
 ## Workflow
 
 ### 1. Identify the app
