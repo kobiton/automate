@@ -31,7 +31,17 @@ Execute Appium-based mobile test automation suites on Kobiton's device cloud. Gi
 
 Use this skill when the user asks to run mobile tests, validate an APK or IPA across real devices, or trigger a Kobiton-hosted automation run from a local script directory.
 
-## Workflow
+## Prerequisites
+
+Before invoking this skill, ensure:
+
+- **Kobiton MCP connection** — the Kobiton MCP server is reachable (default `api.kobiton.com/mcp`; check `.mcp.json` for the configured endpoint).
+- **Local Appium test script** — a runnable Appium WebDriver script (`.js`, `.ts`, `.py`, `.java`, `.kt`, `.cs`, `.rb`) referencing desired capabilities for the target platform.
+- **Runtime installed locally** — Node.js + npm/npx, Python + pip, Java + mvn/gradle, .NET SDK, or Ruby + bundle — whichever your test script uses.
+- **App build (or store reference)** — either a local `.apk` / `.ipa` / `.zip` build artifact for upload, or a `kobiton-store:vXXXXX` reference for an existing upload.
+- **Kobiton account** — credentials with device-cloud access for the target platform (Android / iOS) and remaining session quota.
+
+## Instructions
 
 ### 1. Identify the app
 
@@ -212,14 +222,6 @@ Call `getSessionArtifacts` with the session ID to retrieve:
 - Screenshots
 - Test reports
 
-### Error handling
-
-- `listDevices` returns empty: suggest broadening filters (remove platform/group constraints) or trying again later when devices free up.
-- Upload fails or times out: retry the upload. Pre-signed URLs expire after 30 minutes — if expired, call the upload tool again to get a fresh URL.
-- Session stuck in a non-terminal state: poll `getSession` with a reasonable timeout. If still running, offer to call `terminateSession` and retry.
-- `reserveDevice` fails (device already taken): call `listDevices` again to find another available device.
-- Script execution fails: check error output for missing dependencies (e.g. `wd`, `appium`), incorrect UDID, or network issues. Suggest fixes.
-
 ### 7. Summarize
 
 Present a summary to the user:
@@ -229,3 +231,30 @@ Present a summary to the user:
 - Video recording link
 - Key error messages (if failed)
 - Execution duration
+
+## Output
+
+On successful completion, the skill returns:
+
+- **Live session URL** — `https://portal.kobiton.com/devices/launch?id=<deviceId>`, opened automatically in the user's default browser as the script starts.
+- **Session metadata** — session ID, device ID, app version, start time, and final pass/fail status (via `getSession`).
+- **Session artifacts** — video recording URL, device logs URL, screenshots, and test reports (via `getSessionArtifacts`).
+- **Execution duration** — wall-clock time from script launch to completion.
+
+On failure, the skill surfaces error output from the test runner, the session URL if the session reached Kobiton (useful for portal-side debugging), and suggested next steps drawn from the categories in `## Error Handling`.
+
+## Error Handling
+
+- `listDevices` returns empty: suggest broadening filters (remove platform/group constraints) or trying again later when devices free up.
+- Upload fails or times out: retry the upload. Pre-signed URLs expire after 30 minutes — if expired, call the upload tool again to get a fresh URL.
+- Session stuck in a non-terminal state: poll `getSession` with a reasonable timeout. If still running, offer to call `terminateSession` and retry.
+- `reserveDevice` fails (device already taken): call `listDevices` again to find another available device.
+- Script execution fails: check error output for missing dependencies (e.g. `wd`, `appium`), incorrect UDID, or network issues. Suggest fixes.
+
+## Examples
+
+_Populated in a follow-up commit (closes #15)._
+
+## Resources
+
+_Populated in a follow-up commit (closes #14)._
