@@ -1,6 +1,12 @@
 ---
 name: run-automation-suite
 description: Run local Appium test scripts against Kobiton devices. Guides you through app upload, device selection, script capability parsing, and local execution.
+allowed-tools: "Read, Edit, Bash(node:*), Bash(python:*), Bash(python3:*), Bash(mvn:*), Bash(dotnet:*), Bash(java:*), Bash(open:*), Bash(xdg-open:*)"
+version: 1.0.2
+author: Kobiton Inc.
+license: MIT
+compatibility: "Designed for Claude Code; requires Node.js >= 18 and Appium 2.x. Test scripts must use Appium WebDriver protocol."
+tags: [mobile, testing, appium, automation, devices, kobiton]
 ---
 
 ## Workflow
