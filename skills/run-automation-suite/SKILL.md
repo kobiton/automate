@@ -1,11 +1,25 @@
 ---
 name: run-automation-suite
-description: Run local Appium test scripts against Kobiton devices — guides through app upload, device selection, capability parsing, and local execution. Use when the user asks to run mobile tests, validate an APK or IPA on Kobiton devices, or kick off an Appium suite from a local script directory. Trigger with "run kobiton tests" or "execute appium on kobiton".
-allowed-tools: "Read, Edit, Bash(node:*), Bash(npm:*), Bash(npx:*), Bash(yarn:*), Bash(pnpm:*), Bash(python:*), Bash(python3:*), Bash(pytest:*), Bash(java:*), Bash(mvn:*), Bash(gradle:*), Bash(./gradlew:*), Bash(dotnet:*), Bash(ruby:*), Bash(bundle:*), Bash(rspec:*), Bash(open:*), Bash(xdg-open:*)"
+description: >-
+  Run local Appium test scripts against Kobiton devices - guides through app
+  upload, device selection, capability parsing, and local execution. Use when
+  the user asks to run mobile tests, validate an APK or IPA on Kobiton
+  devices, or kick off an Appium suite from a local script directory.
+  Trigger with "run kobiton tests" or "execute appium on kobiton".
+allowed-tools: >-
+  Read, Edit,
+  Bash(node:*), Bash(npm:*), Bash(npx:*), Bash(yarn:*), Bash(pnpm:*),
+  Bash(python:*), Bash(python3:*), Bash(pytest:*),
+  Bash(java:*), Bash(mvn:*), Bash(gradle:*), Bash(./gradlew:*),
+  Bash(dotnet:*),
+  Bash(ruby:*), Bash(bundle:*), Bash(rspec:*),
+  Bash(open:*), Bash(xdg-open:*)
 version: 1.0.2
 author: Kobiton Inc.
 license: MIT
-compatibility: "Designed for Claude Code; requires Node.js >= 18 and Appium 2.x. Test scripts must use Appium WebDriver protocol."
+compatibility: >-
+  Designed for Claude Code; requires Node.js >= 18 and Appium 2.x.
+  Test scripts must use Appium WebDriver protocol.
 tags: [mobile, testing, appium, automation, devices, kobiton]
 ---
 
