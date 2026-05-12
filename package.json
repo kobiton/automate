@@ -16,5 +16,11 @@
   },
   "dependencies": {
     "ejs": "^5.0.1"
+  },
+  "pnpm": {
+    "overrides": {
+      "picomatch": ">=4.0.4",
+      "vite": ">=7.3.2"
+    }
   }
 }
