@@ -35,11 +35,11 @@ Use this skill when the user asks to run mobile tests, validate an APK or IPA ac
 
 Before invoking this skill, ensure:
 
-- **Kobiton MCP connection** — the Kobiton MCP server is reachable (default `api.kobiton.com/mcp`; check `.mcp.json` for the configured endpoint).
-- **Local Appium test script** — a runnable Appium WebDriver script (`.js`, `.ts`, `.py`, `.java`, `.kt`, `.cs`, `.rb`) referencing desired capabilities for the target platform.
-- **Runtime installed locally** — Node.js + npm/npx, Python + pip, Java + mvn/gradle, .NET SDK, or Ruby + bundle — whichever your test script uses.
-- **App build (or store reference)** — either a local `.apk` / `.ipa` / `.zip` build artifact for upload, or a `kobiton-store:vXXXXX` reference for an existing upload.
-- **Kobiton account** — credentials with device-cloud access for the target platform (Android / iOS) and remaining session quota.
+- **Kobiton MCP connection** - the Kobiton MCP server is reachable (default `api.kobiton.com/mcp`; check `.mcp.json` for the configured endpoint).
+- **Local Appium test script** - a runnable Appium WebDriver script (`.js`, `.ts`, `.py`, `.java`, `.kt`, `.cs`, `.rb`) referencing desired capabilities for the target platform.
+- **Runtime installed locally** - Node.js + npm/npx, Python + pip, Java + mvn/gradle, .NET SDK, or Ruby + bundle, whichever your test script uses.
+- **App build (or store reference)** - either a local `.apk` / `.ipa` / `.zip` build artifact for upload, or a `kobiton-store:vXXXXX` reference for an existing upload.
+- **Kobiton account** - credentials with device access for the target platform (Android / iOS) and remaining session quota.
 
 ## Instructions
 
@@ -276,8 +276,8 @@ The skill calls `getSession` for `abc123` to recover the device ID and app refer
 
 ## Resources
 
-- [Kobiton desired capabilities reference](https://docs.kobiton.com/automation-testing/desired-capabilities/) — canonical list of `kobiton:*` and supported `appium:*` capabilities the skill's `render-capabilities` step compares against.
-- [Appium 2.x documentation](https://appium.io/docs/en/2.0/) — driver-specific capability docs (UiAutomator2, XCUITest) and Appium client libraries for each runtime.
-- [Kobiton platform overview](https://kobiton.com) — the device cloud this skill targets; covers account setup, billing, and quota.
-- [`kobiton/automate` plugin source](https://github.com/kobiton/automate) — issue tracker, contribution guide, and the tool YAML schemas this skill orchestrates.
-- [Sample prompt patterns](../../docs/examples.md) — natural-language prompt examples organized per MCP tool, useful for crafting requests that trigger this skill cleanly.
+- [Kobiton available capabilities reference](https://docs.kobiton.com/automation-testing/capabilities/available-capabilities) - canonical list of `kobiton:*` and supported `appium:*` capabilities the skill's `render-capabilities` step compares against.
+- [Appium 2.x documentation](https://appium.io/docs/en/2.0/) - driver-specific capability docs (UiAutomator2, XCUITest) and Appium client libraries for each runtime.
+- [Kobiton platform overview](https://kobiton.com) - the device cloud this skill targets; covers account setup, billing, and quota.
+- [`kobiton/automate` plugin source](https://github.com/kobiton/automate) - issue tracker, contribution guide, and the tool YAML schemas this skill orchestrates.
+- [Sample prompt patterns](../../docs/examples.md) - natural-language prompt examples organized per MCP tool, useful for crafting requests that trigger this skill cleanly.
