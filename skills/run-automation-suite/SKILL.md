@@ -253,7 +253,23 @@ On failure, the skill surfaces error output from the test runner, the session UR
 
 ## Examples
 
-_Populated in a follow-up commit (closes #15)._
+### Run a single test on the first available Android device
+
+> "Run `./tests/checkout.js` on a Pixel 7 — upload the latest APK from `./build/app.apk` first."
+
+The skill detects the `.apk` build, uploads it via `uploadAppToStore`, queries `listDevices` filtered to Pixel 7, reserves the device with `reserveDevice`, parses the script's capabilities, confirms the launch summary with the user, runs `node ./tests/checkout.js <udid>` in the background, opens the live session URL in the user's browser, and returns the session ID plus artifacts when the run completes.
+
+### Reuse a Kobiton Store build and run a Python web test
+
+> "Run `./tests/safari.py` on any iPhone with iOS 17 or higher, using `kobiton-store:v72107`."
+
+The skill skips the upload step (existing store reference), filters `listDevices` to iOS 17+ devices, reserves the first available, parses Python script capabilities (browser-based), confirms with the user, runs `python3 ./tests/safari.py <udid>` in the background, opens the portal URL, and surfaces the video plus logs once the session ends.
+
+### Re-run a prior session on the same device
+
+> "Session `abc123` ended but the screenshots showed a layout regression — run the same test on the same device so I can compare side by side."
+
+The skill calls `getSession` for `abc123` to recover the device ID and app reference, calls `reserveDevice` for the same device, re-runs the original script with the recorded capabilities, opens a fresh portal session URL, and returns the new artifacts ready for diff against the prior run.
 
 ## Resources
 
