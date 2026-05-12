@@ -115,5 +115,35 @@ if [ ${#MISSING[@]} -gt 0 ]; then
   exit 1
 fi
 
-# --- 5. Run the CLI (JWT at ~/.kobiton/.session is loaded by CLI itself) ---
+# --- 5. KOB-52724: declare the AI workspace identity so kobiton-cli's
+#       resolve_ai_tool_name() includes it in the POST /v2/sessions body.
+#
+#       This wrapper lives at the stable path ~/.kobiton/bin/kobiton and
+#       can therefore be invoked by ANY AI workspace (Claude Code, Copilot
+#       CLI, Cursor, Gemini, Codex, …), not just Claude Code. We MUST NOT
+#       hard-default to "Claude" or we mis-attribute every non-Claude
+#       caller's session.
+#
+#       Priority:
+#         1. KOBITON_AI_TOOL_NAME already exported by the caller — pass
+#            through unchanged.
+#         2. CLAUDECODE=1 in env — definitively inside Claude Code
+#            (Anthropic's marker, set on every spawned subprocess), so
+#            default to "Claude".
+#         3. COPILOT_CLI=1 in env — definitively inside GitHub Copilot
+#            CLI (verified by inspecting the bundled Copilot CLI
+#            binary's subprocess env-builder; analog of CLAUDECODE=1),
+#            so default to "Copilot".
+#         4. Otherwise — leave unset and let kobiton-cli's own
+#            resolve_ai_tool_name() fall through to None (session row's
+#            aiToolName ends up null). Better than guessing.
+if [ -z "${KOBITON_AI_TOOL_NAME:-}" ]; then
+  if [ "${CLAUDECODE:-}" = "1" ]; then
+    export KOBITON_AI_TOOL_NAME=Claude
+  elif [ "${COPILOT_CLI:-}" = "1" ]; then
+    export KOBITON_AI_TOOL_NAME=Copilot
+  fi
+fi
+
+# --- 6. Run the CLI (JWT at ~/.kobiton/.session is loaded by CLI itself) ---
 exec "$BINARY" "$@"
