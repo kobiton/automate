@@ -75,12 +75,15 @@ Ask the user for the path to their local Appium test script.
 
 Detect the language and runtime from the file extension:
 
-| Extension | Runtime | Command |
-|-----------|---------|---------|
-| `.js` | Node.js | `node <script> <udid>` |
-| `.py` | Python | `python <script> <udid>` |
+| Extension | Runtime | Common commands |
+|-----------|---------|-----------------|
+| `.js` / `.ts` / `.mjs` | Node.js | `node <script> <udid>`, `npm test`, `npx wdio`, `yarn test`, `pnpm test` |
+| `.py` | Python | `python <script> <udid>`, `python3 <script> <udid>`, `pytest` |
 | `.cs` / `.csproj` | .NET | `dotnet test` |
-| `.java` | Java | `mvn test` or `java -cp ...` |
+| `.java` / `.kt` | Java / Kotlin | `mvn test`, `gradle test`, `./gradlew test`, `java -cp ...` |
+| `.rb` | Ruby | `ruby <script>`, `bundle exec rspec` |
+
+**Picking the right command:** if the project has a manifest file (`package.json`, `pyproject.toml`, `pom.xml`, `build.gradle`, `Gemfile`), prefer the matching test runner (`npm test`, `pytest`, `mvn test`, `gradle test`, `bundle exec rspec`). Otherwise default to invoking the runtime directly on the script (e.g. `node <script>`, `python3 <script>`, `ruby <script>`).
 
 Read the script file and extract key capabilities from the source code:
 
