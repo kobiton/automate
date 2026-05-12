@@ -273,4 +273,8 @@ The skill calls `getSession` for `abc123` to recover the device ID and app refer
 
 ## Resources
 
-_Populated in a follow-up commit (closes #14)._
+- [Kobiton desired capabilities reference](https://docs.kobiton.com/automation-testing/desired-capabilities/) — canonical list of `kobiton:*` and supported `appium:*` capabilities the skill's `render-capabilities` step compares against.
+- [Appium 2.x documentation](https://appium.io/docs/en/2.0/) — driver-specific capability docs (UiAutomator2, XCUITest) and Appium client libraries for each runtime.
+- [Kobiton platform overview](https://kobiton.com) — the device cloud this skill targets; covers account setup, billing, and quota.
+- [`kobiton/automate` plugin source](https://github.com/kobiton/automate) — issue tracker, contribution guide, and the tool YAML schemas this skill orchestrates.
+- [Sample prompt patterns](../../docs/examples.md) — natural-language prompt examples organized per MCP tool, useful for crafting requests that trigger this skill cleanly.
