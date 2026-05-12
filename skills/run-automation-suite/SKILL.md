@@ -7,6 +7,12 @@ description: >-
   IPA on real devices, or kick off a Kobiton automation run from a local
   script directory. Trigger with "run kobiton tests" or "execute on kobiton
   devices".
+version: 1.0.2
+author: Kobiton Inc.
+license: MIT
+tags: [mobile, testing, appium, automation, devices, kobiton]
+compatibility: "Designed for Claude Code; requires Node.js >= 18 and Appium 2.x for local script execution."
+allowed-tools: "Read, Write, Edit, Bash(node:*), Bash(python:*), Bash(dotnet:*), Bash(mvn:*), Bash(java:*), Bash(open:*), Bash(xdg-open:*)"
 ---
 
 ## Workflow
