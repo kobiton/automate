@@ -8,11 +8,7 @@ description: >-
   Trigger with "run kobiton tests" or "execute appium on kobiton".
 allowed-tools: >-
   Read, Edit,
-  Bash(node:*), Bash(npm:*), Bash(npx:*), Bash(yarn:*), Bash(pnpm:*),
-  Bash(python:*), Bash(python3:*), Bash(pytest:*),
-  Bash(java:*), Bash(mvn:*), Bash(gradle:*), Bash(./gradlew:*),
-  Bash(dotnet:*),
-  Bash(ruby:*), Bash(bundle:*), Bash(rspec:*),
+  Bash(node:*), Bash(npm:*), Bash(npx:*), Bash(yarn:*), Bash(pnpm:*), Bash(python:*), Bash(python3:*), Bash(pytest:*), Bash(java:*), Bash(mvn:*), Bash(gradle:*), Bash(./gradlew:*), Bash(dotnet:*), Bash(ruby:*), Bash(bundle:*), Bash(rspec:*),
   Bash(open:*), Bash(xdg-open:*)
 version: 1.0.2
 author: Kobiton Inc.
