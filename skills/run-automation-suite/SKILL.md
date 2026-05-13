@@ -98,20 +98,28 @@ Wait for user confirmation, then execute the command via the Bash tool **in the 
 
 **Immediately after launching the script**, wait **2 seconds** (to allow the session to initialize on Kobiton), then open the running session in the user's browser.
 
-**Determine the portal URL:** Read `.mcp.json` to get the MCP server URL, then map it to the portal base URL:
+**Determine the portal URL:** Read `.mcp.json` to get the MCP server URL, then derive the portal base URL by replacing the `api` host with the `portal` equivalent (drop any trailing `/mcp`):
 
 | MCP Server | Portal Base URL |
 |------------|----------------|
-| `api.kobiton.com` | `https://portal.kobiton.com` |
-| `api-test-green.kobiton.com` | `https://portal-test.kobiton.com` |
+| `https://api.kobiton.com/mcp` | `https://portal.kobiton.com` |
+| `https://api-*.kobiton.com/mcp` | `https://portal-*.kobiton.com` (same `*` suffix) |
 
-**Build the launch URL:**
+For example, an `api-*.kobiton.com` host maps to its matching `portal-*.kobiton.com` host. If the mapping doesn't resolve, fall back to `https://portal.kobiton.com`.
+
+**Build the launch URL.** Default to the **device-only view** — it shows just the device screen, no surrounding Kobiton UI, ideal for watching an automation run, sharing, or embedding:
+
+```
+<portal-base-url>/devices/launch?id=<deviceId>&view=device-only
+```
+
+Where `<deviceId>` is the ID of the selected device from Step 2 (returned by `listDevices`, `getDeviceStatus`, or `reserveDevice`).
+
+**Fall back to the default view** (without `&view=device-only`) only when the user explicitly asks to interact with the device — e.g. "let me drive it manually", "open the full session view", "I want to tap on the screen", or similar interaction-implying language. The default view shows the full Kobiton UI around the device (sidebars, controls, action panels):
 
 ```
 <portal-base-url>/devices/launch?id=<deviceId>
 ```
-
-Where `<deviceId>` is the ID of the selected device from Step 2 (returned by `listDevices`, `getDeviceStatus`, or `reserveDevice`).
 
 **Open the link** in the user's default browser:
 
