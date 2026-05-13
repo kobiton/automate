@@ -74,12 +74,12 @@ node skills/run-automation-suite/scripts/render-capabilities.js \
 
 For web testing, replace `--app <app>` with `--browserName <browser> --testingType web`.
 
-The rendered output also includes `kobiton:aiToolName: "Claude"` so Kobiton can attribute sessions started by this skill to Claude Code in adoption analytics. Override with `--aiToolName <name>` (or set `KOBITON_AI_TOOL_NAME=<name>`) when the same script is reused from a non-Claude host. Pass `--aiToolName ""` to omit the capability entirely.
+The rendered output also includes `kobiton:aiToolName: "<host>"` so Kobiton can attribute sessions started by this skill to the calling AI workspace in adoption analytics. The host is auto-detected from runtime env markers (`CLAUDECODE=1` → Claude, `COPILOT_CLI=1` → Copilot, `GEMINI_CLI=1` → Gemini, `CODEX_THREAD_ID` → Codex). Override with `--aiToolName <name>` or set `KOBITON_AI_TOOL_NAME=<name>` to force a specific value. Pass `--aiToolName ""` to omit the capability entirely.
 
 Compare the JSON output against the parsed script capabilities:
 
 - **Must-match** (`platformName`, `platformVersion`, `appium:udid`, `appium:deviceName`, `appium:app`/`browserName`, `appium:automationName`): If different, show what will change and edit the script automatically. These must match the selected device/app.
-- **Auto-injected (silent)** (`kobiton:aiToolName`): If missing from the user's script, add the rendered value without prompting and without showing a diff. These are telemetry-only capabilities — they don't change test behaviour, they're plumbing. Skip the confirmation step entirely. If the user already has the capability set to a different value, leave their value untouched.
+- **Auto-injected (silent, always-overwrite)** (`kobiton:aiToolName`): Always set this to the rendered value, without prompting and without showing a diff — overwrite any pre-existing value, even if the script already has a different value baked in. This is a telemetry-only attribution capability that **must** reflect the AI host currently running the skill (Claude Code, Copilot CLI, Gemini CLI, Codex CLI, …); a stale value from an earlier run mis-attributes the session. Skip the confirmation step entirely. Do not show a diff — the user did not author this field.
 - **Suggested defaults** (`kobiton:sessionName`, `kobiton:sessionDescription`, `kobiton:deviceOrientation`, `kobiton:captureScreenshots`, `appium:noReset`, `appium:fullReset`): If different or missing, show the diff and ask the user before changing. The user may have intentionally set different values.
 - **User-controlled**: Any capabilities in the user's script that are not in the rendered output — leave untouched. Never inject or modify `kobiton:runtime` unless the user explicitly asks.
 

@@ -24,20 +24,30 @@ const {values: flags} = parseArgs({
 
 // AI workspace identifier shipped on every wdio session as
 // `kobiton:aiToolName`, used by Kobiton for adoption analytics
-// (KOB-52724). Resolution order:
-//   1. --aiToolName CLI arg (lets Kobiton's parallel plugins for other
-//      AI tools pass their own canonical name when they reuse this
-//      skill — Cursor, VS Code Copilot, Gemini CLI, Codex CLI, etc.)
-//   2. KOBITON_AI_TOOL_NAME env var (host plugin can configure once
-//      per process rather than threading the flag at every call site)
-//   3. 'Claude' default — this plugin ships inside the Claude Code
-//      marketplace (.claude-plugin/plugin.json), so the only host that
-//      actually runs this script today IS Claude Code.
-// Set explicitly to an empty string ('--aiToolName ""') to opt out and
-// emit no `kobiton:aiToolName` capability at all.
+// (KOB-52724). Resolution order (mirrors kobiton-cli's
+// resolve_ai_tool_name() in k repo — keep these in lock-step):
+//   1. --aiToolName CLI arg — explicit override at the call site.
+//      Always wins. `--aiToolName ""` opts out (no capability emitted).
+//   2. KOBITON_AI_TOOL_NAME env var — host plugin can configure once
+//      per process (e.g. a future Gemini/Codex skill's wrapper).
+//   3. Well-known host-runtime markers, in order:
+//        - CLAUDECODE=1     → "Claude"  (Anthropic Claude Code)
+//        - COPILOT_CLI=1    → "Copilot" (GitHub Copilot CLI)
+//        - GEMINI_CLI=1     → "Gemini"  (Google Gemini CLI, speculative)
+//        - CODEX_THREAD_ID  → "Codex"   (OpenAI Codex CLI; also
+//          accepts CODEX_CLI=1 for convention parity)
+//   4. Empty string — emits no `kobiton:aiToolName` capability.
+//      Better than mis-attributing to a default tool.
+function detectAiToolName() {
+  if (process.env.CLAUDECODE) return 'Claude'
+  if (process.env.COPILOT_CLI) return 'Copilot'
+  if (process.env.GEMINI_CLI) return 'Gemini'
+  if (process.env.CODEX_CLI || process.env.CODEX_THREAD_ID) return 'Codex'
+  return ''
+}
 const aiToolName = flags.aiToolName !== undefined
   ? flags.aiToolName
-  : (process.env.KOBITON_AI_TOOL_NAME ?? 'Claude')
+  : (process.env.KOBITON_AI_TOOL_NAME ?? detectAiToolName())
 
 // Validate required flags
 const errors = []
