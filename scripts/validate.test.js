@@ -23,7 +23,7 @@ function setupValidProject(dir) {
   }))
 
   mkdirSync(join(dir, 'tools'))
-  for (const file of ['devices.yaml', 'sessions.yaml', 'apps.yaml']) {
+  for (const file of ['devices.yaml', 'sessions.yaml', 'apps.yaml', 'user.yaml']) {
     writeFileSync(join(dir, 'tools', file), [
       'tools:',
       '  - name: testTool',
@@ -40,6 +40,15 @@ function setupValidProject(dir) {
     'description: Test skill',
     '---',
     '## Workflow',
+  ].join('\n'))
+
+  mkdirSync(join(dir, 'skills/run-interactive-test'), {recursive: true})
+  writeFileSync(join(dir, 'skills/run-interactive-test/SKILL.md'), [
+    '---',
+    'name: run-interactive-test',
+    'description: Test skill',
+    '---',
+    '## Setup',
   ].join('\n'))
 
 }

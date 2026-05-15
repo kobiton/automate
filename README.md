@@ -69,6 +69,24 @@ export KOBITON_AUTH="Basic $(echo -n 'username:apikey' | base64)"
 
 > **Note:** OAuth and API key auth cannot coexist in a single `.mcp.json`. The default OAuth config uses a `headers` block containing only `X-AI-Tool-Name`. The API key config adds `Authorization: ${KOBITON_AUTH}` to the same `headers` block. To switch, replace `.mcp.json` with the appropriate format.
 
+## Getting Started
+
+After installation, run setup to fetch your credentials and write them to `~/.kobiton/.credentials`:
+
+```
+/automate:setup
+```
+
+The plugin uses your already-authenticated MCP session (OAuth) to fetch your username and API key — no manual file editing required.
+
+To verify everything is wired correctly, run the diagnostic:
+
+```
+/automate:doctor
+```
+
+`/automate:doctor` is read-only. It checks the CLI installation (symlink + target), the credentials file, the active profile, and required fields, and prints actionable remediation hints for any failures.
+
 ## What You Can Do
 
 **Ask Claude naturally:**
@@ -109,12 +127,32 @@ export KOBITON_AUTH="Basic $(echo -n 'username:apikey' | base64)"
 
 ## Skills
 
-- **run-automation-suite** -- Guided workflow that walks you through app upload, device selection, local Appium script execution (Node.js, Python, .NET, Java), and result collection.
+| Skill | Description |
+|-------|-------------|
+| **run-automation-suite** | Guided workflow for app upload, device selection, local Appium script execution (Node.js, Python, .NET, Java), and result collection. |
+| **run-interactive-test** | Guided workflow for interactive testing using natural language. WebDriver actions, device operations (adb shell, logs, screen), file management (push/pull), and more. |
+
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| `/automate:setup` | Fetch credentials from the authenticated MCP server and write them to `~/.kobiton/.credentials` |
+| `/automate:doctor` | Read-only diagnostic for CLI installation, credentials file, active profile, and required fields |
 
 
 ## Running Automation Tests
 
 Use the **run-automation-suite** skill to run local Appium test scripts. Claude reads your script, extracts capabilities, confirms the target device, and executes the script locally. Supports Node.js (`.js`), Python (`.py`), .NET (`.cs`), and Java (`.java`) scripts.
+
+## Interactive Device Testing
+
+Use the **run-interactive-test** skill to interact with devices using natural language. Describe what you want — "tap the login button", "type hello in the search field", "swipe down" — and Claude translates your intent into CLI commands.
+
+Beyond WebDriver, the skill also supports device operations (adb shell, logs, screen capture), file management (push/pull files to device), and app management.
+
+## Examples
+
+See [docs/EXAMPLES.md](docs/EXAMPLES.md) for prompt examples covering every tool and skill — device management, session management, app management, automation, and interactive testing.
 
 ## Troubleshooting
 

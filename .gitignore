@@ -1,9 +1,11 @@
 .claude/
+.vscode/
 node_modules/
 dist/
 resources/
-**plans/
+**features/
 .DS_Store
 *.log
 *.local.json
 pnpm-debug.log*
+.vscode/
