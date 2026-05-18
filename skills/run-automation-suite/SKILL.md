@@ -12,7 +12,7 @@ author: Kobiton Inc. <support@kobiton.com>
 license: MIT
 tags: [mobile, testing, appium, automation, devices, kobiton]
 compatibility: "Designed for Claude Code; requires Node.js >= 20 and Appium 2.x for local script execution."
-allowed-tools: "Read, Bash(node:*), Bash(python:*), Bash(dotnet:*), Bash(mvn:*), Bash(java:*), Bash(open:*), Bash(xdg-open:*)"
+allowed-tools: "Read, Write, Edit, Bash(node:*), Bash(python:*), Bash(dotnet:*), Bash(mvn:*), Bash(java:*), Bash(open:*), Bash(xdg-open:*), Bash(sleep:*)"
 ---
 
 # Run Automation Suite

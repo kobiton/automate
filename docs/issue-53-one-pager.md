@@ -111,7 +111,7 @@ Cross-cutting reference for the analysis above. Verified via direct doc fetches 
 | 2 | **claude.ai/code (cloud sandbox)** | ❌ user, ✅ cloud | ✅ in cloud sandbox | ❌ | ✅ | ✅ marketplace-installed |
 | 3 | **Claude Desktop** | ✅ via `server-filesystem` MCP | ✅ via stdio MCP | ✅ stdio + `.dxt`/`.mcpb` | ✅ HTTP + optional OAuth | ❌ not currently documented as a Skills surface |
 | 4 | **Claude Code** (CLI/IDE) | ✅ native | ✅ native + `/sandbox` | ✅ | ✅ | ✅ |
-| 5 | **Claude Cowork** | ✅ user-selected folders | ✅ Ubuntu 22.04 VM (macOS) | ✅ | ✅ | ⚠️ same `.claude-plugin/plugin.json` manifest path + same extension types; cross-surface portability pending install test |
+| 5 | **Claude Cowork** | ✅ user-selected folders | ✅ Ubuntu 22.04 VM (macOS) | ✅ | ✅ | ⚠️ likely — see note below table |
 | 6 | **Claude for Chrome** | ❌ browser-scoped | ❌ | ❌ | ✅ via paired claude.ai | ❌ |
 | 7 | **Claude mobile** (iOS/Android) | ❌ | ❌ | ❌ | ✅ use-only (configure via web) | ❌ |
 | 8 | **Claude Code Remote Control** | inherits paired Claude Code | inherits | inherits | inherits | inherits |
@@ -120,7 +120,7 @@ Cross-cutting reference for the analysis above. Verified via direct doc fetches 
 
 **Plugin marketplace** (cross-cutting, not a surface). [`claude.com/plugins`](https://claude.com/plugins) is Anthropic's official catalog. Its "Works with" filter exposes exactly two install destinations: **Claude Code and Cowork**.
 
-Row 5 (Cowork) cites two parallel sources: the [Cowork extensions doc](https://claude.com/docs/cowork/3p/extensions) (manifest-path equivalence + extension types) and the [Cowork get-started article](https://support.claude.com/en/articles/13345190-get-started-with-claude-cowork) (sandboxed VM + folder selection + MCP support). Drop-in plugin portability across Claude Code and Cowork is not documented by Anthropic; the install test is the empirical step that would close the question.
+**Note on row 5 (Cowork `.claude-plugin/` skill loading):** Cowork uses the same `.claude-plugin/plugin.json` manifest path and supports the same extension types (MCP, skills, hooks, sub-agents) as Claude Code per the [Cowork extensions doc](https://claude.com/docs/cowork/3p/extensions). Cowork also runs a sandboxed Ubuntu 22.04 VM on macOS, reaches user-selected local folders, and supports MCP servers per the [Cowork get-started article](https://support.claude.com/en/articles/13345190-get-started-with-claude-cowork). Drop-in plugin portability between Claude Code and Cowork is not formally documented by Anthropic; the install test referenced in the Recommended near-term path below is the empirical step that would close the question.
 
 ---
 
