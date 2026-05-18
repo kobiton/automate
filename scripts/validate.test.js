@@ -13,17 +13,49 @@ function setupValidProject(dir) {
   writeFileSync(join(dir, '.claude-plugin/plugin.json'), JSON.stringify({
     name: 'automate',
     description: 'Test',
-    mcpServers: '../.mcp.json',
-    skills: '../skills/'
+    mcpServers: './.mcp.json',
+    skills: './skills/'
   }))
   writeFileSync(join(dir, '.claude-plugin/marketplace.json'), JSON.stringify({
     name: 'kobiton',
     owner: {name: 'Kobiton'},
-    plugins: [{name: 'automate', source: './', description: 'Test', category: 'testing'}]
+    plugins: [{
+      name: 'automate',
+      source: './',
+      description: 'Test',
+      category: 'testing',
+      policy: {installation: 'AVAILABLE', authentication: 'ON_INSTALL'}
+    }]
+  }))
+  mkdirSync(join(dir, '.agents/plugins'), {recursive: true})
+  writeFileSync(join(dir, '.agents/plugins/marketplace.json'), JSON.stringify({
+    name: 'kobiton',
+    plugins: [{
+      name: 'automate',
+      source: './.codex',
+      category: 'testing',
+      policy: {installation: 'AVAILABLE', authentication: 'ON_INSTALL'}
+    }]
+  }))
+  mkdirSync(join(dir, '.codex/.codex-plugin'), {recursive: true})
+  writeFileSync(join(dir, '.codex/.codex-plugin/plugin.json'), JSON.stringify({
+    name: 'automate',
+    version: '1.0.2',
+    description: 'Test',
+    mcpServers: './.mcp.json'
+  }))
+  writeFileSync(join(dir, '.codex/.mcp.json'), JSON.stringify({
+    mcpServers: {kobiton: {url: 'https://api.kobiton.com/mcp'}}
+  }))
+  writeFileSync(join(dir, 'gemini-extension.json'), JSON.stringify({
+    name: 'kobiton-automate',
+    version: '1.0.2',
+    description: 'Test',
+    mcpServers: {kobiton: {httpUrl: 'https://api.kobiton.com/mcp'}}
   }))
 
   mkdirSync(join(dir, 'tools'))
-  for (const file of ['devices.yaml', 'sessions.yaml', 'apps.yaml']) {
+  for (const file of ['devices.yaml', 'sessions.yaml', 'apps.yaml', 'user.yaml']) {
     writeFileSync(join(dir, 'tools', file), [
       'tools:',
       '  - name: testTool',
@@ -40,6 +72,15 @@ function setupValidProject(dir) {
     'description: Test skill',
     '---',
     '## Workflow',
+  ].join('\n'))
+
+  mkdirSync(join(dir, 'skills/run-interactive-test'), {recursive: true})
+  writeFileSync(join(dir, 'skills/run-interactive-test/SKILL.md'), [
+    '---',
+    'name: run-interactive-test',
+    'description: Test skill',
+    '---',
+    '## Setup',
   ].join('\n'))
 
 }
@@ -87,8 +128,8 @@ describe('validateProject', () => {
     setupValidProject(tmpDir)
     writeFileSync(join(tmpDir, '.claude-plugin/plugin.json'), JSON.stringify({
       description: 'Test',
-      mcpServers: '../.mcp.json',
-      skills: '../skills/'
+      mcpServers: './.mcp.json',
+      skills: './skills/'
     }))
     const {errors} = validateProject(tmpDir)
     expect(errors).toContainEqual(expect.stringContaining('missing "name"'))
@@ -135,8 +176,8 @@ describe('validateProject', () => {
     writeFileSync(join(tmpDir, '.claude-plugin/plugin.json'), JSON.stringify({
       name: 'test',
       description: 'Test',
-      mcpServers: '../nonexistent.json',
-      skills: '../skills/'
+      mcpServers: './nonexistent.json',
+      skills: './skills/'
     }))
     const {errors} = validateProject(tmpDir)
     expect(errors).toContainEqual(expect.stringContaining('does not exist'))

@@ -1,0 +1,24 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 🔒 Security vulnerability in this plugin
+    url: mailto:security@kobiton.com
+    about: |
+      Found a security issue in the plugin? Email security@kobiton.com — DO NOT
+      open a public GitHub issue. We acknowledge receipt within 48 hours and
+      provide a detailed response within 5 business days. See SECURITY.md for
+      the full policy.
+  - name: 🔒 Security vulnerability in the Kobiton platform (API, portal, devices)
+    url: https://kobiton.com/trust-center
+    about: |
+      Found a security issue in the Kobiton platform itself? Report via the
+      Kobiton Trust Center, not this plugin's issue tracker.
+  - name: 💬 Kobiton platform support (account, billing, device cloud)
+    url: https://kobiton.com/support
+    about: |
+      For Kobiton platform questions (not plugin bugs), use Kobiton support.
+      Issues here are scoped to the Claude Code plugin only.
+  - name: 📚 Kobiton documentation
+    url: https://docs.kobiton.com
+    about: |
+      Looking for capability syntax, vendor extensions, or platform behavior?
+      Check the docs first.

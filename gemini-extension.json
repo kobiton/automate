@@ -1,0 +1,14 @@
+{
+  "name": "kobiton-automate",
+  "version": "1.2.0",
+  "description": "Connect to Kobiton mobile testing platform - manage devices, run automation suites, and view test results",
+  "contextFileName": "AGENTS.md",
+  "mcpServers": {
+    "kobiton": {
+      "httpUrl": "https://api.kobiton.com/mcp",
+      "headers": {
+        "X-AI-Tool-Name": "Gemini"
+      }
+    }
+  }
+}

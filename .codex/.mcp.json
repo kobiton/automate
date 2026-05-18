@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "kobiton": {
+      "url": "https://api.kobiton.com/mcp",
+      "http_headers": {
+        "X-AI-Tool-Name": "Codex"
+      }
+    }
+  }
+}
