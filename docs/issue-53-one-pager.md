@@ -156,7 +156,7 @@ Ordered by leverage (highest to lowest):
 
 - **Not a roadmap.** Each layer's prioritization is Kobiton's decision; this doc maps the levers, not the commit.
 - **Not a SOW change.** The R-series engagement scope is unchanged. The one-pager is a structural artifact responding to `#53`.
-- **Not the bundled-host sketch.** A separate sketch covers the L2 architectural variants for "AI native to Kobiton Automate" (`#53` ask 6); the three named variants (staging-upload, bundled host with file picker, Kobiton-hosted test runner) live there with tradeoff analysis.
+- **Not the bundled-host sketch.** A separate sketch — published as the public gist [Bundled-host architectural sketch — Kobiton Automate plugin](https://gist.github.com/jeremylongshore/8e6325b6bb2b438d9fa6d8d9161c3a54) — covers the L2 architectural variants for "AI native to Kobiton Automate" (`#53` ask 6). Four named variants (hybrid pattern; staging-upload; bundled host with file picker; Kobiton-hosted test runner) with tradeoff analysis.
 - **Not the README compatibility-matrix PR.** The README PR is the customer-facing distilled version of the surface matrix above. Different audience, different format.
 
 ---
@@ -170,6 +170,7 @@ Ordered by leverage (highest to lowest):
 - Surface matrix (with full per-cell citations): [`#53` comment-4482806767](https://github.com/kobiton/automate/issues/53#issuecomment-4482806767)
 - Upstream findings slate anchor: [`kobiton/automate#61`](https://github.com/kobiton/automate/issues/61)
 - Plugin-side documented working knowledge: [`skills/run-automation-suite/references/known-limitations.md`](../skills/run-automation-suite/references/known-limitations.md)
+- **Bundled-host architectural sketch (companion artifact for `#53` ask 6):** [public gist `8e6325b6`](https://gist.github.com/jeremylongshore/8e6325b6bb2b438d9fa6d8d9161c3a54) — four-variant tradeoff analysis with mermaid diagrams
 
 Anthropic docs verified by direct fetch 2026-05-18:
 
