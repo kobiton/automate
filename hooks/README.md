@@ -1,0 +1,59 @@
+# Hooks (Claude Code-specific)
+
+This directory contains Claude Code [hooks](https://code.claude.com/docs/en/hooks) — deterministic-enforcement scripts that fire `PreToolUse` and `PostToolUse` around the plugin's MCP tool calls.
+
+**These hooks are Claude Code-only.** Other MCP clients (Cursor, ChatGPT, Codex, Gemini CLI, Continue) have no equivalent hook system. For cross-client observability the right substrate is server-side OpenTelemetry instrumentation, not client-side hooks; that's proposed at [fork issue #28](https://github.com/jeremylongshore/automate/issues/28).
+
+## What the hooks do
+
+| Hook | Event | Matcher | What it does |
+|------|-------|---------|--------------|
+| `validate-userintent` | PreToolUse | every `mcp__plugin_automate_kobiton__.*` call | Validates `userIntent` argument matches the format documented in kobiton/CLAUDE.md op-rule #4 — bounded regex + length 110-145 chars. Denies the call if malformed. |
+| `advise-pre-terminate-cooldown` | PreToolUse | `terminateSession` | Allows the call but injects a notice that the device enters ~5min cleanup cooldown post-termination (R2 finding F33). |
+| `advise-app-upload-poll` | PostToolUse | `confirmAppUpload` | Injects an advisory into agent context recommending the agent poll `getApp(appId)` until the async parser finishes (R2 findings F25/F26). |
+| `advise-post-terminate-cooldown` | PostToolUse | `terminateSession` | Confirms the cooldown window post-termination with `sessionId` for traceability. |
+
+## Design constraint: advisory-only, no authenticated API calls
+
+An earlier design had the hooks themselves call `getApp` to poll for state transitions. The multi-reviewer pre-flight (code-reviewer + security-auditor + test-automator, 2026-05-12) flagged that design with **6 BLOCKERs + 8 HIGHs** — primarily around credential strategy, SSRF surface, and PII echo from the response body into agent context.
+
+The current design eliminates the auth-needing surface entirely. **Hooks never make HTTP requests.** They emit text advisories into the agent's context window; the agent itself uses its already-authenticated `getApp` / `listDevices` / etc. MCP tools to do any real polling or follow-up. Same outcome, no security blast radius.
+
+See [`THREAT-MODEL.md`](./THREAT-MODEL.md) for the threat model and the explicit non-goals.
+
+## Install requirements
+
+- Claude Code (any version that supports the `hooks/hooks.json` plugin convention)
+- Node 20+ (already a plugin requirement per `CONTRIBUTING.md`)
+
+Hooks run on the end-user's machine, not the Kobiton MCP server. Disable them globally with `--no-hooks` if needed, or delete the matcher entry in `hooks.json` to disable a single hook.
+
+## Running the tests
+
+Tests live alongside the scripts and use the plugin's existing vitest runner:
+
+```bash
+pnpm test
+```
+
+The vitest default include pattern picks up `hooks/scripts/*.test.mjs` without configuration changes.
+
+## Adding a new hook
+
+1. Add the handler script to `hooks/scripts/<name>.mjs`. Follow the conventions in the existing scripts:
+   - Read stdin once; never read `process.env.CLAUDE_HOOKS_INPUT_JSON` (it does not exist — that was BLOCKER B2-CR from the pre-flight)
+   - No outbound network calls
+   - Validate all numeric IDs before interpolating into output text
+   - Output via `hookSpecificOutput` envelope, not top-level `decision` (top-level is silently ignored for PreToolUse — BLOCKER B1-CR)
+   - Use exec form in `hooks.json` (`"command": "node", "args": [...]`), not shell form — Windows WSL2 fails on shell form (HIGH H2-CR)
+   - Use `${CLAUDE_PLUGIN_ROOT}` not `${CLAUDE_PROJECT_DIR}` (HIGH H1-CR)
+2. Add a test file `hooks/scripts/<name>.test.mjs` covering valid input, boundary cases, missing fields, malformed JSON, and PII-leakage negative tests.
+3. Update `hooks.json` with a new matcher entry.
+4. Re-run `pnpm test` and `pnpm run validate`.
+
+## References
+
+- [Claude Code hooks spec](https://code.claude.com/docs/en/hooks)
+- R3 § 5 fork issue at [jeremylongshore/automate#33](https://github.com/jeremylongshore/automate/issues/33) — original proposal + multi-reviewer findings
+- R2 audit findings F25 / F26 / F32 / F33 — [kobiton/automate#34](https://github.com/kobiton/automate/issues/34) and [#36](https://github.com/kobiton/automate/issues/36)
+- kobiton/CLAUDE.md op-rule #3 (multi-reviewer pre-flight) and op-rule #4 (`userIntent` format)

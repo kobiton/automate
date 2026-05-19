@@ -9,6 +9,54 @@
           }
         ]
       }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "mcp__plugin_automate_kobiton__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/scripts/validate-userintent.mjs"],
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__plugin_automate_kobiton__terminateSession",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/scripts/advise-pre-terminate-cooldown.mjs"],
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "mcp__plugin_automate_kobiton__confirmAppUpload",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/scripts/advise-app-upload-poll.mjs"],
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__plugin_automate_kobiton__terminateSession",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/scripts/advise-post-terminate-cooldown.mjs"],
+            "timeout": 5
+          }
+        ]
+      }
     ]
   }
 }
