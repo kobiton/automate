@@ -5,10 +5,7 @@
   "contextFileName": "AGENTS.md",
   "mcpServers": {
     "kobiton": {
-      "httpUrl": "https://api.kobiton.com/mcp",
-      "headers": {
-        "X-AI-Tool-Name": "Gemini"
-      }
+      "httpUrl": "https://api-test-white.kobiton.com/mcp"
     }
   }
 }

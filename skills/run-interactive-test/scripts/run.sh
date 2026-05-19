@@ -142,21 +142,41 @@ fi
 #
 #       This wrapper lives at the stable path ~/.kobiton/bin/kobiton and
 #       can therefore be invoked by ANY AI workspace (Claude Code, Copilot
-#       CLI, Cursor, Gemini, Codex, …), not just Claude Code. We MUST NOT
+#       CLI, Gemini CLI, Codex CLI, …), not just Claude Code. We MUST NOT
 #       hard-default to "Claude" or we mis-attribute every non-Claude
 #       caller's session.
 #
-#       Priority:
+#       Priority (mirrors kobiton-cli's resolve_ai_tool_name() in the k
+#       repo — keep these in lock-step):
 #         1. KOBITON_AI_TOOL_NAME already exported by the caller — pass
 #            through unchanged.
-#         2. CLAUDECODE=1 in env — definitively inside Claude Code
-#            (Anthropic's marker, set on every spawned subprocess), so
-#            default to "Claude".
-#         3. COPILOT_CLI=1 in env — definitively inside GitHub Copilot
-#            CLI (verified by inspecting the bundled Copilot CLI
-#            binary's subprocess env-builder; analog of CLAUDECODE=1),
-#            so default to "Copilot".
-#         4. Otherwise — leave unset and let kobiton-cli's own
+#         2. CLAUDECODE=1     → "Claude"  (Anthropic Claude Code; set on
+#            every spawned subprocess).
+#         3. COPILOT_CLI=1    → "Copilot" (GitHub Copilot CLI; verified
+#            by inspecting the bundled binary's subprocess env-builder;
+#            analog of CLAUDECODE=1).
+#         4. GEMINI_CLI=1     → "Gemini"  (speculative — Google's
+#            `@google/gemini-cli` v0.x does NOT set this on spawned
+#            subprocesses today. Kept as a forward-compat path + manual
+#            opt-in. The install-path fallback below is the actual
+#            mechanism that catches Gemini today.)
+#         5. CODEX_THREAD_ID  → "Codex"   (OpenAI Codex CLI; verified
+#            in the @openai/codex native binary — set per-invocation
+#            during an active Codex thread.) Also accepts CODEX_CLI=1
+#            for convention parity.
+#         6. Install-path fallback — when no env-var marker fires, infer
+#            the host from THIS script's resolved install location:
+#                ~/.claude/plugins/...        → Claude Code
+#                ~/.copilot/installed-plugins → Copilot CLI
+#                ~/.gemini/extensions/...     → Gemini CLI
+#                ~/.codex/...                 → Codex CLI (path TBD)
+#            Each AI host installs the plugin under its own directory
+#            and re-points the `~/.kobiton/bin/kobiton` symlink, so
+#            $SCRIPT_DIR (symlink-resolved earlier in this script)
+#            reflects which install the caller went through. Rescues
+#            Gemini CLI today and is robust to future AI hosts that
+#            don't expose a clean subprocess env marker.
+#         7. Still nothing — leave unset and let kobiton-cli's own
 #            resolve_ai_tool_name() fall through to None (session row's
 #            aiToolName ends up null). Better than guessing.
 if [ -z "${KOBITON_AI_TOOL_NAME:-}" ]; then
@@ -164,6 +184,17 @@ if [ -z "${KOBITON_AI_TOOL_NAME:-}" ]; then
     export KOBITON_AI_TOOL_NAME=Claude
   elif [ "${COPILOT_CLI:-}" = "1" ]; then
     export KOBITON_AI_TOOL_NAME=Copilot
+  elif [ "${GEMINI_CLI:-}" = "1" ]; then
+    export KOBITON_AI_TOOL_NAME=Gemini
+  elif [ "${CODEX_CLI:-}" = "1" ] || [ -n "${CODEX_THREAD_ID:-}" ]; then
+    export KOBITON_AI_TOOL_NAME=Codex
+  else
+    case "$SCRIPT_DIR" in
+      */.gemini/extensions/*)         export KOBITON_AI_TOOL_NAME=Gemini ;;
+      */.copilot/installed-plugins/*) export KOBITON_AI_TOOL_NAME=Copilot ;;
+      */.claude/plugins/*)            export KOBITON_AI_TOOL_NAME=Claude ;;
+      */.codex/*)                     export KOBITON_AI_TOOL_NAME=Codex ;;
+    esac
   fi
 fi
 
