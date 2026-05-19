@@ -11,7 +11,7 @@ Bootstrap the plugin: ensure the CLI wrapper symlink is installed, then fetch th
 
 ## Step 0: Ensure the CLI wrapper symlink is installed
 
-The `run-interactive-test` skill depends on `~/.kobiton/bin/kobiton`. On Claude Code this symlink is recreated automatically by a SessionStart hook; on other CLIs (Codex CLI, Gemini CLI, GitHub Copilot CLI), `/automate:setup` is the install entry point.
+The `run-interactive-test` skill depends on `~/.kobiton/bin/kobiton`. On Claude Code this symlink is recreated automatically by a SessionStart hook, and this command (`/automate:setup`) re-installs it on demand. Codex CLI, Gemini CLI, and GitHub Copilot CLI don't load this slash command — those users run `scripts/install-cli.sh` directly (see the project README).
 
 Run the install script bundled with this plugin. This file (`setup.md`) lives at `<plugin-root>/commands/setup.md`, so the install script is at `<plugin-root>/scripts/install-cli.sh`. Resolve `<plugin-root>` to its absolute path and run:
 

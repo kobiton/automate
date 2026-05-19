@@ -3,10 +3,13 @@
 # version's run.sh wrapper. Idempotent - safe to invoke repeatedly.
 #
 # Called from two places:
-#   1. Claude Code's SessionStart hook (auto, every session)
-#   2. /automate:setup command (manual, one-off per install - needed
-#      for CLIs without a working SessionStart hook spec, i.e. Codex
-#      CLI, Gemini CLI, GitHub Copilot CLI)
+#   1. Claude Code's SessionStart hook (auto, every session). The
+#      /automate:setup slash command also invokes it on demand.
+#   2. Direct bash invocation by users on Codex CLI, Gemini CLI, and
+#      GitHub Copilot CLI - those CLIs don't load Claude-format slash
+#      commands, so /automate:setup is unavailable; users run this
+#      script via `bash <plugin-path>/scripts/install-cli.sh` once
+#      after install.
 #
 # Plugin root resolution: prefer CLAUDE_PLUGIN_ROOT if the host CLI
 # injected it; otherwise derive from this script's own location
