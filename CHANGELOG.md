@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Plugin and marketplace metadata: surface support contact (`support@kobiton.com`) in `plugin.json` and `marketplace.json` author/owner blocks; add `license: MIT` and homepage URL on marketplace entries for marketplace consistency
+
 ## 1.2.0 - 2026-05-18
 
 - Multi-CLI support: install on GitHub Copilot CLI, Gemini CLI, and Codex CLI in addition to Claude Code
