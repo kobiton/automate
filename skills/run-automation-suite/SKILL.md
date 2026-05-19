@@ -109,7 +109,17 @@ The rendered output also includes `kobiton:aiToolName: "<host>"` so Kobiton can 
    - `CODEX_THREAD_ID` (or `CODEX_CLI`) -> Codex — Codex CLI sets the thread ID, not a generic `CODEX_CLI` flag; the latter is accepted for manual override only
 4. If nothing matches, no `kobiton:aiToolName` capability is emitted.
 
-This capability is treated as **must-match** during reconciliation (see `references/capabilities.md`): if the rendered output includes `kobiton:aiToolName`, always overwrite any existing value in the user's script with it — a stale value from a prior session run under a different CLI would mis-attribute adoption analytics. If the rendered output omits the capability (no runtime marker matched), leave the user's value untouched.
+This capability is treated as **must-match** during reconciliation (see `references/capabilities.md`): if the rendered output includes `kobiton:aiToolName`, always overwrite any existing value in the user's script with it. A stale value from a prior session run under a different CLI would mis-attribute adoption analytics. If the rendered output omits the capability (no runtime marker matched), leave the user's value untouched.
+
+**Required: verify the injection landed before Step 4.** The `kobiton:aiToolName` capability must be present in the script's source code (e.g., the capabilities object/dict/map). If your reconciliation pass didn't write it to the script, Kobiton will never see it — there is no sidecar config that injects it at runtime. Confirm with a literal-string grep against the user's script:
+
+```bash
+grep -F 'kobiton:aiToolName' <path-to-user-script>
+```
+
+- **Match found** — injection succeeded, proceed to Step 4.
+- **No match, rendered output had a value** — your edit was skipped. Use your `Edit` tool to add the capability to the script's capabilities block now (use the language-appropriate syntax for the script — JS/TS object literal, Python dict, Java `Map.of(...)` / `DesiredCapabilities`, .NET `AppiumOptions.AddAdditionalCapability(...)`, Ruby hash), then re-run the grep. **Do NOT proceed to Step 4 until the grep succeeds.**
+- **No match, rendered output omitted the capability** — expected (no runtime marker matched, or user opted out via `--aiToolName ""` or `KOBITON_AI_TOOL_NAME=""`). Skip injection, proceed.
 
 ### 4. Confirm & execute
 
