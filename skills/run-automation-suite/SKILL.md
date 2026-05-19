@@ -109,7 +109,7 @@ The rendered output also includes `kobiton:aiToolName: "<host>"` so Kobiton can 
    - `CODEX_CLI` or `CODEX_THREAD_ID` -> Codex
 4. If nothing matches, no `kobiton:aiToolName` capability is emitted.
 
-This capability is treated as **must-match** during reconciliation (see `references/capabilities.md`): always overwrite any existing `kobiton:aiToolName` in the user's script with the rendered value (or remove it if the rendered output omits the capability). A stale value from a prior session run under a different CLI would mis-attribute adoption analytics.
+This capability is treated as **must-match** during reconciliation (see `references/capabilities.md`): if the rendered output includes `kobiton:aiToolName`, always overwrite any existing value in the user's script with it — a stale value from a prior session run under a different CLI would mis-attribute adoption analytics. If the rendered output omits the capability (no runtime marker matched), leave the user's value untouched.
 
 ### 4. Confirm & execute
 
