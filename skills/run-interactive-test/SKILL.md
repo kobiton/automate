@@ -21,10 +21,10 @@ version: 1.0.0
 author: Kobiton Inc.
 license: MIT
 compatibility: >-
-  Requires the bundled Kobiton CLI binary. Currently supports macOS Apple
-  Silicon (darwin-arm64) only - on other platforms, use run-automation-suite
-  or the Kobiton MCP tools directly. Run /automate:setup once before first
-  use to install the CLI wrapper symlink and write credentials.
+  Requires the bundled Kobiton CLI binary, which targets macOS. On
+  other platforms, use run-automation-suite or the Kobiton MCP tools
+  directly. Run /automate:setup once before first use to install the
+  CLI wrapper symlink and write credentials.
 tags: [mobile, testing, interactive, webdriver, devices, kobiton]
 ---
 
@@ -40,7 +40,7 @@ Use this skill whenever the user wants to interact with a mobile device on Kobit
 
 Before invoking this skill, ensure:
 
-- **Bundled Kobiton CLI** - `~/.kobiton/bin/kobiton` (a symlink to this plugin's `run.sh` wrapper) must exist and point at an executable. On Claude Code it's recreated automatically by a SessionStart hook (or by running `/automate:setup`). GitHub Copilot CLI and Gemini CLI both load `/automate:setup` (Copilot via Claude-format `.md`, Gemini via bundled TOML at `commands/automate/setup.toml`) but have no SessionStart hook — run `/automate:setup` once after install. Codex CLI doesn't load any plugin slash command, so install once by running the bundled script directly: `bash "$(find ~/.codex -name install-cli.sh -path '*automate*' 2>/dev/null | head -1)"`. The bundled binary currently supports **macOS Apple Silicon (darwin-arm64) only** - on Linux or macOS Intel, do not invoke this skill; recommend `run-automation-suite` or the MCP tools instead, which are platform-independent.
+- **Bundled Kobiton CLI** - `~/.kobiton/bin/kobiton` (a symlink to this plugin's `run.sh` wrapper) must exist and point at an executable. On Claude Code it's recreated automatically by a SessionStart hook (or by running `/automate:setup`). GitHub Copilot CLI and Gemini CLI both load `/automate:setup` (Copilot via Claude-format `.md`, Gemini via bundled TOML at `commands/automate/setup.toml`) but have no SessionStart hook — run `/automate:setup` once after install. Codex CLI doesn't load any plugin slash command, so install once by running the bundled script directly: `bash "$(find ~/.codex -name install-cli.sh -path '*automate*' 2>/dev/null | head -1)"`. The bundled binary targets **macOS** - on other platforms, do not invoke this skill; recommend `run-automation-suite` or the MCP tools instead, which are platform-independent.
 - **Credentials file** - `~/.kobiton/.credentials` must contain a valid INI-formatted profile with `KOBITON_USER`, `KOBITON_API_KEY`, and `KOBITON_PORTAL`. Created by `/automate:setup`. The active profile is `$KOBITON_PROFILE` if set, otherwise `default`.
 - **Kobiton MCP connection** - useful for `listDevices` / `getDeviceStatus` calls when picking a device. Default `api.kobiton.com/mcp`; check `.mcp.json` for the configured endpoint.
 - **Kobiton account** - credentials with device access for the target platform (Android / iOS) and remaining session quota.
@@ -51,7 +51,7 @@ If a command fails with a credentials error or missing-binary error, direct the 
 
 All CLI calls go through a single wrapper at `~/.kobiton/bin/kobiton` that automatically handles:
 
-- **Platform-specific binary resolution** - picks the right bundled binary for the host OS/arch.
+- **Bundled binary resolution** - resolves the bundled `kobiton` binary inside the skill directory.
 - **Portal URL** - from `KOBITON_PORTAL` in credentials, or derived from `.mcp.json` as fallback.
 - **Credentials** - loaded from `~/.kobiton/.credentials` using AWS-style profiles (`$KOBITON_PROFILE`, default `default`).
 - **Session token** - loaded by the CLI from `~/.kobiton/.session` once a session exists.
@@ -266,7 +266,7 @@ Where `<portal-base>` is derived from the `KOBITON_PORTAL` value in the active p
 - **Session expired / auth error mid-flow**: `session ping` fails or a command returns auth error - offer to create a new session.
 - **Element not found**: suggest getting page source first (`wd get source`) to inspect the UI hierarchy, then try a different locator strategy (xpath instead of id, or vice versa).
 - **Stale element reference** after navigation: re-find the element on the new screen; element IDs do not survive page transitions.
-- **Binary not found**: `run.sh` failed to resolve a bundled binary for the host platform - tell the user their platform is not supported and recommend `run-automation-suite` or the MCP tools.
+- **Binary not found**: the bundled `kobiton` binary is missing from the skill's `bin/` directory - tell the user to re-install the plugin. If the platform isn't macOS, recommend `run-automation-suite` or the MCP tools instead.
 - **Missing credentials**: direct the user to run `/automate:doctor` first to see what's missing; if the credentials file is missing or incomplete, run `/automate:setup` to fetch and write fresh credentials.
 
 ## Examples

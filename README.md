@@ -251,7 +251,7 @@ To verify everything is wired correctly, run the diagnostic:
 | **run-automation-suite** | Guided workflow for app upload, device selection, local Appium script execution (Node.js, Python, .NET, Java), and result collection. |
 | **run-interactive-test** | Guided workflow for interactive testing using natural language. WebDriver actions, device operations (adb shell, logs, screen), file management (push/pull), and more. |
 
-> **Platform support note:** all MCP tools and the `run-automation-suite` skill work on every platform the host CLI supports. The `run-interactive-test` skill ships a CLI binary for **macOS Apple Silicon (darwin-arm64)** and **Linux x64 (linux-x64)**. Other platforms (macOS Intel, Linux arm64, Windows) fall back with a clear "Binary not found" error.
+> **Platform support note:** all MCP tools and the `run-automation-suite` skill work on every platform the host CLI supports. The `run-interactive-test` skill ships a CLI binary for **macOS Apple Silicon** only. On other platforms, use `run-automation-suite` or the MCP tools directly.
 
 ## Commands
 
