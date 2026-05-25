@@ -261,9 +261,9 @@ This terminates the Kobiton-side session and frees the device. The local artifac
 
 **adb-shell vs WebDriver overlap.** Both can press keys, type, and tap. Tie-breakers:
 
-- If the target is a known element ID → WebDriver (`wd post element/<id>/click`, `.../value`).
-- If the target is a hardware key, a blind coordinate tap, or a system-level action → `adb shell input` / `am` / `pm`.
-- For inspection (foreground app, processes, build props, settings) → adb shell only; there is no WebDriver equivalent.
+- If the target is a known element ID -> WebDriver (`wd post element/<id>/click`, `.../value`).
+- If the target is a hardware key, a blind coordinate tap, or a system-level action -> `adb shell input` / `am` / `pm`.
+- For inspection (foreground app, processes, build props, settings) -> adb shell only; there is no WebDriver equivalent.
 
 Default: prefer adb-shell for system-level work, WebDriver for UI element-level work.
 
