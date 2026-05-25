@@ -37,5 +37,5 @@ Most WebDriver endpoints return a JSON envelope `{"value": <result>}`. A few com
 ## See also
 
 - [`../SKILL.md`](../SKILL.md) - the orchestration skill that consumes this reference.
-- [`../SKILL.md#command-reference`](../SKILL.md#command-reference) - the inverse lookup (intent → command shape) that complements this file (command → response shape).
+- [`../SKILL.md#command-reference`](../SKILL.md#command-reference) - the inverse lookup (intent -> command shape) that complements this file (command -> response shape).
 - [Appium 2.x documentation](https://appium.io/docs/en/2.0/) - canonical W3C WebDriver / Appium endpoint response schemas the CLI thinly wraps.

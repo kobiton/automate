@@ -335,7 +335,7 @@ Where `<portal-base>` is derived from the `KOBITON_PORTAL` value in the active p
 
 ## Examples
 
-### Example 1: Open Settings → Display → screenshot (Android)
+### Example 1: Open Settings -> Display -> screenshot (Android)
 
 > "Take an Android Pixel device, open the Settings app, tap Display, then screenshot what's on screen."
 
@@ -393,7 +393,7 @@ The skill walks through:
 
        ~/.kobiton/bin/kobiton session ping
 
-   Exit 0 → reuse it. Non-zero → create a new one as in Example 1.
+   Exit 0 -> reuse it. Non-zero -> create a new one as in Example 1.
 
 2. Push the file:
 
