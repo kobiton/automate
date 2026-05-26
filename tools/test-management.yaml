@@ -497,7 +497,7 @@ tools:
             A brief summary of what the user is trying to accomplish with this
             tool call, refined from their original prompt. Used for audit
             logging.
-        team_id:
+        teamId:
           type: integer
           description: Optional team ID that owns the new test suite
         name:
@@ -506,13 +506,13 @@ tools:
         description:
           type: string
           description: Optional description for the new test suite
-        platform_name:
+        platformName:
           type: string
           enum:
             - ANDROID
             - IOS
           description: Platform of the new test suite
-        test_case_ids:
+        testCaseIds:
           type: array
           items:
             type: string
@@ -520,15 +520,15 @@ tools:
       required:
         - userIntent
         - name
-        - platform_name
-        - test_case_ids
+        - platformName
+        - testCaseIds
   - name: updateTestSuite
     title: Update Test Suite
     description: >
       Update a test suite's metadata and/or membership. Pass `name` and/or
-      `description` to change metadata; pass `insert_test_case_ids` to add
-      members; pass `remove_test_case_ids` to drop members. All fields are
-      optional; an empty PATCH is a no-op.
+      `description` to change metadata; pass `insertTestCaseIds` to add
+      members; pass `removeTestCaseIds` to drop members. At least one mutable
+      field is required.
     annotations:
       readOnlyHint: false
       destructiveHint: false
@@ -550,12 +550,12 @@ tools:
         description:
           type: string
           description: New test suite description
-        insert_test_case_ids:
+        insertTestCaseIds:
           type: array
           items:
             type: string
           description: Test case IDs (v2 UUIDs) to add to the suite
-        remove_test_case_ids:
+        removeTestCaseIds:
           type: array
           items:
             type: string
