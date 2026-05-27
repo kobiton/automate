@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.3 - 2026-06-02
+
+- New `getUserInputEvents` MCP tool — surfaces the touch/swipe gestures a human makes on the device-only live view so a Claude-driven session can be redirected mid-run. The user physically tapping the canvas BOTH drives the device under test in real time (forwarded to direct-hub) AND is reported to Claude as an observation it should react to ("the user just tapped Settings → pivot the test plan to Settings"). Keystroke / right-click / pinch / drag-off-canvas remain suppressed (KOB-52769 invariant). (KOB-53093)
+- `run-automation-suite` skill now polls `getUserInputEvents` between scripted commands.
+
 ## 1.4.2 - 2026-06-02
 
 - **Fix Copilot CLI command loading:** the `name: "automate:setup"` / `name: "automate:doctor"` frontmatter in `commands/*.md` is now plain `name: "setup"` / `name: "doctor"` — Copilot CLI validates the `name` field and rejects colons ("Command name must contain only letters, numbers, hyphens, underscores, dot"), which broke command loading. Claude Code and Copilot CLI derive `/automate:setup` and `/automate:doctor` from the filename + plugin namespace as before; Gemini CLI (bundled TOML) and Codex CLI are unaffected.
@@ -41,7 +46,6 @@
 - Added 14 Test Case Management MCP tool schemas in `tools/test-management.yaml` — test cases (`saveTestCase`, `listTestCases`, `getTestCase`, `updateTestCase`, `deleteTestCase`), test runs (`createTestRun`, `listTestRuns`, `getTestRun`, `terminateTestRun`), and test suites (`listTestSuites`, `getTestSuite`, `createTestSuite`, `updateTestSuite`, `deleteTestSuite`)
 - Updated bundled `kobiton` CLI binary in `run-interactive-test` skill to the latest version
 - Expanded `run-interactive-test` adb-shell documentation for AI agents: quoting rules (local vs device shell parsing), platform guard (Android only), 22-row intent-to-command cookbook, big-output redirect pattern (to avoid 25k-token MCP overflow), long-running command guidance, and response parsing gotchas in `references/response-shapes.md` — notably that `adb` returns exit code 0 even when the inner command fails
-
 
 ## 1.2.1 - 2026-05-20
 
