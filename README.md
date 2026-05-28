@@ -127,38 +127,41 @@ Launch `codex` and run `/mcp` to confirm. The OAuth flow still applies on the fi
 
 ### Cursor CLI
 
-Install Cursor CLI if you don't have it yet:
-
-```bash
-curl https://cursor.com/install -fsSL | bash
-```
-
-Clone the Kobiton plugin into your project (the same `.cursor/mcp.json` then auto-registers the Kobiton MCP server):
-
-```bash
-cd my-project
-git clone https://github.com/kobiton/automate.git .kobiton-automate
-cp -r .kobiton-automate/.cursor .
-cursor-agent
-```
-
-Inside the session, run `/mcp` to confirm `kobiton` is connected. The first connection opens a browser for Kobiton OAuth login.
-
-<details>
-<summary><strong>Alternative: install as a full Cursor plugin (skills, hooks, marketplace metadata)</strong></summary>
-
-To pick up the bundled skills and the sessionStart hook that installs `~/.kobiton/bin/kobiton` automatically, clone into Cursor's plugins directory instead:
+Clone the Kobiton plugin into Cursor's global plugin directory:
 
 ```bash
 git clone https://github.com/kobiton/automate.git ~/.cursor/plugins/kobiton-automate
 ```
 
-Restart Cursor (`cursor-agent` or the IDE) so the new plugin is discovered. The plugin's `.cursor-plugin/plugin.json` registers the MCP server, skills, and hooks in one shot — no need to copy `.cursor/mcp.json` separately.
+Then start a Cursor CLI session from your project:
+
+```bash
+cd my-project
+agent
+```
+
+The plugin's `.cursor-plugin/plugin.json` registers the `kobiton` MCP server, bundled skills, and a `sessionStart` hook that auto-installs `~/.kobiton/bin/kobiton`. Run `/mcp` inside the session to confirm `kobiton` is connected — the first call opens a browser for Kobiton OAuth login.
+
+<details>
+<summary><strong>Alternative: project-only MCP config (no global install)</strong></summary>
+
+For a lightweight per-project setup that skips the bundled skills and the sessionStart hook, just drop `.cursor/mcp.json` from this repo into your project's `.cursor/` directory:
+
+```bash
+cd my-project
+mkdir -p .cursor
+curl -sLO --output-dir .cursor https://raw.githubusercontent.com/kobiton/automate/main/.cursor/mcp.json
+agent
+```
+
+You won't get the bundled skills or auto CLI-wrapper install — run `/automate:setup`-equivalent flows manually if needed.
 </details>
 
 ### Other MCP Clients
 
-The Kobiton MCP server (`https://api.kobiton.com/mcp`) speaks the open Model Context Protocol and can be consumed by any spec-compliant MCP client. The configs below are derived from each client's published documentation; the Kobiton-side OAuth flow is the same across all of them. **End-to-end tested only on Claude Code, Copilot CLI, Gemini CLI, Codex CLI, and Cursor CLI**; entries below are configs we expect to work but have not yet validated — please open an issue if any do not work for your setup.
+Kobiton's MCP server is built on the open [Model Context Protocol](https://modelcontextprotocol.io), so **any MCP-compatible client can connect to it**. Same endpoint (`https://api.kobiton.com/mcp`), same browser-based OAuth login as the clients above.
+
+> **Good to know:** End-to-end tested only on Claude Code, Copilot CLI, Gemini CLI, Codex CLI, and Cursor CLI; entries below are configs we expect to work but have not yet validated. Please [open an issue](https://github.com/kobiton/automate/issues/new?template=bug_report.md) if any do not work for your setup. We're happy to help.
 
 #### ChatGPT (Apps SDK)
 
@@ -170,9 +173,9 @@ https://api.kobiton.com/mcp
 
 The Apps SDK does not require a separate manifest file; tool descriptors, OAuth flow, and `_meta.ui` widget hints flow through the MCP protocol itself. Reference: [developers.openai.com/apps-sdk/build/mcp-server](https://developers.openai.com/apps-sdk/build/mcp-server).
 
-#### Continue / Cline / other generic MCP clients
+#### Cursor / Continue / Cline / other generic MCP clients
 
-Most generic MCP clients support the open Streamable HTTP transport. Use a config block like:
+The Cursor IDE (the desktop editor, not the `agent` CLI covered above) reads MCP servers from the `.cursor/mcp.json` this repo already ships, so opening the project is enough.
 
 ```json
 {
@@ -184,7 +187,7 @@ Most generic MCP clients support the open Streamable HTTP transport. Use a confi
 }
 ```
 
-Adjust to your client's specific format. The server URL and OAuth handshake are the same; if your client doesn't support OAuth, fall back to the API-key auth path (see [API Key Authentication](#api-key-authentication-alternative) below) — most clients accept custom `headers` blocks.
+Adjust to your client's specific format. The server URL and OAuth handshake are the same; if your client doesn't support OAuth, fall back to the API-key auth path (see [API Key Authentication](#api-key-authentication-alternative) below) - most clients accept custom `headers` blocks.
 
 ## Login
 
@@ -361,7 +364,7 @@ After the plugin is updated upstream, pull the latest version:
 - **Claude Code / Copilot CLI:** run `/plugin install automate@kobiton` again
 - **Gemini CLI:** run `gemini extensions update kobiton-automate` from your shell
 - **Codex CLI:** run `codex plugin marketplace upgrade` to refresh the marketplace catalog, then reinstall the plugin from the browser to pull the latest manifest
-- **Cursor CLI:** `cd` into your clone (`~/.cursor/plugins/kobiton-automate` or `.kobiton-automate` inside your project) and run `git pull`. Restart `cursor-agent` so the new manifest is picked up.
+- **Cursor CLI:** `cd` into your clone (`~/.cursor/plugins/kobiton-automate` or `.kobiton-automate` inside your project) and run `git pull`. Restart `agent` so the new manifest is picked up.
 
 To make sure the assistant picks up the changes with no stale cache, reload per CLI:
 
