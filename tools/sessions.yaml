@@ -135,6 +135,14 @@ tools:
             Epoch milliseconds. Return only events newer than this. Pass the
             timestamp of the last event you saw to page forward; omit to get all
             currently buffered events.
+        limit:
+          type: integer
+          description: >-
+            Maximum number of events to return (default 50, max 200). Useful on
+            the first poll against a session where the human has been
+            interacting before you started — pages forward by re-calling with
+            the newest seen timestamp as sinceTimestamp.
+          default: 50
       required:
         - userIntent
         - sessionId

@@ -259,7 +259,7 @@ Call `getSessionArtifacts` with the session ID to retrieve:
 
 **Watch for user redirection (when the device-only view is open).** While the background script runs, poll `getUserInputEvents` with the matched `sessionId` between your scripted commands — no faster than once per second. Track the timestamp of the newest event you have seen and pass it as `sinceTimestamp` on the next call so you only get new gestures:
 
-- On the first poll, omit `sinceTimestamp` to drain everything buffered.
+- On the first poll, omit `sinceTimestamp` to drain everything buffered. Each response is capped (default 50 events, max 200) — if you see exactly that many events in a single response there may be more behind them; re-poll immediately with `sinceTimestamp` set to the newest event's timestamp to page forward.
 - If the response contains events, surface them as observations and let them steer your plan — e.g. a touch at `(0.42, 0.78)` near the bottom-right means "the user tapped there; they may want me to focus on whatever is at that position (looks like Settings)." A swipe (`xNorm/yNorm` → `xNorm2/yNorm2`) means they want you to scroll or navigate in that direction.
 - Advance `sinceTimestamp` to the largest `timestamp` you received, so the next poll returns only newer gestures.
 - These gestures never drive the device themselves — you remain in control via your scripted Appium / `runDeviceCommand` calls. Treat them strictly as hints about what the human wants next.
