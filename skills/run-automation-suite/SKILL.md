@@ -7,7 +7,7 @@ description: >-
   devices, or kick off an Appium suite from a local script directory.
   Trigger with "run kobiton tests" or "execute appium on kobiton".
 allowed-tools: >-
-  Read, Write, Edit,
+  Read, Edit,
   Bash(node:*), Bash(npm:*), Bash(npx:*), Bash(yarn:*), Bash(pnpm:*),
   Bash(python:*), Bash(python3:*), Bash(pytest:*),
   Bash(java:*), Bash(mvn:*), Bash(gradle:*), Bash(./gradlew:*),
@@ -43,15 +43,14 @@ Before invoking this skill, ensure:
 
 ## Authentication
 
-This skill calls tools served by the Kobiton MCP server at `api.kobiton.com/mcp`. Three authentication configurations ship with the plugin; one of them must be active before any MCP tool will respond:
+This skill calls tools served by the Kobiton MCP server at `api.kobiton.com/mcp`. Two authentication configurations ship with the plugin; one of them must be active before any MCP tool will respond:
 
 | Config file | Auth mechanism | When to use |
 |---|---|---|
-| `.mcp.json` (default) | OAuth 2.1 browser flow | Interactive Claude Code session for an end user |
+| `.mcp.json` (default) | OAuth 2.1 browser flow | Interactive AI-CLI session for an end user |
 | `.mcp.apikey-example.json` | Basic auth header — `Authorization: Basic base64(username:apikey)` from the `KOBITON_AUTH` env var | CI / headless / scripted invocations; copy this file over `.mcp.json` |
-| `.mcp.dev-local.json` | Direct connection to `localhost:3000/mcp` | Kobiton internal development against a local MCP server build |
 
-If the skill is invoked and no MCP connection is established, abort step 1 and surface a clear error: the user needs to authenticate via `claude mcp` before any device or session call can succeed. Do NOT attempt to recover by retrying — the auth context is fixed at session start.
+If the skill is invoked and no MCP connection is established, abort step 1 and surface a clear error: the user needs to authenticate the Kobiton MCP server in their AI CLI before any device or session call can succeed. The exact invocation depends on the host (e.g. `/mcp` in Claude Code, `/mcp auth kobiton` in GitHub Copilot CLI and Gemini CLI, automatic browser flow on first tool call in Codex CLI — see the plugin README for current per-CLI commands). Do NOT attempt to recover by retrying — the auth context is fixed at session start.
 
 ## Instructions
 

@@ -1,9 +1,5 @@
 # Changelog
 
-## Unreleased
-
-- `run-automation-suite` SKILL.md: new `## Authentication` section documenting the three `.mcp.*.json` variants (OAuth 2.1 default, API-key for CI, dev-local for Kobiton-internal). `allowed-tools` extended to include `Write` (for capability auto-edit in Step 3) and `Bash(sleep:*)` (for the Step 4 session-initialization wait)
-
 ## 1.2.0 - 2026-05-18
 
 - Multi-CLI support: install on GitHub Copilot CLI, Gemini CLI, and Codex CLI in addition to Claude Code
