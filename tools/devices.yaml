@@ -9,7 +9,6 @@ tools:
     annotations:
       readOnlyHint: true
       destructiveHint: false
-      idempotentHint: true
       openWorldHint: false
     inputSchema:
       type: object
@@ -61,7 +60,6 @@ tools:
     annotations:
       readOnlyHint: true
       destructiveHint: false
-      idempotentHint: true
       openWorldHint: false
     inputSchema:
       type: object
@@ -118,7 +116,7 @@ tools:
     annotations:
       readOnlyHint: false
       destructiveHint: true
-      idempotentHint: false
+      idempotentHint: true
       openWorldHint: false
     inputSchema:
       type: object
