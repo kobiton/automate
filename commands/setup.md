@@ -1,5 +1,5 @@
 ---
-name: automate-setup
+name: "automate:setup"
 description: Fetch Kobiton credentials from the authenticated MCP server and write them to ~/.kobiton/.credentials.
 allowed-tools:
   - Bash
