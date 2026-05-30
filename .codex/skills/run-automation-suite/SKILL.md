@@ -13,7 +13,7 @@ allowed-tools: >-
   Bash(java:*), Bash(mvn:*), Bash(gradle:*), Bash(./gradlew:*),
   Bash(dotnet:*),
   Bash(ruby:*), Bash(bundle:*), Bash(rspec:*),
-  Bash(open:*), Bash(xdg-open:*)
+  Bash(open:*), Bash(xdg-open:*), Bash(sleep:*)
 version: 1.0.2
 author: Kobiton Inc.
 license: MIT
@@ -40,6 +40,17 @@ Before invoking this skill, ensure:
 - **Runtime installed locally** - Node.js + npm/npx, Python + pip, Java + mvn/gradle, .NET SDK, or Ruby + bundle, whichever your test script uses.
 - **App build (or store reference)** - either a local `.apk` / `.ipa` / `.zip` build artifact for upload, or a `kobiton-store:vXXXXX` reference for an existing upload.
 - **Kobiton account** - credentials with device access for the target platform (Android / iOS) and remaining session quota.
+
+## Authentication
+
+This skill calls tools served by the Kobiton MCP server at `api.kobiton.com/mcp`. Two authentication configurations ship with the plugin; one of them must be active before any MCP tool will respond:
+
+| Config file | Auth mechanism | When to use |
+|---|---|---|
+| `.mcp.json` (default) | OAuth 2.1 browser flow | Interactive AI-CLI session for an end user |
+| `.mcp.apikey-example.json` | Basic auth header — `Authorization: Basic base64(username:apikey)` from the `KOBITON_AUTH` env var | CI / headless / scripted invocations; copy this file over `.mcp.json` |
+
+If the skill is invoked and no MCP connection is established, abort step 1 and surface a clear error: the user needs to authenticate the Kobiton MCP server in their AI CLI before any device or session call can succeed. The exact invocation depends on the host (e.g. `/mcp` in Claude Code, `/mcp auth kobiton` in GitHub Copilot CLI and Gemini CLI, automatic browser flow on first tool call in Codex CLI — see the plugin README for current per-CLI commands). Do NOT attempt to recover by retrying — the auth context is fixed at session start.
 
 ## Instructions
 
