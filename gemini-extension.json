@@ -1,6 +1,6 @@
 {
   "name": "kobiton-automate",
-  "version": "1.2.2",
+  "version": "1.3.0",
   "description": "Connect to Kobiton mobile testing platform - manage devices, run automation suites, and view test results",
   "contextFileName": "AGENTS.md",
   "mcpServers": {

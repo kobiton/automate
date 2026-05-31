@@ -1,4 +1,5 @@
 ---
+name: "automate:setup"
 description: Fetch Kobiton credentials from the authenticated MCP server and write them to ~/.kobiton/.credentials.
 allowed-tools:
   - Bash
@@ -11,7 +12,7 @@ Bootstrap the plugin: ensure the CLI wrapper symlink is installed, then fetch th
 
 ## Step 0: Ensure the CLI wrapper symlink is installed
 
-The `run-interactive-test` skill depends on `~/.kobiton/bin/kobiton`. Claude Code and Codex CLI both recreate this symlink automatically via a bundled SessionStart hook; on Codex, the user trusts the hook once via `/hooks` after install. This command (`/automate:setup`) re-installs the symlink on demand. GitHub Copilot CLI and Gemini CLI also load `/automate:setup` (Copilot via Claude-format `.md`, Gemini via the bundled TOML at `commands/automate/setup.toml`) — neither has a SessionStart hook, so users on those CLIs run `/automate:setup` once after install.
+The `run-interactive-test` skill depends on `~/.kobiton/bin/kobiton`. Claude Code and Codex CLI both recreate this symlink automatically via a bundled SessionStart hook; on Codex, the user trusts the hook once via `/hooks` after install. This command (`/automate:setup`) re-installs the symlink on demand. GitHub Copilot CLI and Gemini CLI also load `/automate:setup` (Copilot via Claude-format `.md`, Gemini via the bundled TOML at `commands/automate/setup.toml`) — neither has a SessionStart hook, so users on those CLIs run `/automate:setup` once after install. Cursor CLI loads this same `.md` via the `commands` field in `.cursor-plugin/plugin.json` and recreates the symlink through its own `sessionStart` hook.
 
 Run the install script bundled with this plugin. This file (`setup.md`) lives at `<plugin-root>/commands/setup.md`, so the install script is at `<plugin-root>/scripts/install-cli.sh`. Resolve `<plugin-root>` to its absolute path and run:
 

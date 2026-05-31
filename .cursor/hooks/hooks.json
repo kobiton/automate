@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "command": "bash ${CURSOR_PLUGIN_ROOT}/scripts/install-cli.sh"
+      }
+    ]
+  }
+}

@@ -4,7 +4,7 @@
 [![Cloud](https://img.shields.io/badge/Cloud-☁️-blue)](https://kobiton.com)
 [![Twitter Follow](https://img.shields.io/twitter/follow/KobitonMobile?style=social)](https://x.com/KobitonMobile)
 
-Plugin for the [Kobiton](https://kobiton.com) mobile testing platform. Works with [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview), [GitHub Copilot CLI](https://docs.github.com/en/copilot/github-copilot-in-the-cli), [Gemini CLI](https://github.com/google-gemini/gemini-cli), and [Codex CLI](https://github.com/openai/codex). Manage devices, upload apps, run automation sessions, and view test results directly from your AI coding assistant.
+Plugin for the [Kobiton](https://kobiton.com) mobile testing platform. Works with [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview), [GitHub Copilot CLI](https://docs.github.com/en/copilot/github-copilot-in-the-cli), [Gemini CLI](https://github.com/google-gemini/gemini-cli), [Codex CLI](https://github.com/openai/codex), and [Cursor CLI](https://cursor.com/cli). Manage devices, upload apps, run automation sessions, and view test results directly from your AI coding assistant.
 
 ## Contents
 
@@ -14,6 +14,8 @@ Plugin for the [Kobiton](https://kobiton.com) mobile testing platform. Works wit
   - [GitHub Copilot CLI](#github-copilot-cli)
   - [Gemini CLI](#gemini-cli)
   - [Codex CLI](#codex-cli)
+  - [Cursor CLI](#cursor-cli)
+  - [Other MCP Clients](#other-mcp-clients)
 - [Login](#login)
   - [API Key Authentication (Alternative)](#api-key-authentication-alternative)
 - [Getting Started](#getting-started)
@@ -34,7 +36,7 @@ Plugin for the [Kobiton](https://kobiton.com) mobile testing platform. Works wit
 Make sure you have:
 
 - **A Kobiton account** - sign up at [kobiton.com](https://kobiton.com) if you don't have one
-- **A supported AI CLI** - install [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview), [Copilot CLI](https://docs.github.com/en/copilot/github-copilot-in-the-cli), [Gemini CLI](https://github.com/google-gemini/gemini-cli), or [Codex CLI](https://github.com/openai/codex)
+- **A supported AI CLI** - install [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview), [Copilot CLI](https://docs.github.com/en/copilot/github-copilot-in-the-cli), [Gemini CLI](https://github.com/google-gemini/gemini-cli), [Codex CLI](https://github.com/openai/codex), or [Cursor CLI](https://cursor.com/cli)
 - **A project directory** - your AI assistant must launch from a workspace, not from your home folder
 
 ## Installation
@@ -123,25 +125,32 @@ curl -sLO https://raw.githubusercontent.com/kobiton/automate/main/AGENTS.md
 Launch `codex` and run `/mcp` to confirm. The OAuth flow still applies on the first tool call.
 </details>
 
-### Other MCP Clients
+### Cursor CLI
 
-The Kobiton MCP server (`https://api.kobiton.com/mcp`) speaks the open Model Context Protocol and can be consumed by any spec-compliant MCP client. The configs below are derived from each client's published documentation; the Kobiton-side OAuth flow is the same across all of them. **End-to-end tested only on Claude Code, Copilot CLI, Gemini CLI, and Codex CLI**; entries below are configs we expect to work but have not yet validated — please open an issue if any do not work for your setup.
+Open your project and start a Cursor CLI session:
 
-#### Cursor
-
-Cursor reads MCP servers from `.cursor/mcp.json` at the project root (or `~/.cursor/mcp.json` for global). This repo ships a default project-level config at [`.cursor/mcp.json`](.cursor/mcp.json):
-
-```json
-{
-  "mcpServers": {
-    "kobiton": {
-      "url": "https://api.kobiton.com/mcp"
-    }
-  }
-}
+```bash
+cd my-project
+agent
 ```
 
-On first connection Cursor opens a browser for OAuth login (same flow as Claude Code's `/mcp` command). Cursor's fixed OAuth redirect URL is `cursor://anysphere.cursor-mcp/oauth/callback`. Reference: [cursor.com/docs/context/mcp](https://cursor.com/docs/context/mcp).
+Inside the session, add the Kobiton marketplace and fetch the **automate** plugin from the repo.
+
+```
+/plugin marketplace add https://github.com/kobiton/automate
+```
+
+Then open **automate** and choose **Install for you**, it installs the 2 skills, the `kobiton` MCP server, and the `/automate:setup` and `/automate:doctor` commands.
+
+Run `/mcp list`, select **kobiton**, and choose **Login** to complete Kobiton OAuth in the browser.
+
+Run `/automate:setup` once to install the `~/.kobiton/bin/kobiton` CLI wrapper used by the `run-interactive-test` skill.
+
+### Other MCP Clients
+
+Kobiton's MCP server is built on the open [Model Context Protocol](https://modelcontextprotocol.io), so **any MCP-compatible client can connect to it**. Same endpoint (`https://api.kobiton.com/mcp`), same browser-based OAuth login as the clients above.
+
+> **Good to know:** End-to-end tested only on Claude Code, Copilot CLI, Gemini CLI, Codex CLI, and Cursor CLI; entries below are configs we expect to work but have not yet validated. Please [open an issue](https://github.com/kobiton/automate/issues/new?template=bug_report.md) if any do not work for your setup. We're happy to help.
 
 #### ChatGPT (Apps SDK)
 
@@ -153,9 +162,9 @@ https://api.kobiton.com/mcp
 
 The Apps SDK does not require a separate manifest file; tool descriptors, OAuth flow, and `_meta.ui` widget hints flow through the MCP protocol itself. Reference: [developers.openai.com/apps-sdk/build/mcp-server](https://developers.openai.com/apps-sdk/build/mcp-server).
 
-#### Continue / Cline / other generic MCP clients
+#### Cursor / Continue / Cline / other generic MCP clients
 
-Most generic MCP clients support the open Streamable HTTP transport. Use a config block like:
+The Cursor IDE (the desktop editor, not the `agent` CLI covered above) reads MCP servers from the `.cursor/mcp.json` this repo already ships, so opening the project is enough.
 
 ```json
 {
@@ -167,7 +176,22 @@ Most generic MCP clients support the open Streamable HTTP transport. Use a confi
 }
 ```
 
-Adjust to your client's specific format. The server URL and OAuth handshake are the same; if your client doesn't support OAuth, fall back to the API-key auth path (see [API Key Authentication](#api-key-authentication-alternative) below) — most clients accept custom `headers` blocks.
+Adjust to your client's specific format. The server URL and OAuth handshake are the same; if your client doesn't support OAuth, fall back to the API-key auth path (see [API Key Authentication](#api-key-authentication-alternative) below) - most clients accept custom `headers` blocks.
+
+<details>
+<summary><strong>Alternative: project-only MCP config (MCP server only, no skills or commands)</strong></summary>
+
+For a lightweight per-project setup that registers just the `kobiton` MCP server, drop `.cursor/mcp.json` from this repo into your project's `.cursor/` directory:
+
+```bash
+cd my-project
+mkdir -p .cursor
+curl -sLO --output-dir .cursor https://raw.githubusercontent.com/kobiton/automate/main/.cursor/mcp.json
+agent
+```
+
+You won't get the bundled skills, the `/automate:setup` and `/automate:doctor` commands, or the CLI wrapper.
+</details>
 
 ## Login
 
@@ -179,6 +203,7 @@ You can also trigger or inspect authentication explicitly:
 - **GitHub Copilot CLI**: type `/mcp auth kobiton` to start the OAuth flow; use `/mcp` (or `/mcp show`) to inspect server status
 - **Gemini CLI**: type `/mcp auth kobiton` to start the OAuth flow; use `/mcp` to inspect server status
 - **Codex CLI**: browser opens automatically on the first MCP tool call (e.g. *"List my Kobiton devices"*) after plugin install. Tokens are cached in the OS keychain with automatic refresh. Use `/mcp` (or `/mcp verbose`) to inspect server status
+- **Cursor CLI**: run `/mcp list`, select **kobiton**, and choose **Login** to start the OAuth flow; tokens are stored by Cursor in the OS keychain
 
 Behind the scenes, `.mcp.json` points to the Kobiton MCP server and authentication uses OAuth 2.1:
 
@@ -246,8 +271,8 @@ To verify everything is wired correctly, run the diagnostic:
 
 **CLI symlink install behavior across CLIs:** The `run-interactive-test` skill depends on a `~/.kobiton/bin/kobiton` symlink.
 
-- **Claude Code, Codex CLI**: is recreated automatically by a bundled SessionStart hook on every session start. On Codex, the first session prompts you to trust the hook once via `/hooks`; subsequent sessions run it silently. Running `/automate:setup` (Claude) also recreates the symlink on demand.
-- **GitHub Copilot CLI, Gemini CLI**: both CLIs load `/automate:setup` (Copilot reads Claude-format Markdown commands; Gemini reads bundled TOML commands at `commands/automate/setup.toml`). Run `/automate:setup` once after install to create the symlink. Neither CLI has a SessionStart hook, so the symlink isn't recreated automatically - re-run setup if it goes missing.
+- **Claude Code, Codex CLI**: recreated automatically by a bundled SessionStart hook on every session start. On Codex, the first session prompts you to trust the hook once via `/hooks`; subsequent sessions run it silently. Running `/automate:setup` also recreates the symlink on demand.
+- **GitHub Copilot CLI, Gemini CLI, Cursor CLI**: no SessionStart hook runs, so create the symlink manually by running the setup command once after install: `/automate:setup` on Copilot, Gemini and Cursor (Copilot reads Claude-format Markdown commands; Gemini reads bundled TOML at `commands/automate/setup.toml`). Re-run it if the symlink goes missing.
 
 Manual fallback - if the SessionStart hook was denied on Codex, or you need to install without an active session:
 
@@ -343,6 +368,7 @@ After the plugin is updated upstream, pull the latest version:
 - **Claude Code / Copilot CLI:** run `/plugin install automate@kobiton` again
 - **Gemini CLI:** run `gemini extensions update kobiton-automate` from your shell
 - **Codex CLI:** run `codex plugin marketplace upgrade` to refresh the marketplace catalog, then reinstall the plugin from the browser to pull the latest manifest
+- **Cursor CLI:** re-run `/plugin marketplace add https://github.com/kobiton/automate` and reinstall the **automate** plugin - Cursor CLI has no dedicated update command yet (`/plugin marketplace list` only lists what's installed). Restart `agent` so the new manifest is picked up.
 
 To make sure the assistant picks up the changes with no stale cache, reload per CLI:
 

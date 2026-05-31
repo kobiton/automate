@@ -18,11 +18,7 @@
         "email": "support@kobiton.com"
       },
       "license": "MIT",
-      "category": "testing",
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
+      "category": "developer-tools",
       "keywords": [
         "mobile",
         "test",

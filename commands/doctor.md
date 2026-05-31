@@ -1,4 +1,5 @@
 ---
+name: "automate:doctor"
 description: Run read-only health checks on the Kobiton automate plugin (CLI, credentials, profile).
 allowed-tools:
   - Bash

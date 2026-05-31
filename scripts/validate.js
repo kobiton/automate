@@ -21,6 +21,10 @@ export function validateProject(rootDir) {
     '.agents/plugins/marketplace.json',
     '.codex/.codex-plugin/plugin.json',
     '.codex/.mcp.json',
+    '.cursor-plugin/plugin.json',
+    '.cursor-plugin/marketplace.json',
+    '.cursor/mcp.json',
+    '.cursor/hooks/hooks.json',
     'gemini-extension.json'
   ]
 
@@ -40,7 +44,7 @@ export function validateProject(rootDir) {
   }
 
   // Validate plugin.json required fields
-  for (const pluginPath of ['.claude-plugin/plugin.json', '.codex/.codex-plugin/plugin.json']) {
+  for (const pluginPath of ['.claude-plugin/plugin.json', '.codex/.codex-plugin/plugin.json', '.cursor-plugin/plugin.json']) {
     const filePath = join(rootDir, pluginPath)
     if (!existsSync(filePath)) {
       continue
@@ -88,6 +92,23 @@ export function validateProject(rootDir) {
       }
       else if (!mcp.mcpServers.kobiton.url) {
         fail('.codex/.mcp.json missing mcpServers.kobiton.url')
+      }
+    }
+    catch {
+      // Already caught by JSON validation above
+    }
+  }
+
+  // Validate .cursor/mcp.json (Cursor uses the same mcpServers shape as Claude)
+  const cursorMcpPath = join(rootDir, '.cursor/mcp.json')
+  if (existsSync(cursorMcpPath)) {
+    try {
+      const mcp = JSON.parse(readFileSync(cursorMcpPath, 'utf8'))
+      if (!mcp.mcpServers?.kobiton) {
+        fail('.cursor/mcp.json missing mcpServers.kobiton')
+      }
+      else if (!mcp.mcpServers.kobiton.url) {
+        fail('.cursor/mcp.json missing mcpServers.kobiton.url')
       }
     }
     catch {
@@ -180,8 +201,8 @@ export function validateProject(rootDir) {
     }
   }
 
-  // Validate referenced paths exist (Claude + Codex plugin manifests)
-  for (const pluginPath of ['.claude-plugin/plugin.json', '.codex/.codex-plugin/plugin.json']) {
+  // Validate referenced paths exist (Claude + Codex + Cursor plugin manifests)
+  for (const pluginPath of ['.claude-plugin/plugin.json', '.codex/.codex-plugin/plugin.json', '.cursor-plugin/plugin.json']) {
     const filePath = join(rootDir, pluginPath)
     if (!existsSync(filePath)) {
       continue

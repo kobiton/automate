@@ -50,7 +50,7 @@ This skill calls tools served by the Kobiton MCP server at `api.kobiton.com/mcp`
 | `.mcp.json` (default) | OAuth 2.1 browser flow | Interactive AI-CLI session for an end user |
 | `.mcp.apikey-example.json` | Basic auth header — `Authorization: Basic base64(username:apikey)` from the `KOBITON_AUTH` env var | CI / headless / scripted invocations; copy this file over `.mcp.json` |
 
-If the skill is invoked and no MCP connection is established, abort step 1 and surface a clear error: the user needs to authenticate the Kobiton MCP server in their AI CLI before any device or session call can succeed. The exact invocation depends on the host (e.g. `/mcp` in Claude Code, `/mcp auth kobiton` in GitHub Copilot CLI and Gemini CLI, automatic browser flow on first tool call in Codex CLI — see the plugin README for current per-CLI commands). Do NOT attempt to recover by retrying — the auth context is fixed at session start.
+If the skill is invoked and no MCP connection is established, abort step 1 and surface a clear error: the user needs to authenticate the Kobiton MCP server in their AI CLI before any device or session call can succeed. The exact invocation depends on the host (e.g. `/mcp` in Claude Code, `/mcp auth kobiton` in GitHub Copilot CLI and Gemini CLI, automatic browser flow on first tool call in Codex CLI, `/mcp list` then Login in Cursor CLI — see the plugin README for current per-CLI commands). Do NOT attempt to recover by retrying — the auth context is fixed at session start.
 
 ## Instructions
 

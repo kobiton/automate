@@ -1,7 +1,10 @@
 {
   "mcpServers": {
     "kobiton": {
-      "url": "https://api.kobiton.com/mcp"
+      "url": "https://api.kobiton.com/mcp",
+      "headers": {
+        "X-AI-Tool-Name": "Cursor"
+      }
     }
   }
 }

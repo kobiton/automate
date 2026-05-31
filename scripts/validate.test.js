@@ -54,6 +54,28 @@ function setupValidProject(dir) {
     mcpServers: {kobiton: {httpUrl: 'https://api.kobiton.com/mcp'}}
   }))
 
+  mkdirSync(join(dir, '.cursor-plugin'))
+  writeFileSync(join(dir, '.cursor-plugin/plugin.json'), JSON.stringify({
+    name: 'automate',
+    version: '1.0.2',
+    description: 'Test',
+    mcpServers: './.cursor/mcp.json',
+    skills: './skills/'
+  }))
+  writeFileSync(join(dir, '.cursor-plugin/marketplace.json'), JSON.stringify({
+    name: 'kobiton',
+    owner: {name: 'Kobiton'},
+    plugins: [{name: 'automate', source: './', description: 'Test'}]
+  }))
+  mkdirSync(join(dir, '.cursor/hooks'), {recursive: true})
+  writeFileSync(join(dir, '.cursor/mcp.json'), JSON.stringify({
+    mcpServers: {kobiton: {url: 'https://api.kobiton.com/mcp'}}
+  }))
+  writeFileSync(join(dir, '.cursor/hooks/hooks.json'), JSON.stringify({
+    version: 1,
+    hooks: {sessionStart: [{command: 'bash ${CURSOR_PLUGIN_ROOT}/scripts/install-cli.sh'}]}
+  }))
+
   mkdirSync(join(dir, 'tools'))
   for (const file of ['devices.yaml', 'sessions.yaml', 'apps.yaml', 'user.yaml']) {
     writeFileSync(join(dir, 'tools', file), [
