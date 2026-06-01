@@ -193,7 +193,7 @@ When the chromeless launcher is invoked, it opens Chrome in `--app` mode (no tab
 
 | Device class | Detect by name (case-insensitive) | Portrait `width × height` | Landscape `width × height` |
 |---|---|---|---|
-| Tablet | `iPad`, `Galaxy Tab`, `Pixel Tablet`, `Surface`, `MatePad`, or any model with "Tab" or "Pad" in the name | **`820 × 1024`** | `1024 × 820` |
+| Tablet | `iPad`, `Galaxy Tab`, `Pixel Tablet`, `Surface`, `MatePad`, or any model with "Tab" or "Pad" in the name | **`880 × 1024`** | `1024 × 880` |
 | Fold (unfolded) | `Fold`, `Z Fold`, `Pixel Fold` | **`580 × 1080`** | `1080 × 580` |
 | Phone (default — Galaxy, Pixel, iPhone, OnePlus, Xiaomi, …) | none of the above patterns match | **`520 × 1000`** | `1000 × 520` |
 
