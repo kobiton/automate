@@ -12,8 +12,8 @@
 set -euo pipefail
 
 URL=""
-WIDTH=420
-HEIGHT=920
+WIDTH=480
+HEIGHT=1000
 
 while [ $# -gt 0 ]; do
   case "$1" in

@@ -189,15 +189,27 @@ Where `<deviceId>` is the ID of the selected device from Step 2 (returned by `li
 - **No preference saved**, OR **preference is Google Chrome** → invoke the chromeless launcher (the section below). On the very first run the launcher prompts the user to confirm Chrome via the macOS Automation grant; the choice is sticky.
 - **Preference is Safari, Firefox, or Default browser** → skip the chromeless launcher entirely. The user has explicitly told us they prefer a non-Chrome browser, and a chromeless Chrome window would override that. Fall through to the **Default-browser fallback** section below — that path honors their saved preference.
 
-When the chromeless launcher is invoked, it opens Chrome in `--app` mode (no tab strip, no URL bar, no bookmarks bar) and resizes the window to a phone-shaped frame. Pick the right command for the host OS:
+When the chromeless launcher is invoked, it opens Chrome in `--app` mode (no tab strip, no URL bar, no bookmarks bar) and resizes the window to a device-shaped frame. **Pick width and height based on the reserved device's form factor** (the device name from Step 2 — `listDevices` / `getDeviceStatus` / `reserveDevice`):
+
+| Device class | Detect by name (case-insensitive) | Portrait `width × height` | Landscape `width × height` |
+|---|---|---|---|
+| Tablet | `iPad`, `Galaxy Tab`, `Pixel Tablet`, `Surface`, `MatePad`, or any model with "Tab" or "Pad" in the name | **`768 × 1024`** | `1024 × 768` |
+| Fold (unfolded) | `Fold`, `Z Fold`, `Pixel Fold` | **`580 × 1080`** | `1080 × 580` |
+| Phone (default — Galaxy, Pixel, iPhone, OnePlus, Xiaomi, …) | none of the above patterns match | **`480 × 1000`** | `1000 × 480` |
+
+The phone default is `480 × 1000` (not the older `420 × 920`) so the device-only view's right-side **exit button** is fully visible without overlapping the device canvas — empirically tested on Galaxy S24 Ultra (2026-06-01). The tablet preset is sized to fit a 1× iPad (768 px wide); the fold preset is for unfolded mode where the device is nearly square.
+
+If `getSession` / the rendered capabilities report `orientation=LANDSCAPE`, swap width and height (use the **Landscape** column above). Default is portrait.
+
+Pick the right command for the host OS:
 
 | OS | Command |
 |----|---------|
-| macOS | `bash skills/run-automation-suite/scripts/chromeless-launcher.sh --url "<url>" --width 420 --height 920` |
-| Windows | `pwsh skills/run-automation-suite/scripts/chromeless-launcher-windows.ps1 -Url "<url>" -Width 420 -Height 920` |
-| Linux | `bash skills/run-automation-suite/scripts/chromeless-launcher.sh --url "<url>" --width 420 --height 920` (launch-only — no auto-resize on Linux) |
+| macOS | `bash skills/run-automation-suite/scripts/chromeless-launcher.sh --url "<url>" --width <W> --height <H>` |
+| Windows | `pwsh skills/run-automation-suite/scripts/chromeless-launcher-windows.ps1 -Url "<url>" -Width <W> -Height <H>` |
+| Linux | `bash skills/run-automation-suite/scripts/chromeless-launcher.sh --url "<url>" --width <W> --height <H>` (launch-only — no auto-resize on Linux) |
 
-Default size is `420×920` (portrait). When the reserved device's `orientation` is `LANDSCAPE` (from `getSession` or the rendered capabilities), pass `--width 920 --height 420` (or `-Width 920 -Height 420` on Windows).
+`<W>` and `<H>` are the dimensions from the table above — substitute literally; **do not pass `420 × 920`** for any device class (it's an outdated default that clips the exit button on most modern devices).
 
 **On macOS, the very first run** triggers a system prompt: *"X wants to control Google Chrome.app"* — click OK. The grant lives under System Settings → Privacy & Security → **Automation** (NOT Accessibility) and persists per host process. Tell the user this once if you can see it's their first invocation.
 

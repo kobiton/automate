@@ -19,8 +19,8 @@
 set -euo pipefail
 
 URL=""
-WIDTH=420
-HEIGHT=920
+WIDTH=480
+HEIGHT=1000
 ORIENTATION="portrait"
 X=100
 Y=100
@@ -69,9 +69,11 @@ case "$URL" in
 esac
 
 # Landscape swaps width/height when the caller didn't pass explicit dimensions
-# already shaped for landscape. The 420/920 defaults assume portrait; for a
-# landscape device the caller should pass --width 920 --height 420 directly,
-# but if they only pass --orientation landscape, swap here as a convenience.
+# already shaped for landscape. The defaults (480x1000 phone / caller-supplied
+# 768x1024 tablet / 580x1080 fold — per SKILL.md Step 5 device-class heuristic)
+# all assume portrait; for a landscape device the caller should pass already-
+# swapped dimensions directly, but if they only pass --orientation landscape,
+# swap here as a convenience.
 if [ "$ORIENTATION" = "landscape" ] && [ "$WIDTH" -lt "$HEIGHT" ]; then
   TMP="$WIDTH"; WIDTH="$HEIGHT"; HEIGHT="$TMP"
 fi

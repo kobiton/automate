@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.4.0-dev.1 - 2026-06-01
+
+- Widen the chromeless launcher's phone default from `420×920` → **`480×1000`** so the device-only view's right-side exit button is fully visible without overlapping the device canvas. Empirically verified on Galaxy S24 Ultra (2026-06-01); the prior 420 px width clipped the exit button by ~30 px on phones with wider physical aspect ratios.
+- Add a **device-class sizing heuristic** to `SKILL.md` Step 5. The skill now picks launcher dimensions from the resolved device name (case-insensitive match): tablet (`iPad`, `Galaxy Tab`, `Pixel Tablet`, `Surface`, `MatePad`, names containing `Tab` or `Pad`) → `768×1024`; fold (`Fold`, `Z Fold`, `Pixel Fold`) → `580×1080`; phone (default) → `480×1000`. Landscape orientation swaps width and height. This stops tablets from rendering in a phone-shaped window with most of the canvas cropped.
+- The MCP `listDevices` / `getDeviceStatus` schemas do **not** expose a resolution field today (only `device_name`, `platform`, `platform_version`, `is_online`, `is_booked`); the heuristic above is a name-pattern proxy. A follow-up could add `screen_width` / `screen_height` to the API responses and have the skill use them when present — out of scope for this EPA.
+- Updated TC suite: TC-01 through TC-14 have their `420×920` references updated to `480×1000` (and `920×420` → `1000×480` for landscape). Added TC-16 (tablet → 768×1024) and TC-17 (fold → 580×1080) to exercise the new heuristic. Coverage checklist expanded.
+
 ## 1.4.0-dev.0 - 2026-06-01
 
 - New **chromeless launcher** for `run-automation-suite` Step 5: when the skill resolves the device-only view URL and the user's saved browser preference is Google Chrome (or no preference is saved), launch Chrome in `--app` window mode (no tab strip, no URL bar, no bookmarks bar) and resize the window to a phone-shaped frame at runtime. Per-OS shims:
