@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.4.0-dev.0 - 2026-06-01
+
+- New **chromeless launcher** for `run-automation-suite` Step 5: when the skill resolves the device-only view URL and the user's saved browser preference is Google Chrome (or no preference is saved), launch Chrome in `--app` window mode (no tab strip, no URL bar, no bookmarks bar) and resize the window to a phone-shaped frame at runtime. Per-OS shims:
+  - **macOS:** `osascript` resize loop with 10s poll, URL-substring window match, per-window `try`/`on error` so a stray DevTools window doesn't abort the iteration. Requires a one-time **Automation** grant for the host process to control Google Chrome (System Settings → Privacy & Security → Automation — NOT Accessibility). Macos error `-1743` (Automation denied) is fail-open: window opens at default size, warning logged, skill continues.
+  - **Windows:** PowerShell + `Add-Type` `SetWindowPos`; matches the new chromeless window via a snapshot-before / diff-after over all visible top-level Chrome windows (works whether Chrome was already running and `chrome.exe --app=` delegated to it, or started fresh).
+  - **Linux:** launches Chrome `--app` + `--window-size` hint; no runtime resize (no portable cross-WM hook). Honored by Mutter, ignored by tiling WMs.
+- Falls back gracefully: if Chrome / Chromium is not installed (exit code `2` from the launcher), or the URL branch is the manual-interaction form (no `?view=device-only`), or the user has explicitly saved Safari / Firefox / Default browser as their preference, the existing browser-preference open path is used instead (`open -a "Safari" <url>`, `xdg-open <url>`, etc.). Chrome is never spawned in those branches; no macOS Automation prompt appears.
+- URL validation rejects bash-quoting-breaking metacharacters (`"`, backtick, `$`, `\`) and non-`http(s)` schemes at every launcher entry point. URL-syntax characters (`&`, `?`, `=`, `;`, `|`, `<`, `>`, single-quote) are accepted — Kobiton portal URLs need `&` between query params.
+- `SKILL.md` Step 5 restructured: launcher invocation is the first action on the device-only branch when the gate allows; the existing "Which browser should I open the session in?" prompt + `open` / `xdg-open` table become the fallback path.
+- `allowed-tools` extended to include `Bash(bash:*)`, `Bash(pwsh:*)`, `Bash(osascript:*)` (needed by the launcher shim invocations).
+- 32 new vitest cases in `skills/run-automation-suite/scripts/chromeless-launcher.test.js` covering arg parsing, exit-code sentinels (`64` usage / `2` Chrome-absent fallback / `0` fail-open), URL metacharacter rejection, and positive-path acceptance for real `?id=…&view=device-only` URLs.
+- `scripts/sync-version.js`: small drive-by fix — the CHANGELOG regex `(\d+\.\d+\.\d+)\b` over-matched `1.4.0` against `1.4.0-dev.0`, tripping the CI gate on every dev-version cut. Now accepts SemVer 2.0 pre-release suffixes. Regression test added.
+
 ## 1.3.0 - 2026-05-28
 
 - Multi-CLI support extended: install on [Cursor CLI](https://cursor.com/cli) in addition to the existing four hosts (Claude Code, GitHub Copilot CLI, Gemini CLI, Codex CLI)

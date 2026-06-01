@@ -13,7 +13,8 @@ allowed-tools: >-
   Bash(java:*), Bash(mvn:*), Bash(gradle:*), Bash(./gradlew:*),
   Bash(dotnet:*),
   Bash(ruby:*), Bash(bundle:*), Bash(rspec:*),
-  Bash(open:*), Bash(xdg-open:*), Bash(sleep:*)
+  Bash(open:*), Bash(xdg-open:*), Bash(sleep:*),
+  Bash(bash:*), Bash(pwsh:*), Bash(osascript:*)
 version: 1.0.2
 author: Kobiton Inc.
 license: MIT
@@ -183,7 +184,34 @@ Where `<deviceId>` is the ID of the selected device from Step 2 (returned by `li
 <portal-base-url>/devices/launch?id=<deviceId>
 ```
 
-**Browser preference:** Check auto memory for a saved browser preference. If none exists, ask the user which browser to use:
+**Launch via the chromeless helper (default — gated on saved browser preference).** For the **device-only** URL branch above, check auto memory for a saved browser preference:
+
+- **No preference saved**, OR **preference is Google Chrome** → invoke the chromeless launcher (the section below). On the very first run the launcher prompts the user to confirm Chrome via the macOS Automation grant; the choice is sticky.
+- **Preference is Safari, Firefox, or Default browser** → skip the chromeless launcher entirely. The user has explicitly told us they prefer a non-Chrome browser, and a chromeless Chrome window would override that. Fall through to the **Default-browser fallback** section below — that path honors their saved preference.
+
+When the chromeless launcher is invoked, it opens Chrome in `--app` mode (no tab strip, no URL bar, no bookmarks bar) and resizes the window to a phone-shaped frame. Pick the right command for the host OS:
+
+| OS | Command |
+|----|---------|
+| macOS | `bash skills/run-automation-suite/scripts/chromeless-launcher.sh --url "<url>" --width 420 --height 920` |
+| Windows | `pwsh skills/run-automation-suite/scripts/chromeless-launcher-windows.ps1 -Url "<url>" -Width 420 -Height 920` |
+| Linux | `bash skills/run-automation-suite/scripts/chromeless-launcher.sh --url "<url>" --width 420 --height 920` (launch-only — no auto-resize on Linux) |
+
+Default size is `420×920` (portrait). When the reserved device's `orientation` is `LANDSCAPE` (from `getSession` or the rendered capabilities), pass `--width 920 --height 420` (or `-Width 920 -Height 420` on Windows).
+
+**On macOS, the very first run** triggers a system prompt: *"X wants to control Google Chrome.app"* — click OK. The grant lives under System Settings → Privacy & Security → **Automation** (NOT Accessibility) and persists per host process. Tell the user this once if you can see it's their first invocation.
+
+**Launcher exit codes drive the fallback:**
+
+- `0` — Chrome was launched (resize may have logged a warning, but the session is fine). **Continue to Step 6.**
+- `2` — Chrome / Chromium is not installed on the host. **Fall through** to the default-browser fallback table below.
+- `64` — usage error (missing `--url` or unknown flag) — surface to the user; the launcher is buggy.
+
+**Manual-interaction fallback URL.** When the URL branch above was the **manual-interaction** form (the user explicitly asked to drive the device, so the URL has no `?view=device-only`), skip the chromeless helper entirely and go straight to the default-browser fallback below — the user wants the full Kobiton UI around the device, so a chromeless `--app` window would defeat the point.
+
+**Default-browser fallback** (used when (a) the saved browser preference is Safari/Firefox/Default, OR (b) chromeless exited 2 because Chrome is absent, OR (c) the URL branch is the manual-interaction form):
+
+Check auto memory for a saved browser preference. If none exists, ask the user which browser to use:
 
 > "Which browser should I open the session in?"
 > 1. Google Chrome
@@ -192,8 +220,6 @@ Where `<deviceId>` is the ID of the selected device from Step 2 (returned by `li
 > 4. Default browser
 
 Save their choice to auto memory so they are not asked again in future sessions.
-
-**Open the link:**
 
 | Choice | Command |
 |--------|---------|

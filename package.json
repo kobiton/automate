@@ -1,6 +1,6 @@
 {
   "name": "automate",
-  "version": "1.3.0",
+  "version": "1.4.0-dev.0",
   "type": "module",
   "private": true,
   "description": "Kobiton plugin manifests, tool schemas, and skills for AI coding assistants",

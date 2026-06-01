@@ -162,5 +162,17 @@ describe('syncVersion', () => {
       const {errors} = syncVersion(dir, {check: true})
       expect(errors).toContainEqual(expect.stringContaining('package.json has an invalid version'))
     })
+
+    it('accepts SemVer 2.0 pre-release suffixes in the CHANGELOG top entry', () => {
+      // Regression guard: the original `\d+\.\d+\.\d+\b` regex captured
+      // only the X.Y.Z prefix, so `## 1.4.0-dev.0` matched as "1.4.0" and
+      // was mis-compared against package.json's "1.4.0-dev.0", failing
+      // CI on every dev-version cut. The fix accepts the optional `-…`
+      // suffix.
+      setupFixture(dir, '1.4.0-dev.0')
+      const {errors, warnings} = syncVersion(dir, {check: true})
+      expect(errors).toEqual([])
+      expect(warnings).toEqual([])
+    })
   })
 })
