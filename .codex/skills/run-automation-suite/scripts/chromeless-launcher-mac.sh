@@ -16,8 +16,8 @@
 set -euo pipefail
 
 URL=""
-WIDTH=520
-HEIGHT=1000
+WIDTH=540
+HEIGHT=920
 X=100
 Y=100
 

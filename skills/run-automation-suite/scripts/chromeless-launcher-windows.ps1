@@ -17,8 +17,8 @@
 
 param(
   [Parameter(Mandatory = $true)] [string] $Url,
-  [int] $Width = 520,
-  [int] $Height = 1000,
+  [int] $Width = 540,
+  [int] $Height = 920,
   [int] $X = 100,
   [int] $Y = 100
 )

@@ -78,7 +78,7 @@ describe('chromeless-launcher.sh dispatcher', () => {
     // touching a real Chrome.
     const r = runExpectError(DISPATCHER, [
       '--url', 'http://example.com',
-      '--width', '480', '--height', '1000',
+      '--width', '540', '--height', '920',
       '--orientation', 'landscape'
     ], {OSTYPE: 'unknown-os'})
     expect(r.exitCode).toBe(2)

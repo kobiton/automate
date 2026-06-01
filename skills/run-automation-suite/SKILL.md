@@ -193,11 +193,11 @@ When the chromeless launcher is invoked, it opens Chrome in `--app` mode (no tab
 
 | Device class | Detect by name (case-insensitive) | Portrait `width × height` | Landscape `width × height` |
 |---|---|---|---|
-| Tablet | `iPad`, `Galaxy Tab`, `Pixel Tablet`, `Surface`, `MatePad`, or any model with "Tab" or "Pad" in the name | **`880 × 1024`** | `1024 × 880` |
-| Fold (unfolded) | `Fold`, `Z Fold`, `Pixel Fold` | **`580 × 1080`** | `1080 × 580` |
-| Phone (default — Galaxy, Pixel, iPhone, OnePlus, Xiaomi, …) | none of the above patterns match | **`520 × 1000`** | `1000 × 520` |
+| Tablet | `iPad`, `Galaxy Tab`, `Pixel Tablet`, `Surface`, `MatePad`, or any model with "Tab" or "Pad" in the name | **`800 × 920`** | `920 × 800` |
+| Fold (unfolded) | `Fold`, `Z Fold`, `Pixel Fold` | **`880 × 920`** | `920 × 880` |
+| Phone (default — Galaxy, Pixel, iPhone, OnePlus, Xiaomi, …) | none of the above patterns match | **`540 × 920`** | `920 × 540` |
 
-The phone default is `520 × 1000` (was 520 × 1000 briefly; was 420 × 920 before that) so the device-only view's right-side **exit button** is fully visible without overlapping the device canvas — empirically tested on Galaxy S24 Ultra (2026-06-01). The tablet preset is sized to fit a 1× iPad (768 px wide); the fold preset is for unfolded mode where the device is nearly square.
+All three presets share the same `920 px` height — only the width grows by device class — so the chromeless window's vertical footprint stays consistent.
 
 If `getSession` / the rendered capabilities report `orientation=LANDSCAPE`, swap width and height (use the **Landscape** column above). Default is portrait.
 
@@ -209,7 +209,7 @@ Pick the right command for the host OS:
 | Windows | `pwsh skills/run-automation-suite/scripts/chromeless-launcher-windows.ps1 -Url "<url>" -Width <W> -Height <H>` |
 | Linux | `bash skills/run-automation-suite/scripts/chromeless-launcher.sh --url "<url>" --width <W> --height <H>` (launch-only — no auto-resize on Linux) |
 
-`<W>` and `<H>` are the dimensions from the table above — substitute literally; **do not pass `420 × 920` or `520 × 1000`** for any device class (it's an outdated default that clips the exit button on most modern devices).
+`<W>` and `<H>` are the dimensions from the table above — substitute literally.
 
 **On macOS, the very first run** triggers a system prompt: *"X wants to control Google Chrome.app"* — click OK. The grant lives under System Settings → Privacy & Security → **Automation** (NOT Accessibility) and persists per host process. Tell the user this once if you can see it's their first invocation.
 
