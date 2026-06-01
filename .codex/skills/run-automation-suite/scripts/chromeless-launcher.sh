@@ -19,7 +19,7 @@
 set -euo pipefail
 
 URL=""
-WIDTH=480
+WIDTH=520
 HEIGHT=1000
 ORIENTATION="portrait"
 X=100

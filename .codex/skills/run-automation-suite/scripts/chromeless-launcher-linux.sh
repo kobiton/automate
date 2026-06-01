@@ -12,7 +12,7 @@
 set -euo pipefail
 
 URL=""
-WIDTH=480
+WIDTH=520
 HEIGHT=1000
 
 while [ $# -gt 0 ]; do
