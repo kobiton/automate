@@ -134,15 +134,17 @@ cd my-project
 agent
 ```
 
-Inside the session, add the Kobiton marketplace and fetch the **automate** plugin from the repo.
+Inside the session, add the Kobiton marketplace:
 
 ```
-/plugin marketplace add https://github.com/kobiton/automate
+/plugin marketplace add github.com/kobiton/automate
 ```
 
-Then open **automate** and choose **Install for you**, it installs the 2 skills, the `kobiton` MCP server, and the `/automate:setup` and `/automate:doctor` commands.
+Cursor parses the repository for a few seconds; when the **automate** entry appears, press <kbd>Enter</kbd> to install (pick the installation scope that suits you). The installation brings in the bundled skills, the `kobiton` MCP server, and the slash commands.
 
-Run `/mcp list`, select **kobiton**, and choose **Login** to complete Kobiton OAuth in the browser.
+Then exit and relaunch `agent`. Cursor CLI currently loads plugin skills only at session start, so the skills won't appear until a fresh session.
+
+Run `/mcp list`, select **Kobiton**, and choose **Login** to complete Kobiton OAuth in the browser.
 
 Run `/automate:setup` once to install the `~/.kobiton/bin/kobiton` CLI wrapper used by the `run-interactive-test` skill.
 
@@ -368,7 +370,7 @@ After the plugin is updated upstream, pull the latest version:
 - **Claude Code / Copilot CLI:** run `/plugin install automate@kobiton` again
 - **Gemini CLI:** run `gemini extensions update kobiton-automate` from your shell
 - **Codex CLI:** run `codex plugin marketplace upgrade` to refresh the marketplace catalog, then reinstall the plugin from the browser to pull the latest manifest
-- **Cursor CLI:** re-run `/plugin marketplace add https://github.com/kobiton/automate` and reinstall the **automate** plugin - Cursor CLI has no dedicated update command yet (`/plugin marketplace list` only lists what's installed). Restart `agent` so the new manifest is picked up.
+- **Cursor CLI:** re-run `/plugin marketplace add github.com/kobiton/automate` and reinstall the **automate** plugin - Cursor CLI has no dedicated update command yet (`/plugin marketplace list` only lists what's installed). Restart `agent` so the new manifest is picked up.
 
 To make sure the assistant picks up the changes with no stale cache, reload per CLI:
 
@@ -629,6 +631,31 @@ This usually means the cached token is stale and refresh failed. Force a re-logi
 - **Windows:** open Credential Manager, find the Codex entry under Generic Credentials, remove it.
 
 After clearing, run any Kobiton tool prompt; the browser should reopen for fresh login.
+</details>
+
+### Cursor CLI
+
+<details>
+<summary><strong>Skills or slash commands don't appear (or show stale names) after install</strong></summary>
+
+Cursor CLI caches plugin state per session, and older builds didn't load plugin-bundled skills at all:
+
+1. **Fully restart the session** — exit and re-run `agent`. Right after an install or update, the command list can render stale names (e.g. `/automatesetup` instead of `/automate:setup`); a fresh launch fixes it.
+2. **Update the CLI** — plugin skills only register in CLI builds from `2026.05.05` onward. Run `agent update`, then relaunch.
+3. **Reinstall if still missing** — `/plugin marketplace add github.com/kobiton/automate`, wait for the **automate** entry to appear, then press <kbd>Enter</kbd> to install.
+</details>
+
+<details>
+<summary><strong><code>kobiton</code> shows Disconnected or MCP tool calls silently fail</strong></summary>
+
+- **Not logged in yet** — run `/mcp list`, select **kobiton**, and choose **Login** to start the browser OAuth flow. Tokens are stored in the OS keychain.
+- **Known CLI regressions** — a few CLI builds listed MCP tools but never executed the calls. Run `agent update` to get the latest build, then relaunch `agent`.
+</details>
+
+<details>
+<summary><strong><code>~/.kobiton/bin/kobiton</code> CLI wrapper missing (interactive testing fails)</strong></summary>
+
+Cursor CLI does not run the plugin's SessionStart hook, so the CLI wrapper isn't created automatically like on Claude Code or Codex. Run `/automate:setup` once after install; re-run it if the symlink goes missing.
 </details>
 
 ### Still Stuck?
