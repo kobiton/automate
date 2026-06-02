@@ -146,7 +146,7 @@ Then exit and relaunch `agent`. Cursor CLI currently loads plugin skills only at
 
 Run `/mcp list`, select **Kobiton**, and choose **Login** to complete Kobiton OAuth in the browser.
 
-Run `/automate:setup` once to install the `~/.kobiton/bin/kobiton` CLI wrapper used by the `run-interactive-test` skill.
+Run `/setup` once to install the `~/.kobiton/bin/kobiton` CLI wrapper used by the `run-interactive-test` skill. Cursor registers plugin commands without a namespace prefix, so the plugin's setup and doctor commands appear as `/setup` and `/doctor` — pick the one with the Kobiton description to tell them apart from Cursor's built-ins.
 
 ### Other MCP Clients
 
@@ -274,7 +274,7 @@ To verify everything is wired correctly, run the diagnostic:
 **CLI symlink install behavior across CLIs:** The `run-interactive-test` skill depends on a `~/.kobiton/bin/kobiton` symlink.
 
 - **Claude Code, Codex CLI**: recreated automatically by a bundled SessionStart hook on every session start. On Codex, the first session prompts you to trust the hook once via `/hooks`; subsequent sessions run it silently. Running `/automate:setup` also recreates the symlink on demand.
-- **GitHub Copilot CLI, Gemini CLI, Cursor CLI**: no SessionStart hook runs, so create the symlink manually by running the setup command once after install: `/automate:setup` on Copilot, Gemini and Cursor (Copilot reads Claude-format Markdown commands; Gemini reads bundled TOML at `commands/automate/setup.toml`). Re-run it if the symlink goes missing.
+- **GitHub Copilot CLI, Gemini CLI, Cursor CLI**: no SessionStart hook runs, so create the symlink manually by running the setup command once after install: `/automate:setup` on Copilot and Gemini, `/setup` (the one with the Kobiton description) on Cursor (Copilot reads Claude-format Markdown commands; Gemini reads bundled TOML at `commands/automate/setup.toml`). Re-run it if the symlink goes missing.
 
 Manual fallback - if the SessionStart hook was denied on Codex, or you need to install without an active session:
 
@@ -640,7 +640,7 @@ After clearing, run any Kobiton tool prompt; the browser should reopen for fresh
 
 Cursor CLI caches plugin state per session, and older builds didn't load plugin-bundled skills at all:
 
-1. **Fully restart the session** — exit and re-run `agent`. Right after an install or update, the command list can render stale names (e.g. `/automatesetup` instead of `/automate:setup`); a fresh launch fixes it.
+1. **Fully restart the session** — exit and re-run `agent`. Right after an install or update, the command list can render stale entries from the previous install; a fresh launch fixes it.
 2. **Update the CLI** — plugin skills only register in CLI builds from `2026.05.05` onward. Run `agent update`, then relaunch.
 3. **Reinstall if still missing** — `/plugin marketplace add github.com/kobiton/automate`, wait for the **automate** entry to appear, then press <kbd>Enter</kbd> to install.
 </details>
@@ -655,7 +655,7 @@ Cursor CLI caches plugin state per session, and older builds didn't load plugin-
 <details>
 <summary><strong><code>~/.kobiton/bin/kobiton</code> CLI wrapper missing (interactive testing fails)</strong></summary>
 
-Cursor CLI does not run the plugin's SessionStart hook, so the CLI wrapper isn't created automatically like on Claude Code or Codex. Run `/automate:setup` once after install; re-run it if the symlink goes missing.
+Cursor CLI does not run the plugin's SessionStart hook, so the CLI wrapper isn't created automatically like on Claude Code or Codex. Run `/setup` (the plugin's command with the Kobiton description, not Cursor's built-in) once after install; re-run it if the symlink goes missing.
 </details>
 
 ### Still Stuck?

@@ -1,5 +1,5 @@
 ---
-name: "automate:doctor"
+name: "doctor"
 description: Run read-only health checks on the Kobiton automate plugin (CLI, credentials, profile).
 allowed-tools:
   - Bash
@@ -12,7 +12,7 @@ Run each check below in sequence. Print one line per check using `✓` (pass) or
 
 For each `✗`, also print an indented remediation hint on the following line (prefixed with `→ `).
 
-This command must NOT modify any files. The `~/.kobiton/bin/kobiton` symlink is created by the plugin's SessionStart hook on Claude Code and Codex CLI (Codex prompts the user to trust the hook once via `/hooks` on first install), or by `/automate:setup` on demand. GitHub Copilot CLI and Gemini CLI both load `/automate:setup` (Copilot via Claude-format `.md`, Gemini via the bundled TOML at `commands/automate/setup.toml`) but have no SessionStart hook, so users on those CLIs run `/automate:setup` once after install. This `/automate:doctor` command itself never modifies anything.
+This command must NOT modify any files. The `~/.kobiton/bin/kobiton` symlink is created by the plugin's SessionStart hook on Claude Code and Codex CLI (Codex prompts the user to trust the hook once via `/hooks` on first install), or by `/automate:setup` on demand. GitHub Copilot CLI and Gemini CLI both load `/automate:setup` (Copilot via Claude-format `.md`, Gemini via the bundled TOML at `commands/automate/setup.toml`) but have no SessionStart hook, so users on those CLIs run `/automate:setup` once after install. Cursor CLI also loads the shared `.md` commands but registers them without the plugin namespace — there they appear as `/setup` and `/doctor` (distinguishable from Cursor's built-ins by their Kobiton descriptions); read every `/automate:setup` / `/automate:doctor` mention in this file accordingly. This `/automate:doctor` command itself never modifies anything.
 
 ## Check 1: CLI installed
 
