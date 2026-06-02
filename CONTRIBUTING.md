@@ -88,12 +88,10 @@ Each skill file must have YAML frontmatter with `name` and `description`.
 
 ### Adding New Tools or Skills to Validation
 
-When you add a new tool YAML file or skill directory:
+`scripts/validate.js` auto-discovers tool YAMLs and skill directories via `readdirSync` — no manual array maintenance is required. When you add a new tool YAML file or skill directory:
 
-1. Add the filename to the `toolFiles` array in `scripts/validate.js`
-2. Add the skill directory name to the `skillDirs` array in `scripts/validate.js`
-3. Update the test fixtures in `scripts/validate.test.js` (`setupValidProject` function)
-4. Run `pnpm run validate && pnpm test` to confirm
+1. Update the test fixtures in `scripts/validate.test.js` (`setupValidProject` function) if your addition exercises a validation path not already covered
+2. Run `pnpm run validate && pnpm test` to confirm
 
 ### Validation
 
