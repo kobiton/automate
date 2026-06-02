@@ -32,14 +32,31 @@ usage: chromeless-launcher.sh --url <URL> [--width N] [--height N]
 EOF
 }
 
+# Argument-parsing helper: assert a value is a positive integer. Avoids the
+# confusing `set -e` failure on later arithmetic when a caller passes a
+# non-numeric or zero/negative dimension.
+is_positive_int() {
+  case "$1" in
+    ''|*[!0-9]*) return 1;;
+  esac
+  [ "$1" -gt 0 ]
+}
+
+require_positive_int() {
+  is_positive_int "$2" || {
+    echo "chromeless-launcher: $1 must be a positive integer (got: $2)" >&2
+    exit 64
+  }
+}
+
 while [ $# -gt 0 ]; do
   case "$1" in
     --url)         URL="$2"; shift 2;;
-    --width)       WIDTH="$2"; shift 2;;
-    --height)      HEIGHT="$2"; shift 2;;
+    --width)       WIDTH="$2"; require_positive_int --width "$WIDTH"; shift 2;;
+    --height)      HEIGHT="$2"; require_positive_int --height "$HEIGHT"; shift 2;;
     --orientation) ORIENTATION="$2"; shift 2;;
-    --x)           X="$2"; shift 2;;
-    --y)           Y="$2"; shift 2;;
+    --x)           X="$2"; require_positive_int --x "$X"; shift 2;;
+    --y)           Y="$2"; require_positive_int --y "$Y"; shift 2;;
     -h|--help)     usage; exit 0;;
     *)             echo "chromeless-launcher: unknown arg: $1" >&2; usage; exit 64;;
   esac

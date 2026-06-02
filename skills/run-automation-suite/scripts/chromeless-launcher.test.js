@@ -200,3 +200,68 @@ describe('URL validation (defense in depth)', () => {
     })
   })
 })
+
+describe('numeric argument validation', () => {
+  // The bash shims and the dispatcher all guard --width / --height (and the
+  // dispatcher also guards --x / --y) against non-numeric, zero, or negative
+  // values. Without the guard, a non-numeric value would trip `set -e` on
+  // later arithmetic with a confusing shell error; zero/negative would pass
+  // through and produce an invalid window size.
+  const scripts = [
+    {name: 'dispatcher', path: DISPATCHER, env: {OSTYPE: 'unknown-os'}},
+    {name: 'mac', path: MAC_SHIM, env: {}},
+    {name: 'linux', path: LINUX_SHIM, env: {}}
+  ]
+
+  for (const {name, path, env} of scripts) {
+    it(`${name}: rejects non-numeric --width with exit 64`, () => {
+      const r = runExpectError(path, ['--url', 'https://example.com', '--width', 'abc'], env)
+      expect(r.exitCode).toBe(64)
+      expect(r.stderr).toMatch(/--width must be a positive integer/)
+    })
+
+    it(`${name}: rejects zero --width with exit 64`, () => {
+      const r = runExpectError(path, ['--url', 'https://example.com', '--width', '0'], env)
+      expect(r.exitCode).toBe(64)
+      expect(r.stderr).toMatch(/--width must be a positive integer/)
+    })
+
+    it(`${name}: rejects non-numeric --height with exit 64`, () => {
+      const r = runExpectError(path, ['--url', 'https://example.com', '--height', 'foo'], env)
+      expect(r.exitCode).toBe(64)
+      expect(r.stderr).toMatch(/--height must be a positive integer/)
+    })
+  }
+})
+
+describe('codex mirror parity', () => {
+  // Codex CLI's plugin installer (openai/codex copy_dir_recursive) silently
+  // skips symlinks, so the .codex/ subtree has to be real files mirroring
+  // skills/. The byte-identity contract is enforced by
+  // scripts/sync-codex-artifacts.js --check (run by `pnpm run validate`),
+  // but the unit test surface didn't previously assert it — so the chromeless
+  // shims could in theory diverge in one tree and the launcher tests would
+  // still pass. These checks close that gap.
+  const CODEX_DIR = resolve(import.meta.dirname, '..', '..', '..', '.codex', 'skills', 'run-automation-suite', 'scripts')
+  const filenames = [
+    'chromeless-launcher.sh',
+    'chromeless-launcher-mac.sh',
+    'chromeless-launcher-windows.ps1',
+    'chromeless-launcher-linux.sh',
+    'chromeless-launcher.test.js'
+  ]
+
+  for (const f of filenames) {
+    it(`.codex/ mirror has ${f}`, async () => {
+      const codexPath = resolve(CODEX_DIR, f)
+      expect(existsSync(codexPath)).toBe(true)
+    })
+
+    it(`.codex/ mirror is byte-identical for ${f}`, async () => {
+      const {readFileSync} = await import('node:fs')
+      const src = readFileSync(resolve(import.meta.dirname, f))
+      const mirror = readFileSync(resolve(CODEX_DIR, f))
+      expect(mirror.equals(src)).toBe(true)
+    })
+  }
+})

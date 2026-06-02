@@ -15,11 +15,22 @@ URL=""
 WIDTH=540
 HEIGHT=920
 
+is_positive_int() {
+  case "$1" in ''|*[!0-9]*) return 1;; esac
+  [ "$1" -gt 0 ]
+}
+require_positive_int() {
+  is_positive_int "$2" || {
+    echo "chromeless-launcher-linux: $1 must be a positive integer (got: $2)" >&2
+    exit 64
+  }
+}
+
 while [ $# -gt 0 ]; do
   case "$1" in
     --url)    URL="$2"; shift 2;;
-    --width)  WIDTH="$2"; shift 2;;
-    --height) HEIGHT="$2"; shift 2;;
+    --width)  WIDTH="$2"; require_positive_int --width "$WIDTH"; shift 2;;
+    --height) HEIGHT="$2"; require_positive_int --height "$HEIGHT"; shift 2;;
     --x|--y)  shift 2;;  # accepted for parity with mac shim, unused on Linux
     *)        echo "chromeless-launcher-linux: unknown arg: $1" >&2; exit 64;;
   esac

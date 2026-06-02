@@ -21,13 +21,24 @@ HEIGHT=920
 X=100
 Y=100
 
+is_positive_int() {
+  case "$1" in ''|*[!0-9]*) return 1;; esac
+  [ "$1" -gt 0 ]
+}
+require_positive_int() {
+  is_positive_int "$2" || {
+    echo "chromeless-launcher-mac: $1 must be a positive integer (got: $2)" >&2
+    exit 64
+  }
+}
+
 while [ $# -gt 0 ]; do
   case "$1" in
     --url)    URL="$2"; shift 2;;
-    --width)  WIDTH="$2"; shift 2;;
-    --height) HEIGHT="$2"; shift 2;;
-    --x)      X="$2"; shift 2;;
-    --y)      Y="$2"; shift 2;;
+    --width)  WIDTH="$2"; require_positive_int --width "$WIDTH"; shift 2;;
+    --height) HEIGHT="$2"; require_positive_int --height "$HEIGHT"; shift 2;;
+    --x)      X="$2"; require_positive_int --x "$X"; shift 2;;
+    --y)      Y="$2"; require_positive_int --y "$Y"; shift 2;;
     *)        echo "chromeless-launcher-mac: unknown arg: $1" >&2; exit 64;;
   esac
 done
@@ -51,8 +62,18 @@ case "$URL" in
     ;;
 esac
 
-CHROME_BIN="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-if [ ! -x "$CHROME_BIN" ]; then
+CHROME_BIN=""
+for candidate in \
+  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+  "/Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary" \
+  "/Applications/Chromium.app/Contents/MacOS/Chromium" \
+  "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser"; do
+  if [ -x "$candidate" ]; then
+    CHROME_BIN="$candidate"
+    break
+  fi
+done
+if [ -z "$CHROME_BIN" ]; then
   echo "chromeless launcher requires Google Chrome or Chromium — falling back to default browser" >&2
   exit 2
 fi

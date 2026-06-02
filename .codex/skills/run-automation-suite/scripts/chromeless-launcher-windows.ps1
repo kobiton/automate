@@ -25,6 +25,18 @@ param(
 
 $ErrorActionPreference = 'Continue'
 
+# --- Numeric arg validation -----------------------------------------------
+# PowerShell's [int] cast rejects non-numeric strings at param-binding time,
+# but a caller can still pass zero or negative dimensions. Reject those
+# explicitly so they fail with the documented exit-64 contract rather than
+# producing an invalid SetWindowPos call.
+foreach ($pair in @(@('-Width', $Width), @('-Height', $Height), @('-X', $X), @('-Y', $Y))) {
+  if ($pair[1] -le 0) {
+    Write-Error ('chromeless-launcher-windows: {0} must be a positive integer (got: {1})' -f $pair[0], $pair[1])
+    exit 64
+  }
+}
+
 # --- URL validation --------------------------------------------------------
 # Only `"` (which would break CreateProcess argument quoting) and
 # non-http(s) schemes are rejected. URL syntax characters (`&`, `?`,
