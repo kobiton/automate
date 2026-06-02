@@ -50,7 +50,7 @@ tools:
         limit:
           type: integer
           description: Maximum number of sessions to return
-          default: 20
+          default: 10
         offset:
           type: integer
           description: Offset for pagination
