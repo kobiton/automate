@@ -4,7 +4,7 @@
 [![Cloud](https://img.shields.io/badge/Cloud-☁️-blue)](https://kobiton.com)
 [![Twitter Follow](https://img.shields.io/twitter/follow/KobitonMobile?style=social)](https://x.com/KobitonMobile)
 
-Plugin for the [Kobiton](https://kobiton.com) mobile testing platform. Works with [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview), [GitHub Copilot CLI](https://docs.github.com/en/copilot/github-copilot-in-the-cli), [Gemini CLI](https://github.com/google-gemini/gemini-cli), [Codex CLI](https://github.com/openai/codex), and [Cursor CLI](https://cursor.com/cli). Manage devices, upload apps, run automation sessions, and view test results directly from your AI coding assistant.
+Plugin for the [Kobiton](https://kobiton.com) mobile testing platform. Works with [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview), [GitHub Copilot CLI](https://docs.github.com/en/copilot/github-copilot-in-the-cli), [Gemini CLI](https://github.com/google-gemini/gemini-cli), [Codex CLI](https://github.com/openai/codex), and [Cursor](https://cursor.com) (CLI and IDE). Manage devices, upload apps, run automation sessions, and view test results directly from your AI coding assistant.
 
 ## Contents
 
@@ -15,6 +15,7 @@ Plugin for the [Kobiton](https://kobiton.com) mobile testing platform. Works wit
   - [Gemini CLI](#gemini-cli)
   - [Codex CLI](#codex-cli)
   - [Cursor CLI](#cursor-cli)
+  - [Cursor IDE](#cursor-ide)
   - [Other MCP Clients](#other-mcp-clients)
 - [Login](#login)
   - [API Key Authentication (Alternative)](#api-key-authentication-alternative)
@@ -36,7 +37,7 @@ Plugin for the [Kobiton](https://kobiton.com) mobile testing platform. Works wit
 Make sure you have:
 
 - **A Kobiton account** - sign up at [kobiton.com](https://kobiton.com) if you don't have one
-- **A supported AI CLI** - install [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview), [Copilot CLI](https://docs.github.com/en/copilot/github-copilot-in-the-cli), [Gemini CLI](https://github.com/google-gemini/gemini-cli), [Codex CLI](https://github.com/openai/codex), or [Cursor CLI](https://cursor.com/cli)
+- **A supported AI assistant** - install [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview), [Copilot CLI](https://docs.github.com/en/copilot/github-copilot-in-the-cli), [Gemini CLI](https://github.com/google-gemini/gemini-cli), [Codex CLI](https://github.com/openai/codex), or [Cursor](https://cursor.com) (CLI or IDE)
 - **A project directory** - your AI assistant must launch from a workspace, not from your home folder
 
 ## Installation
@@ -148,11 +149,38 @@ Run `/mcp list`, select **Kobiton**, and choose **Login** to complete Kobiton OA
 
 Run `/setup` once to install the `~/.kobiton/bin/kobiton` CLI wrapper used by the `run-interactive-test` skill. Cursor registers plugin commands without a namespace prefix, so the plugin's setup and doctor commands appear as `/setup` and `/doctor` — pick the one with the Kobiton description to tell them apart from Cursor's built-ins.
 
+If you also use the Cursor IDE, install the plugin only once. Installs are shared between the CLI and the IDE (see the note in the next section).
+
+### Cursor IDE
+
+The Cursor desktop editor installs the plugin from its built-in plugin browser:
+
+1. Open **Cursor Settings** > **Plugins** and paste `https://github.com/kobiton/automate` into the search box
+2. Click the **automate** result, then **Add to Cursor**, then **Install**
+
+To authenticate with the Kobiton MCP server: open **Tool & MCPs**, search for **kobiton**, click **Connect**, and complete the OAuth login in the browser.
+
+> **Using both Cursor CLI and the Cursor IDE?** They share plugin installs: a plugin installed from the `agent` CLI shows up in the IDE, and vice versa. Install the plugin **once** in either one, installing it in both registers the skills, commands, and MCP server twice.
+
+<details>
+<summary><strong>Alternative: project-only MCP config (MCP server only, no skills or commands)</strong></summary>
+
+For a lightweight per-project setup that registers just the `kobiton` MCP server, drop `.cursor/mcp.json` from this repo into your project's `.cursor/` directory:
+
+```bash
+cd my-project
+mkdir -p .cursor
+curl -sLO --output-dir .cursor https://raw.githubusercontent.com/kobiton/automate/main/.cursor/mcp.json
+```
+
+Works for both the Cursor IDE and the `agent` CLI. You won't get the bundled skills, the setup and doctor commands, or the CLI wrapper.
+</details>
+
 ### Other MCP Clients
 
 Kobiton's MCP server is built on the open [Model Context Protocol](https://modelcontextprotocol.io), so **any MCP-compatible client can connect to it**. Same endpoint (`https://api.kobiton.com/mcp`), same browser-based OAuth login as the clients above.
 
-> **Good to know:** End-to-end tested only on Claude Code, Copilot CLI, Gemini CLI, Codex CLI, and Cursor CLI; entries below are configs we expect to work but have not yet validated. Please [open an issue](https://github.com/kobiton/automate/issues/new?template=bug_report.md) if any do not work for your setup. We're happy to help.
+> **Good to know:** End-to-end tested only on Claude Code, Copilot CLI, Gemini CLI, Codex CLI, Cursor CLI, and the Cursor IDE; entries below are configs we expect to work but have not yet validated. Please [open an issue](https://github.com/kobiton/automate/issues/new?template=bug_report.md) if any do not work for your setup. We're happy to help.
 
 #### ChatGPT (Apps SDK)
 
@@ -164,9 +192,9 @@ https://api.kobiton.com/mcp
 
 The Apps SDK does not require a separate manifest file; tool descriptors, OAuth flow, and `_meta.ui` widget hints flow through the MCP protocol itself. Reference: [developers.openai.com/apps-sdk/build/mcp-server](https://developers.openai.com/apps-sdk/build/mcp-server).
 
-#### Cursor / Continue / Cline / other generic MCP clients
+#### Continue / Cline / other generic MCP clients
 
-The Cursor IDE (the desktop editor, not the `agent` CLI covered above) reads MCP servers from the `.cursor/mcp.json` this repo already ships, so opening the project is enough.
+Register the `kobiton` server in your client's MCP config. Most clients read a JSON block like:
 
 ```json
 {
@@ -179,21 +207,6 @@ The Cursor IDE (the desktop editor, not the `agent` CLI covered above) reads MCP
 ```
 
 Adjust to your client's specific format. The server URL and OAuth handshake are the same; if your client doesn't support OAuth, fall back to the API-key auth path (see [API Key Authentication](#api-key-authentication-alternative) below) - most clients accept custom `headers` blocks.
-
-<details>
-<summary><strong>Alternative: project-only MCP config (MCP server only, no skills or commands)</strong></summary>
-
-For a lightweight per-project setup that registers just the `kobiton` MCP server, drop `.cursor/mcp.json` from this repo into your project's `.cursor/` directory:
-
-```bash
-cd my-project
-mkdir -p .cursor
-curl -sLO --output-dir .cursor https://raw.githubusercontent.com/kobiton/automate/main/.cursor/mcp.json
-agent
-```
-
-You won't get the bundled skills, the `/automate:setup` and `/automate:doctor` commands, or the CLI wrapper.
-</details>
 
 ## Login
 
