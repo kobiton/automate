@@ -219,6 +219,7 @@ You can also trigger or inspect authentication explicitly:
 - **Gemini CLI**: type `/mcp auth kobiton` to start the OAuth flow; use `/mcp` to inspect server status
 - **Codex CLI**: browser opens automatically on the first MCP tool call (e.g. *"List my Kobiton devices"*) after plugin install. Tokens are cached in the OS keychain with automatic refresh. Use `/mcp` (or `/mcp verbose`) to inspect server status
 - **Cursor CLI**: run `/mcp list`, select **kobiton**, and choose **Login** to start the OAuth flow; tokens are stored by Cursor in the OS keychain
+- **Cursor IDE**: open **Cursor Settings** > **Tool & MCPs**, search for **kobiton**, and click **Connect** to start the OAuth flow
 
 Behind the scenes, `.mcp.json` points to the Kobiton MCP server and authentication uses OAuth 2.1:
 
@@ -284,9 +285,11 @@ To verify everything is wired correctly, run the diagnostic:
 
 `/automate:doctor` is read-only. It checks the CLI installation (symlink + target), the credentials file, the active profile, and required fields, and prints actionable remediation hints for any failures.
 
+> **On Cursor (CLI and IDE)** the plugin's commands carry no `automate:` prefix. Run `/setup` and `/doctor` instead, picking the entry with the Kobiton description next to it to tell it apart from Cursor's built-in command of the same name.
+
 **CLI symlink install behavior across CLIs:** The `run-interactive-test` skill depends on a `~/.kobiton/bin/kobiton` symlink.
 
-- **Claude Code, Codex CLI**: recreated automatically by a bundled SessionStart hook on every session start. On Codex, the first session prompts you to trust the hook once via `/hooks`; subsequent sessions run it silently. Running `/automate:setup` also recreates the symlink on demand.
+- **Claude Code, Codex CLI**: recreated automatically by a bundled SessionStart hook on every session start. On Codex CLI, the first session prompts you to trust the hook once via `/hooks`; subsequent sessions run it silently. Running `/automate:setup` also recreates the symlink on demand.
 - **GitHub Copilot CLI, Gemini CLI, Cursor CLI**: no SessionStart hook runs, so create the symlink manually by running the setup command once after install: `/automate:setup` on Copilot and Gemini, `/setup` (the one with the Kobiton description) on Cursor (Copilot reads Claude-format Markdown commands; Gemini reads bundled TOML at `commands/automate/setup.toml`). Re-run it if the symlink goes missing.
 
 Manual fallback - if the SessionStart hook was denied on Codex, or you need to install without an active session:
@@ -359,6 +362,7 @@ The script is idempotent - safe to re-run.
 | `/automate:setup` | Fetch credentials from the authenticated MCP server and write them to `~/.kobiton/.credentials` |
 | `/automate:doctor` | Read-only diagnostic for CLI installation, credentials file, active profile, and required fields |
 
+On Cursor (CLI and IDE) these register without the `automate:` prefix — as `/setup` and `/doctor`, distinguishable from Cursor's built-ins by the Kobiton description.
 
 ## Running Automation Tests
 
