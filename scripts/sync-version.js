@@ -89,7 +89,11 @@ export function syncVersion(rootDir, {check = false} = {}) {
   // - Hard failure under --check (the CI gate)
   // - Soft reminder under --write (the entry may not be written yet while a release is being prepared)
   const changelog = readFileSync(join(rootDir, CHANGELOG), 'utf8')
-  const match = changelog.match(/^##\s+(\d+\.\d+\.\d+)\b/m)
+  // Accept SemVer 2.0 pre-release suffixes (e.g. `1.4.0-dev.0`, `2.0.0-rc.1`)
+  // so dev-version branches don't trip the gate. The older
+  // `\d+\.\d+\.\d+\b` regex captured only the X.Y.Z prefix and mis-
+  // compared `1.4.0` against `1.4.0-dev.0`.
+  const match = changelog.match(/^##\s+(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)/m)
   if (!match) {
     errors.push(`${CHANGELOG} has no \`## X.Y.Z\` entry`)
   }
