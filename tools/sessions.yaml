@@ -62,6 +62,7 @@ tools:
     description: >
       Get detailed information about a specific test session including commands
       executed, device info, desired capabilities, metadata, and test results.
+      `video_url` may be null; there is no separate `has_video` indicator.
     annotations:
       readOnlyHint: true
       destructiveHint: false
@@ -85,7 +86,7 @@ tools:
     title: Get Session Artifacts
     description: >
       Get download URLs for session artifacts including video recording, device
-      logs, screenshots, and test reports.
+      logs, and test reports.
     annotations:
       readOnlyHint: true
       destructiveHint: false

@@ -55,8 +55,8 @@ tools:
   - name: getDeviceStatus
     title: Get Device Status
     description: >
-      Get the real-time status of a specific device including availability,
-      current session info, battery level, and connection state.
+      Get the real-time availability status of a specific device (e.g.
+      `is_booked`, `is_online`) and `deviceId`.
     annotations:
       readOnlyHint: true
       destructiveHint: false
