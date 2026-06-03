@@ -178,7 +178,7 @@ For example, an `api-*.kobiton.com` host maps to its matching `portal-*.kobiton.
 
 Where `<deviceId>` is the ID of the selected device from Step 2 (returned by `listDevices`, `getDeviceStatus`, or `reserveDevice`).
 
-The device-only view is also **interactive for redirection**: when the user taps or swipes on the device canvas, those gestures are captured and made available to you via `getUserInputEvents` (see Step 6). They are observational only — they do not drive the device — but they let the user steer your test plan mid-run without leaving the chromeless view.
+The device-only view is also **interactive for redirection**: when the user taps or swipes on the device canvas, those gestures BOTH (a) drive the device under test in real time (forwarded to direct-hub, exactly like a normal click-to-device tap) AND (b) are captured and made available to you via `getUserInputEvents` (see Step 6) so you can see what the user just did and adapt your plan.
 
 **Fall back to the default view** (without `&view=device-only`) only when the user explicitly asks to interact with the device — e.g. "let me drive it manually", "open the full session view", "I want to tap on the screen", or similar interaction-implying language. The default view shows the full Kobiton UI around the device (sidebars, controls, action panels):
 
@@ -262,7 +262,7 @@ Call `getSessionArtifacts` with the session ID to retrieve:
 - On the first poll, omit `sinceTimestamp` to drain everything buffered. Each response is capped (default 50 events, max 200) — if you see exactly that many events in a single response there may be more behind them; re-poll immediately with `sinceTimestamp` set to the newest event's timestamp to page forward.
 - If the response contains events, surface them as observations and let them steer your plan — e.g. a touch at `(0.42, 0.78)` near the bottom-right means "the user tapped there; they may want me to focus on whatever is at that position (looks like Settings)." A swipe (`xNorm/yNorm` → `xNorm2/yNorm2`) means they want you to scroll or navigate in that direction.
 - Advance `sinceTimestamp` to the largest `timestamp` you received, so the next poll returns only newer gestures.
-- These gestures never drive the device themselves — you remain in control via your scripted Appium / `runDeviceCommand` calls. Treat them strictly as hints about what the human wants next.
+- These gestures DO drive the device (the user's tap physically reaches the screen via direct-hub), so by the time you observe them the device has already moved. Don't try to "replay" or undo them — they reflect what the human just did. Adapt your remaining script: pivot focus, re-orient, or pause for the next user signal. You are no longer the sole driver of the device while a human is watching the device-only view.
 
 ### 7. Summarize
 
