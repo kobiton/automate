@@ -17,6 +17,7 @@ Plugin for the [Kobiton](https://kobiton.com) mobile testing platform. Works wit
   - [Cursor CLI](#cursor-cli)
   - [Cursor IDE](#cursor-ide)
   - [Other MCP Clients](#other-mcp-clients)
+  - [Claude Surface Compatibility](#claude-surface-compatibility)
 - [Login](#login)
   - [API Key Authentication (Alternative)](#api-key-authentication-alternative)
 - [Getting Started](#getting-started)
@@ -208,6 +209,19 @@ Register the `kobiton` server in your client's MCP config. Most clients read a J
 
 Adjust to your client's specific format. The server URL and OAuth handshake are the same; if your client doesn't support OAuth, fall back to the API-key auth path (see [API Key Authentication](#api-key-authentication-alternative) below) - most clients accept custom `headers` blocks.
 
+### Claude Surface Compatibility
+
+Every Claude surface that supports MCP can call the Kobiton [tools](#tools). The guided [skills](#skills) install automatically only in Claude Code today; other surfaces need a manual skill upload.
+
+| Claude surface | [Atomic MCP tools](#tools) | [Orchestrated skills](#skills) ¹ | How to connect |
+|---|:--------------------------:|:--------------------------------:|---|
+| **Claude Code** (CLI / IDE) |           ✅ Yes            |              ✅ Yes               | [Install the plugin](#claude-code) |
+| **Claude Cowork** (macOS / Windows) |           ✅ Yes            |        ⚠️ Manual upload ²        | Add `https://api.kobiton.com/mcp` as a connector under **Connectors** |
+| **claude.ai web · Claude Desktop · Claude mobile** |           ✅ Yes            |        ⚠️ Manual upload ²        | Add `https://api.kobiton.com/mcp` as a Custom Connector at [claude.ai](https://claude.ai); for mobile, configure it on the web first and it syncs to the app |
+
+¹ `run-interactive-test` also requires the bundled `kobiton` CLI binary (macOS Apple Silicon only) - see the [platform support note](#skills).
+² This plugin is not listed in the [Claude directory](https://support.claude.com/en/articles/14328846-browse-skills-connectors-and-plugins-in-one-directory) yet, so these surfaces can't install it as a plugin. As a workaround, zip a skill folder from this repo (e.g. `skills/run-automation-suite/`) and upload it as a [custom skill](https://support.claude.com/en/articles/12512198-how-to-create-custom-skills).
+
 ## Login
 
 The first time your AI assistant calls a Kobiton tool, a browser window opens for OAuth login. Sign in with your Kobiton credentials, tokens are then managed automatically by the assistant.
@@ -266,23 +280,6 @@ For CI/CD pipelines or headless environments that cannot open a browser, use API
 > **Recommended:** maintain a fork of `kobiton/automate` with this change committed, then install from your fork - survives plugin reinstalls and Codex upgrades. **Last resort:** edit the installed copy under `~/.codex/.tmp/marketplaces/kobiton/.codex/.mcp.json` directly (this is Codex cache; the edit is overwritten on every reinstall).
 
 </details>
-
-## Claude surface compatibility
-
-Different Claude surfaces (Claude Code, Cowork, Claude Desktop, the claude.ai web app, mobile) expose different capabilities, so the same plugin behaves differently depending on where it's installed. Quick reference for "what works where":
-
-| Claude surface | Atomic MCP tools (`listDevices`, `reserveDevice`, `getSession`, …) | Orchestrated skills (`run-automation-suite`, `run-interactive-test` ¹) | Setup |
-|---|:---:|:---:|---|
-| **Claude Code** (CLI / IDE) | ✅ | ✅ | `/plugin marketplace add kobiton/automate` then `/plugin install automate@kobiton` |
-| **Claude Cowork** (macOS / Windows desktop) | ✅ | ⚠️ install-test pending | Cowork uses the same `.claude-plugin/plugin.json` manifest path + extension types as Claude Code per [Cowork extensions docs](https://claude.com/docs/cowork/3p/extensions); confirming drop-in portability is on the engagement-close checklist |
-| **claude.ai (web)** | ✅ via Custom Connector | ❌ | Add `https://api.kobiton.com/mcp` as a Custom Connector at [claude.ai](https://claude.ai); the skill loader for `.claude-plugin/` skills does not run on the web surface |
-| **Claude Desktop** (macOS / Windows app) | ✅ via Custom Connector | ❌ | Add the Kobiton MCP as a Custom Connector; Claude Desktop is not currently documented as a Skills-capable surface in Anthropic's [Use Skills in Claude](https://support.claude.com/en/articles/12512180-use-skills-in-claude) doc |
-| **Claude mobile** (iOS / Android) | ✅ via Custom Connector | ❌ | Configure the Custom Connector on claude.ai (web) first; tools sync into the mobile app for use |
-| **Other MCP clients** (Cursor, Gemini CLI, Codex CLI, ChatGPT Apps SDK, Continue, Cline, …) | ✅ | ❌ | See [Installation](#installation) above for the four already-documented clients; Cursor / ChatGPT / Continue / Cline configs are in the "Other MCP Clients" subsection |
-
-The take-home: **every Claude surface that supports MCP can call the atomic Kobiton tools.** The orchestrated skills — `run-automation-suite` (Appium test script execution) and `run-interactive-test` (natural-language WebDriver / device commands via the bundled `kobiton` CLI) — are Claude-Code-today; Cowork is the next likely landing point once the install test confirms cross-surface portability.
-
-¹ `run-interactive-test` additionally requires the bundled `kobiton` CLI binary (macOS only); on other host OSes use `run-automation-suite` or the MCP tools directly.
 
 ## Getting Started
 
