@@ -267,6 +267,23 @@ For CI/CD pipelines or headless environments that cannot open a browser, use API
 
 </details>
 
+## Claude surface compatibility
+
+Different Claude surfaces (Claude Code, Cowork, Claude Desktop, the claude.ai web app, mobile) expose different capabilities, so the same plugin behaves differently depending on where it's installed. Quick reference for "what works where":
+
+| Claude surface | Atomic MCP tools (`listDevices`, `reserveDevice`, `getSession`, …) | Orchestrated skills (`run-automation-suite`, `run-interactive-test` ¹) | Setup |
+|---|:---:|:---:|---|
+| **Claude Code** (CLI / IDE) | ✅ | ✅ | `/plugin marketplace add kobiton/automate` then `/plugin install automate@kobiton` |
+| **Claude Cowork** (macOS / Windows desktop) | ✅ | ⚠️ install-test pending | Cowork uses the same `.claude-plugin/plugin.json` manifest path + extension types as Claude Code per [Cowork extensions docs](https://claude.com/docs/cowork/3p/extensions); confirming drop-in portability is on the engagement-close checklist |
+| **claude.ai (web)** | ✅ via Custom Connector | ❌ | Add `https://api.kobiton.com/mcp` as a Custom Connector at [claude.ai](https://claude.ai); the skill loader for `.claude-plugin/` skills does not run on the web surface |
+| **Claude Desktop** (macOS / Windows app) | ✅ via Custom Connector | ❌ | Add the Kobiton MCP as a Custom Connector; Claude Desktop is not currently documented as a Skills-capable surface in Anthropic's [Use Skills in Claude](https://support.claude.com/en/articles/12512180-use-skills-in-claude) doc |
+| **Claude mobile** (iOS / Android) | ✅ via Custom Connector | ❌ | Configure the Custom Connector on claude.ai (web) first; tools sync into the mobile app for use |
+| **Other MCP clients** (Cursor, Gemini CLI, Codex CLI, ChatGPT Apps SDK, Continue, Cline, …) | ✅ | ❌ | See [Installation](#installation) above for the four already-documented clients; Cursor / ChatGPT / Continue / Cline configs are in the "Other MCP Clients" subsection |
+
+The take-home: **every Claude surface that supports MCP can call the atomic Kobiton tools.** The orchestrated skills — `run-automation-suite` (Appium test script execution) and `run-interactive-test` (natural-language WebDriver / device commands via the bundled `kobiton` CLI) — are Claude-Code-today; Cowork is the next likely landing point once the install test confirms cross-surface portability.
+
+¹ `run-interactive-test` additionally requires the bundled `kobiton` CLI binary (macOS only); on other host OSes use `run-automation-suite` or the MCP tools directly.
+
 ## Getting Started
 
 After installation, run setup to fetch your credentials and write them to `~/.kobiton/.credentials`:
