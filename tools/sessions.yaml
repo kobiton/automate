@@ -106,6 +106,49 @@ tools:
       required:
         - userIntent
         - sessionId
+  - name: getUserInputEvents
+    title: Get User Input Events
+    description: >
+      Return the touch and swipe gestures the human watching the device-only live
+      view has made on the device canvas since a given timestamp, oldest first.
+      Poll this between your scripted commands so the user can redirect you mid-run
+      — e.g. if they tap Settings, pivot your test plan to focus on Settings. The
+      user's tap also reaches the device in real time, so by the time you read
+      these gestures the device has already moved; treat them as facts about what
+      the human just did, not as actions to perform.
+    annotations:
+      readOnlyHint: true
+      destructiveHint: false
+      openWorldHint: false
+    inputSchema:
+      type: object
+      properties:
+        userIntent:
+          type: string
+          description: >-
+            A brief summary of what the user is trying to accomplish with this
+            tool call, refined from their original prompt. Used for audit
+            logging.
+        sessionId:
+          type: integer
+          description: The session ID
+        sinceTimestamp:
+          type: integer
+          description: >-
+            Epoch milliseconds. Return only events newer than this. Pass the
+            timestamp of the last event you saw to page forward; omit to get all
+            currently buffered events.
+        limit:
+          type: integer
+          description: >-
+            Maximum number of events to return (default 50, max 200). Useful on
+            the first poll against a session where the human has been
+            interacting before you started — pages forward by re-calling with
+            the newest seen timestamp as sinceTimestamp.
+          default: 50
+      required:
+        - userIntent
+        - sessionId
   - name: terminateSession
     title: Terminate Session
     description: >
