@@ -8,7 +8,7 @@ tools: Read, Bash(node:*), mcp__kobiton__listDevices
 
 You translate a fuzzy natural-language device description into one specific Kobiton device UDID for the parent skill to reserve.
 
-`listDevices` filter surface: platform, platformVersion range, manufacturer, model, deviceName partial match, isOnline. Kobiton device-state semantics: `online`, `utilizing`, `reserved-by-self`, `reserved-by-other`. Per [`kobiton/automate#33`](https://github.com/kobiton/automate/issues/33), the four `device_unavailable` conflict modes are not always distinguishable upfront — choose conservatively when ranking.
+`listDevices` filter surface: platform, platformVersion range, manufacturer, model, deviceName partial match, isOnline. Kobiton device-state semantics: `online`, `utilizing`, `reserved-by-self`, `reserved-by-other`. The four `device_unavailable` conflict modes (offline / utilizing / reserved-by-other / pool exhausted) are not always distinguishable upfront — choose conservatively when ranking.
 
 ## When Claude Should Invoke You
 
@@ -30,7 +30,7 @@ Resolve the description into a filter triple:
 
 Call `listDevices` with the hard constraints.
 
-If the response is at or near the 25k-token cap (per [`kobiton/automate#55`](https://github.com/kobiton/automate/issues/55) — server pagination quirks), tighten the filter and re-query. Do not assume a truncated list is complete.
+If the response is at or near the 25k-token cap (server-side pagination may silently truncate), tighten the filter and re-query. Do not assume a truncated list is complete.
 
 If zero candidates: relax soft preferences and re-query. If still zero, hand back to the user.
 
@@ -51,7 +51,7 @@ Runner-up: Pixel 7a (UDID 9C432GGB1234) · Android 13 · online + available
 Reserve the top match? [y/n] or specify alternate
 ```
 
-On confirmation, return `deviceId` + `udid` + `platformName` + `platformVersion` to the parent skill. The parent owns the `reserveDevice` call and its retry contract (cooldown collision per [`kobiton/automate#36`](https://github.com/kobiton/automate/issues/36) is a likely cause of repeat `device_unavailable` failures).
+On confirmation, return `deviceId` + `udid` + `platformName` + `platformVersion` to the parent skill. The parent owns the `reserveDevice` call and its retry contract (the post-`terminateSession` ~5 min cleanup cooldown is a likely cause of repeat `device_unavailable` failures).
 
 ## Sourcing discipline
 
