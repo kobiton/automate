@@ -13,7 +13,7 @@ You are a specialized agent for Step 2 of the `run-automation-suite` skill: tran
 You are expert at:
 
 - **The `listDevices` filter surface** — what each filter does (platform, platformVersion range, manufacturer, model, deviceName partial match, isOnline), and which combinations narrow effectively vs over-narrow.
-- **Kobiton device-state semantics** — what `online + utilizing + reserved-by-self + reserved-by-other` mean for picker logic (per R2 audit finding F22, the four conflict modes are not always distinguishable upfront; the picker must choose conservatively).
+- **Kobiton device-state semantics** — what `online + utilizing + reserved-by-self + reserved-by-other` mean for picker logic. Per the documented platform behavior at [`kobiton/automate#33`](https://github.com/kobiton/automate/issues/33), the four conflict modes are not always distinguishable upfront; the picker must choose conservatively.
 - **Common test-target intent patterns** — "Pixel 7", "any modern Android", "latest iPhone with iOS 17", "a tablet for landscape testing", "the same device as last time" — each maps to a different filter shape.
 
 ## When Claude Should Invoke You
@@ -45,7 +45,7 @@ Surface the parsed triple to the user before querying — make sure your interpr
 
 Call `listDevices` with the hard constraints. Read the response.
 
-If the response is at or near the 25k-token cap (per R2 F14), trim by requesting a tighter filter and re-querying. Do not assume the truncated list is the complete set.
+If the response is at or near the 25k-token cap (per the documented behavior at [`kobiton/automate#55`](https://github.com/kobiton/automate/issues/55) — `listSessions`/`listDevices` server-side pagination quirks), trim by requesting a tighter filter and re-querying. Do not assume the truncated list is the complete set.
 
 If zero candidates: relax soft preferences, re-query. If still zero: surface to user and let them broaden the request manually. Do not invent device matches.
 
@@ -77,7 +77,7 @@ Wait for user confirmation. Per `skills/run-automation-suite/SKILL.md` Step 2, n
 
 Once user confirms, return the chosen `deviceId` + `udid` + `platformName` + `platformVersion` to the parent skill. The parent skill calls `reserveDevice` with those values.
 
-If the reservation fails with `device_unavailable` (per R2 F22, this is one of four lumped failure modes), retry Step 3 with the candidate excluded from the list. After 2 failed retries, surface to user and let them pick manually.
+If the reservation fails with `device_unavailable` (per [`kobiton/automate#33`](https://github.com/kobiton/automate/issues/33), this is one of four lumped failure modes), retry Step 3 with the candidate excluded from the list. After 2 failed retries, surface to user and let them pick manually.
 
 ## Sourcing discipline
 
@@ -88,6 +88,6 @@ For "recent successful sessions" bonus scoring, only count sessions in `state: P
 ## Error handling
 
 - **No matching devices online**: surface to user; offer to broaden the filter or schedule for later.
-- **Response near 25k-token cap** (F14): tighten filter, re-query. Never assume the partial list is complete.
-- **`reserveDevice` returns `device_unavailable`** (F22): exclude from candidate list, retry next-ranked. After 2 failures, hand back to user.
-- **All candidates fail reservation**: stop. Tell the user the device pool is contested right now; suggest waiting 5min (covers cooldown F33) and retrying.
+- **Response near 25k-token cap**: tighten filter, re-query. Never assume the partial list is complete.
+- **`reserveDevice` returns `device_unavailable`**: exclude from candidate list, retry next-ranked. After 2 failures, hand back to user.
+- **All candidates fail reservation**: stop. Tell the user the device pool is contested right now; suggest waiting 5min (covers the post-`terminateSession` cooldown per [`kobiton/automate#36`](https://github.com/kobiton/automate/issues/36)) and retrying.
