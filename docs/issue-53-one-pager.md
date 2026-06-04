@@ -1,7 +1,6 @@
 # `run-automation-suite` cross-client architecture — one-pager
 
-**Response to [`kobiton/automate#53`](https://github.com/kobiton/automate/issues/53) (mimosa767, 2026-05-17)**
-**Authored 2026-05-18 by Intent Solutions (Jeremy Longshore) — DRAFT, not yet merged**
+**Response to [`kobiton/automate#53`](https://github.com/kobiton/automate/issues/53)**
 
 This is the one-pager committed to in [`#53` comment-4481683618](https://github.com/kobiton/automate/issues/53#issuecomment-4481683618). It maps each ask in `#53` to one of three architectural layers so Kobiton can decide where each lever lives, lands soonest, and is worth investing in. It is a structural / decision-support doc, not a roadmap.
 
@@ -71,7 +70,7 @@ A correct architectural answer to a `#53` ask is one of these three layers. Some
 |---|---|
 | **L1 (protocol)** | [SEP-1610](https://github.com/modelcontextprotocol/modelcontextprotocol/issues/1610) (declarative chaining) is the protocol-level move toward "less client-side orchestration." Worth tracking, not blocking on. |
 | **L2 (client implementation)** | Limited lever here — "native-feeling" is partly a UI / brand decision (Cowork helps; Claude Code's terminal-first feel hurts), and partly the absence of skill-loader auto-orchestration on non-Code/Cowork surfaces. |
-| **L3 (tool quality)** | **High leverage.** A server-side consolidated upload flow (e.g., a single tool that takes a URL or staging-uploaded reference and handles the three-step `uploadAppToStore` → PUT → `confirmAppUpload` dance internally) compounds with where the spec is going and lifts every MCP client equally. The async-race condition documented in [upstream #34](https://github.com/kobiton/automate/issues/34) (R2 finding) is the canonical example — fixing it server-side removes orchestration steps from every client. |
+| **L3 (tool quality)** | **High leverage.** A server-side consolidated upload flow (e.g., a single tool that takes a URL or staging-uploaded reference and handles the three-step `uploadAppToStore` → PUT → `confirmAppUpload` dance internally) compounds with where the spec is going and lifts every MCP client equally. The async-race condition documented in [upstream #34](https://github.com/kobiton/automate/issues/34) is the canonical example — fixing it server-side removes orchestration steps from every client. |
 
 **Recommendation:** L3 is the lever with the best cost-to-value ratio. Kobiton-side orchestration consolidation lands sooner than any L1 SEP and lifts Claude Code, Cowork, Claude Desktop, mobile, and any future MCP client equally.
 
@@ -126,18 +125,18 @@ Cross-cutting reference for the analysis above. Verified via direct doc fetches 
 
 ## The tool-quality column — the 6 audit findings from `#53`
 
-@mimosa767's audit reply at [`#53` comment-4476188526](https://github.com/kobiton/automate/issues/53#issuecomment-4476188526) surfaced six server-side findings. All filed upstream 2026-05-18 with empirical evidence (5 of 6 re-probed against `api.kobiton.com/mcp`; F50 schema-only per scope). Reading-order anchor: [`#61`](https://github.com/kobiton/automate/issues/61).
+@mimosa767's audit reply at [`#53` comment-4476188526](https://github.com/kobiton/automate/issues/53#issuecomment-4476188526) surfaced six server-side findings. All filed upstream with empirical evidence (5 of 6 re-probed against `api.kobiton.com/mcp`; the v1/v2 doc inconsistency is schema-only). Reading-order anchor: [`#61`](https://github.com/kobiton/automate/issues/61).
 
-| F# | Upstream | Tool | Symptom | Severity |
-|---|---|---|---|---|
-| F45 | [`#55`](https://github.com/kobiton/automate/issues/55) | `listSessions` | `limit` parameter silently ignored | High |
-| F46 | [`#56`](https://github.com/kobiton/automate/issues/56) | `getSession` | No `has_video` indicator field | Medium |
-| F47 | [`#57`](https://github.com/kobiton/automate/issues/57) | `getSessionArtifacts` | Documented `screenshots` category absent | Medium |
-| F48 | [`#58`](https://github.com/kobiton/automate/issues/58) | `getDeviceStatus` | Only 3 fields returned; battery + current session info absent (`is_online` covers coarse connection state) | High |
-| F49 | [`#59`](https://github.com/kobiton/automate/issues/59) | `getApp` vs `listApps` | `is_expired` contradiction for same app id | Critical |
-| F50 | [`#60`](https://github.com/kobiton/automate/issues/60) | `uploadAppToStore` | Response `confirm_upload.description` vs `.path` v1/v2 contradiction | Low |
+| Upstream | Tool | Symptom | Severity |
+|---|---|---|---|
+| [`#55`](https://github.com/kobiton/automate/issues/55) | `listSessions` | `limit` parameter silently ignored | High |
+| [`#56`](https://github.com/kobiton/automate/issues/56) | `getSession` | No `has_video` indicator field | Medium |
+| [`#57`](https://github.com/kobiton/automate/issues/57) | `getSessionArtifacts` | Documented `screenshots` category absent | Medium |
+| [`#58`](https://github.com/kobiton/automate/issues/58) | `getDeviceStatus` | Only 3 fields returned; battery + current session info absent (`is_online` covers coarse connection state) | High |
+| [`#59`](https://github.com/kobiton/automate/issues/59) | `getApp` vs `listApps` | `is_expired` contradiction for same app id | Critical |
+| [`#60`](https://github.com/kobiton/automate/issues/60) | `uploadAppToStore` | Response `confirm_upload.description` vs `.path` v1/v2 contradiction | Low |
 
-Plugin-side close-out for each (a documented working knowledge entry + agent workaround per finding) is in this PR — the previously documented R2-era `listSessions` 25k-token-cap entry has also been amended in this PR to acknowledge that F45 (upstream [#55](https://github.com/kobiton/automate/issues/55)) invalidates its prior client-side `limit=10` mitigation, since the server ignores the `limit` value. The full set of 15 entries now lives at [`skills/run-automation-suite/references/known-limitations.md`](../skills/run-automation-suite/references/known-limitations.md) (loaded on-demand by `SKILL.md` per Anthropic's Agent Skills progressive-disclosure pattern, rather than inlined every invocation).
+Plugin-side close-out for each (a documented working knowledge entry + agent workaround per finding) is in this PR — the previously documented `listSessions` 25k-token-cap entry has also been amended in this PR to acknowledge that [`#55`](https://github.com/kobiton/automate/issues/55) invalidates its prior client-side `limit=10` mitigation, since the server ignores the `limit` value. The full set of entries now lives at [`skills/run-automation-suite/references/known-limitations.md`](../skills/run-automation-suite/references/known-limitations.md) (loaded on-demand by `SKILL.md` per Anthropic's Agent Skills progressive-disclosure pattern, rather than inlined every invocation).
 
 ---
 
@@ -145,7 +144,7 @@ Plugin-side close-out for each (a documented working knowledge entry + agent wor
 
 Ordered by leverage (highest to lowest):
 
-1. **L3 / tool-quality fixes (F45–F50).** Kobiton-owned, lift every MCP client. Six discrete server-side fixes with empirical evidence already on hand.
+1. **L3 / tool-quality fixes (issues [#55](https://github.com/kobiton/automate/issues/55)–[#60](https://github.com/kobiton/automate/issues/60)).** Kobiton-owned, lift every MCP client. Six discrete server-side fixes with empirical evidence already on hand.
 2. **L2 / Cowork install test.** Confirm `run-automation-suite` loads and runs in Cowork. If it does (most likely, given the manifest-path equivalence + extension-types overlap documented at [Cowork extensions](https://claude.com/docs/cowork/3p/extensions)), this answers ask 1 (perceived Claude dependency reduction), most of ask 2 (Claude Desktop parity → reframed as Cowork-first), and the surface-level half of ask 3 (tester-first workflows via Cowork + Dispatch). One-afternoon scope.
 3. **L3 / orchestration consolidation.** Server-side consolidated upload + run flows (one tool wraps the multi-step dance). Bigger Kobiton-side scope; biggest cross-client payoff.
 4. **L1 / SEP tracking, not SEP blocking.** Watch SEP-1610, SEP-2356, SEP-2532, [SEP-2640](https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2640) land. None are gating any of the above.
@@ -155,7 +154,6 @@ Ordered by leverage (highest to lowest):
 ## What this one-pager is NOT
 
 - **Not a roadmap.** Each layer's prioritization is Kobiton's decision; this doc maps the levers, not the commit.
-- **Not a SOW change.** The R-series engagement scope is unchanged. The one-pager is a structural artifact responding to `#53`.
 - **Not the bundled-host sketch.** A separate sketch — published as the public gist [Bundled-host architectural sketch — Kobiton Automate plugin](https://gist.github.com/jeremylongshore/8e6325b6bb2b438d9fa6d8d9161c3a54) — covers the L2 architectural variants for "AI native to Kobiton Automate" (`#53` ask 6). Four named variants (hybrid pattern; staging-upload; bundled host with file picker; Kobiton-hosted test runner) with tradeoff analysis.
 - **Not the README compatibility-matrix PR.** The README PR is the customer-facing distilled version of the surface matrix above. Different audience, different format.
 
@@ -163,10 +161,10 @@ Ordered by leverage (highest to lowest):
 
 ## References
 
-- Source issue: [`kobiton/automate#53`](https://github.com/kobiton/automate/issues/53) (mimosa767, 2026-05-17)
-- mimosa767's audit comment (6 server-side findings): [`#53` comment-4476188526](https://github.com/kobiton/automate/issues/53#issuecomment-4476188526)
-- mimosa767's architectural correction (claude.ai web vs Claude Desktop conflation, shim idea): [`#53` comment-4482315819](https://github.com/kobiton/automate/issues/53#issuecomment-4482315819)
-- Intent Solutions delivery commitments: [`#53` comment-4481683618](https://github.com/kobiton/automate/issues/53#issuecomment-4481683618)
+- Source issue: [`kobiton/automate#53`](https://github.com/kobiton/automate/issues/53)
+- Audit comment (6 server-side findings): [`#53` comment-4476188526](https://github.com/kobiton/automate/issues/53#issuecomment-4476188526)
+- Architectural correction (claude.ai web vs Claude Desktop conflation, shim idea): [`#53` comment-4482315819](https://github.com/kobiton/automate/issues/53#issuecomment-4482315819)
+- Delivery commitments: [`#53` comment-4481683618](https://github.com/kobiton/automate/issues/53#issuecomment-4481683618)
 - Surface matrix (with full per-cell citations): [`#53` comment-4482806767](https://github.com/kobiton/automate/issues/53#issuecomment-4482806767)
 - Upstream findings slate anchor: [`kobiton/automate#61`](https://github.com/kobiton/automate/issues/61)
 - Plugin-side documented working knowledge: [`skills/run-automation-suite/references/known-limitations.md`](../skills/run-automation-suite/references/known-limitations.md)

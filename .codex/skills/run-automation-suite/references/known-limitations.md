@@ -1,12 +1,12 @@
 # Known Limitations — Kobiton MCP surface
 
-Reference loaded on-demand by `SKILL.md` when the agent encounters a documented behavioural gap. Two batches: the R2 audit (2026-05-04, Intent Solutions pilot) and the post-R3 external audit at [`kobiton/automate#53`](https://github.com/kobiton/automate/issues/53) (mimosa767, 2026-05-18).
+Reference loaded on-demand by `SKILL.md` when the agent encounters a documented behavioural gap. Documented platform behaviors with agent-side workarounds, sourced from closed GitHub issues #33–#42 (early findings) and #55–#60 (later findings).
 
 Each entry: symptom → upstream issue → severity → agent workaround. When the symptom matches what the user is seeing, follow the workaround. Most fixes require server-side changes at `api.kobiton.com/mcp` — plugin-side mitigations are noted where they exist.
 
 ---
 
-## R2 audit entries (filed 2026-05-08)
+## Early findings
 
 ### `confirmAppUpload` returns before the async parser finishes — [upstream #34](https://github.com/kobiton/automate/issues/34)
 
@@ -58,13 +58,13 @@ Each entry: symptom → upstream issue → severity → agent workaround. When t
 
 ### `listSessions` 25k-token response cap — [upstream #35](https://github.com/kobiton/automate/issues/35), interacts with [#55](https://github.com/kobiton/automate/issues/55)
 
-**Severity**: High. Claude Code applies a 25k-token cap on MCP tool responses; `listSessions` responses with verbose `execution_data` per session can approach or exceed this cap. Empirically observed in the R2 audit (2026-05-04) that responses near the cap can drop fields or sessions without an explicit error surfaced to the agent. The plugin's [`tools/sessions.yaml`](https://github.com/kobiton/automate/blob/main/tools/sessions.yaml) sets `default: 10` for the `limit` parameter — but per the post-R3 finding at [upstream #55](https://github.com/kobiton/automate/issues/55), the server silently ignores the `limit` value and returns its default page size regardless. The client-side default does not actually constrain the response.
+**Severity**: High. Claude Code applies a 25k-token cap on MCP tool responses; `listSessions` responses with verbose `execution_data` per session can approach or exceed this cap. Responses near the cap can drop fields or sessions without an explicit error surfaced to the agent. The plugin's [`tools/sessions.yaml`](https://github.com/kobiton/automate/blob/main/tools/sessions.yaml) sets `default: 10` for the `limit` parameter — but per closed issue [#55](https://github.com/kobiton/automate/issues/55), the server silently ignores the `limit` value and returns its default page size regardless. The client-side default does not actually constrain the response.
 
 **Agent workaround**: the only reliable mitigation today is to pre-trim the response: page through `offset` accepting that each page returns the server's default count, and slice client-side to whatever subset you actually need. Until [#55](https://github.com/kobiton/automate/issues/55) lands, plan for ~20-session payloads regardless of the requested `limit`.
 
 ---
 
-## Post-R3 external audit entries — mimosa767 ([`#53`](https://github.com/kobiton/automate/issues/53), 2026-05-18)
+## Later findings
 
 ### `listSessions` silently ignores the `limit` parameter — [upstream #55](https://github.com/kobiton/automate/issues/55)
 
@@ -104,8 +104,6 @@ Each entry: symptom → upstream issue → severity → agent workaround. When t
 
 ---
 
-## Reading order anchor for the post-R3 batch
-
-The six post-R3 entries above (F45–F50) are also tracked as the upstream slate at [`kobiton/automate#61`](https://github.com/kobiton/automate/issues/61), and as the fork-side slate at [`jeremylongshore/automate#53`](https://github.com/jeremylongshore/automate/issues/53). Each upstream issue carries the empirical evidence + repro + architectural-fix proposal in full.
+## Cross-reference
 
 For the broader architectural mapping of these gaps to MCP-protocol (L1) / client-implementation (L2) / tool-quality (L3) layers, see [`docs/issue-53-one-pager.md`](../../../docs/issue-53-one-pager.md).
