@@ -12,17 +12,6 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "mcp__plugin_automate_kobiton__.*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/scripts/validate-userintent.mjs"],
-            "timeout": 5
-          }
-        ]
-      },
-      {
         "matcher": "mcp__plugin_automate_kobiton__terminateSession",
         "hooks": [
           {

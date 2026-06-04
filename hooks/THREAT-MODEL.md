@@ -1,6 +1,6 @@
 # Threat model — `hooks/`
 
-Threat model for the four Claude Code hooks in this directory. Written 2026-05-12 in response to the multi-reviewer pre-flight (code-reviewer + security-auditor + test-automator) on the initial proposal at fork issue #33.
+Threat model for the three advisory Claude Code hooks in this directory. Written in response to a multi-reviewer pre-flight (code-reviewer + security-auditor + test-automator) on the original proposal.
 
 ## Trust boundaries
 
@@ -39,7 +39,6 @@ If a future hook adds an authenticated API call, it MUST:
 **Threat:** a hook echoes user-controlled input (e.g., the `userIntent` argument value, an `appId` from a tool response) back into the agent's context via the `additionalContext` or `permissionDecisionReason` fields. An attacker crafts an input containing prompt-injection text (`"} ignore previous instructions ...`) which then runs as part of the next agent turn.
 
 **Mitigation:**
-- `validate-userintent.mjs`: the deny reason is a fixed generic string (`"userIntent must match format: ..."`) that does NOT contain any user-controlled substring. Tested negatively in `validate-userintent.test.mjs`.
 - `advise-app-upload-poll.mjs`: only `appId` and `versionId` are echoed, both sanitized to digits-only before string interpolation. Tested negatively in `advise-app-upload-poll.test.mjs`.
 - `advise-post-terminate-cooldown.mjs`: only `sessionId` is echoed, sanitized to digits-only. Tested negatively in `advise-post-terminate-cooldown.test.mjs`.
 - `advise-pre-terminate-cooldown.mjs`: emits a fully static advisory with no input echo at all.
@@ -59,14 +58,17 @@ If a future hook adds an authenticated API call, it MUST:
 
 **Mitigation:** no hook in this directory reads server-side response bodies beyond the `tool_response` already visible to the agent through the MCP tool result. If a future hook adds such a read, the response MUST be whitelisted to a small set of structural fields (e.g., `{state, category, message_short}`) with `message_short` regex-stripped of email addresses, absolute paths, and base64-shaped tokens before emission.
 
-### T5 — ReDoS on the userIntent regex
+### T5 — ReDoS on hook regexes
 
-**Threat:** an attacker submits a userIntent value crafted to trigger catastrophic backtracking on the validation regex, spiking CPU on every Kobiton MCP call.
+**Threat:** an attacker submits a tool-call argument value crafted to trigger catastrophic backtracking on a hook-side regex, spiking CPU on every Kobiton MCP call.
 
-**Mitigation:**
-- Length short-circuit BEFORE regex (`> 145 chars → reject early`)
-- All regex quantifiers bounded: `{1,40}`, `{1,4}`, `{1,30}`, `{20,80}`, `{1,64}`, `{3,64}` — no unbounded `.+`
-- No nested quantifiers
+**Mitigation:** the three remaining hooks use regex only for digit-only sanitization of numeric IDs — `String(id).replace(/[^0-9]/g, '').slice(0, 20)` in `advise-app-upload-poll.mjs` and `advise-post-terminate-cooldown.mjs`. That pattern is a single character-class match with a global flag and a hard slice — linear-time, no quantifier nesting, no backtracking surface. No hook in this directory uses regex to *validate* user input against a structural pattern.
+
+Any future hook that adds a validation regex MUST:
+- Length-bound the input via `.slice()` or `length` short-circuit BEFORE the regex runs
+- Use only bounded quantifiers (no unbounded `.+` or `.*`)
+- Avoid nested quantifiers
+- Carry a unit test that asserts wall-clock bound on a known-pathological input
 
 ### T6 — Path manipulation via `${CLAUDE_PROJECT_DIR}` vs `${CLAUDE_PLUGIN_ROOT}`
 
