@@ -112,11 +112,13 @@ tools:
       view has made on the device canvas since a given timestamp, oldest first.
       Poll this between your scripted commands so the user can redirect you mid-run
       — e.g. if they tap Settings, pivot your test plan to focus on Settings. The
-      gestures are observational only; they do not drive the device under test, so
-      you remain in control of the actual automation.
+      user's tap also reaches the device in real time, so by the time you read
+      these gestures the device has already moved; treat them as facts about what
+      the human just did, not as actions to perform.
     annotations:
       readOnlyHint: true
       destructiveHint: false
+      openWorldHint: false
     inputSchema:
       type: object
       properties:

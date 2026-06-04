@@ -2,7 +2,7 @@
 
 ## 1.4.3 - 2026-06-02
 
-- New `getUserInputEvents` MCP tool — surfaces the touch/swipe gestures a human makes on the device-only live view so a Claude-driven session can be redirected mid-run. The user physically tapping the canvas BOTH drives the device under test in real time (forwarded to direct-hub) AND is reported to Claude as an observation it should react to ("the user just tapped Settings → pivot the test plan to Settings"). Keystroke / right-click / pinch / drag-off-canvas remain suppressed (KOB-52769 invariant). (KOB-53093)
+- New `getUserInputEvents` MCP tool — surfaces the touch/swipe gestures a human makes on the device-only live view so an agent-driven session can be redirected mid-run. The user's tap reaches the device in real time AND is reported to the agent as an observation to react to ("the user just tapped Settings → pivot the test plan to Settings"). Keystroke / right-click / pinch / drag-off-canvas remain suppressed.
 - `run-automation-suite` skill now polls `getUserInputEvents` between scripted commands.
 
 ## 1.4.2 - 2026-06-02
