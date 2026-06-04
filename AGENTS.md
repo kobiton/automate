@@ -36,19 +36,7 @@ Several behaviors of the current Kobiton MCP server have known gaps that agents 
 
 ## userIntent format
 
-Every tool call requires a `userIntent` argument summarizing what the user is trying to accomplish. The plugin's audit logging consumes this.
-
-For automated / pipeline use, the strict format is:
-
-```
-[partner=<name>] <verb-phrase, 20-80 chars> | contact:<email>
-```
-
-For interactive end-users, a short natural-language summary is fine:
-
-```
-"reserve a Pixel 7 to run the checkout suite"
-```
+Every tool call requires a `userIntent` argument summarizing what the user is trying to accomplish — a natural-language sentence is sufficient (e.g., `"reserve a Pixel 7 to run the checkout suite"`). The plugin's audit logging consumes this.
 
 ## Cross-host install
 
