@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code when working with code in this repository.
 
 ## Commands
 
@@ -47,7 +47,7 @@ There is no local way to test that a new tool YAML matches a deployed server-sid
 | File | Tools |
 |---|---|
 | `tools/devices.yaml` | `listDevices`, `getDeviceStatus`, `reserveDevice`, `terminateReservation` |
-| `tools/sessions.yaml` | `listSessions`, `getSession`, `getSessionArtifacts`, `terminateSession` |
+| `tools/sessions.yaml` | `listSessions`, `getSession`, `getSessionArtifacts`, `getUserInputEvents`, `terminateSession` |
 | `tools/apps.yaml` | `listApps`, `uploadAppToStore`, `confirmAppUpload`, `getApp` |
 | `tools/user.yaml` | `getCredential` |
 | `tools/test-management.yaml` | 14 test-case / test-run / test-suite CRUD tools |
@@ -61,7 +61,7 @@ There is no local way to test that a new tool YAML matches a deployed server-sid
 | Skill | Runtime | Notes |
 |---|---|---|
 | `run-automation-suite` | `scripts/render-capabilities.js` parses Appium test scripts and reconciles capabilities against the selected device | refs: `references/capabilities.md`, `references/templates/appium.ejs` |
-| `run-interactive-test` | `scripts/run.sh` wraps the bundled `bin/kobiton` CLI for natural-language WebDriver / device / file commands | binary ships for **macOS Apple Silicon and Linux x64 only**; other platforms can use `run-automation-suite` instead |
+| `run-interactive-test` | `scripts/run.sh` wraps the bundled `skills/run-interactive-test/bin/kobiton` CLI for natural-language WebDriver / device / file commands | binary ships for **macOS Apple Silicon only**; other platforms can use `run-automation-suite` instead |
 
 ### Build pipeline
 
@@ -69,29 +69,29 @@ There is no local way to test that a new tool YAML matches a deployed server-sid
 
 1. `build:tools` (`scripts/build-tool-definitions.js`) — concatenates `tools/*.yaml` into `dist/tool-definitions.yaml`. Kobiton publishes this artifact to S3; gitignored locally.
 2. `build:codex` (`scripts/sync-codex-artifacts.js`) — mirrors `skills/`, `assets/`, `scripts/`, `hooks/` into `.codex/`. Codex CLI's plugin installer silently skips symlinks, so the mirror must ship real files. **`.cursor/mcp.json` is NOT mirrored** — Cursor reads MCP config natively at install time.
-3. `build:version` (`scripts/sync-version.js`) — writes `package.json`'s `version` into every host manifest (`.claude-plugin/plugin.json`, `.codex/.codex-plugin/plugin.json`, `gemini-extension.json`, the plugin entry in `.claude-plugin/marketplace.json`) and verifies the top `## X.Y.Z` entry in `CHANGELOG.md` matches.
+3. `build:version` (`scripts/sync-version.js`) — writes `package.json`'s `version` into every host manifest (`.claude-plugin/plugin.json`, `.codex/.codex-plugin/plugin.json`, `.cursor-plugin/plugin.json`, `gemini-extension.json`, plus the plugin entry in both `.claude-plugin/marketplace.json` and `.cursor-plugin/marketplace.json`) and verifies the top `## X.Y.Z` entry in `CHANGELOG.md` matches.
 
 `package.json` is the single source of truth for `version`; never hand-edit a manifest's `version` field. `dist/` is gitignored.
 
 ## Cross-tool surface
 
-The plugin ships configs for five AI CLI hosts. Source-of-truth is the root files; `.codex/` is a generated mirror, `.cursor/mcp.json` is hand-authored.
+The plugin ships configs for five AI CLI hosts. Source-of-truth is the root files; `.codex/` is a generated mirror, while `.cursor/mcp.json` and the `.cursor-plugin/` manifests are hand-authored.
 
 | Host | MCP config | Plugin manifest | Context file |
 |---|---|---|---|
 | Claude Code | `.mcp.json` (OAuth) + `.mcp.apikey-example.json` (API key) | `.claude-plugin/plugin.json` + `.claude-plugin/marketplace.json` | `skills/*/SKILL.md` |
-| GitHub Copilot CLI | `.mcp.json` (shared) | `.claude-plugin/plugin.json` | `AGENTS.md` |
+| GitHub Copilot CLI | `.mcp.json` (shared) | `.agents/plugins/marketplace.json` (reuses `.codex/` as source) | `AGENTS.md` |
 | Gemini CLI | `gemini-extension.json` (inlines `mcpServers`) | extension descriptor IS the manifest | `AGENTS.md` (via `contextFileName`) |
-| Codex CLI | `.codex/.mcp.json` | `.codex/.codex-plugin/plugin.json` + `.agents/plugins/marketplace.json` (Codex marketplace catalog) | `.codex/skills/*/SKILL.md` (mirror) |
-| Cursor CLI | `.cursor/mcp.json` | none — MCP-only host | `AGENTS.md` |
+| Codex CLI | `.codex/.mcp.json` | `.codex/.codex-plugin/plugin.json` | `.codex/skills/*/SKILL.md` (mirror) |
+| Cursor CLI / IDE | `.cursor/mcp.json` | `.cursor-plugin/plugin.json` + `.cursor-plugin/marketplace.json` | `AGENTS.md` |
 
-**Header field-name differs by host.** Claude / Copilot / Gemini use `headers` in MCP config; Codex uses `http_headers` (snake_case wrapper); Cursor's current config has no headers at all. The `X-AI-Tool-Name` value also differs per host (`Claude` / `Codex` / `Gemini`). When adding a new host config, copy from the closest existing one — don't mix idioms across hosts.
+**Header field-name differs by host.** Claude / Copilot / Gemini / Cursor use `headers` in MCP config; Codex uses `http_headers` (snake_case wrapper). The `X-AI-Tool-Name` value also differs per host (`Claude` / `Codex` / `Gemini` / `Cursor`). When adding a new host config, copy from the closest existing one — don't mix idioms across hosts.
 
 `AGENTS.md` is the cross-tool brief read by every non-Claude-Code host. When extending a skill's workflow or known-limitations list, mirror substantive changes into `AGENTS.md` so non-Claude hosts stay current. The current `AGENTS.md` covers `run-automation-suite` only; `run-interactive-test` should be added the next time it's touched.
 
 ## Slash commands
 
-Two commands ship in two file formats so each host can read its preferred one. Markdown is the format Claude Code historically reads (and what Copilot CLI reads today); TOML is Gemini CLI's native format. Codex CLI uses its SessionStart hook instead of slash commands; Cursor has no slash-command surface in this plugin.
+Two commands ship in two file formats so each host can read its preferred one. Markdown is the format Claude Code historically reads (and what Copilot CLI and Cursor read today); TOML is Gemini CLI's native format. Codex CLI uses its SessionStart hook instead of slash commands. Cursor reads the Markdown commands but registers them **without the `automate` namespace** — they surface as `/setup` and `/doctor` (disambiguate from Cursor's built-ins by the Kobiton description).
 
 | Command | Claude Code / Copilot CLI | Gemini CLI |
 |---|---|---|
@@ -105,7 +105,7 @@ Gemini CLI derives `/automate:setup` from the directory path `commands/automate/
 
 ## Hooks
 
-`hooks/hooks.json` ships a single `SessionStart` command hook that runs `bash ${CLAUDE_PLUGIN_ROOT}/scripts/install-cli.sh` to install the `~/.kobiton/bin/kobiton` symlink. The Codex mirror at `.codex/hooks/hooks.json` carries the same hook. On Codex, the user trusts the hook once via `/hooks`; subsequent sessions run it silently. On Claude Code it runs every session.
+`hooks/hooks.json` ships a single `SessionStart` command hook that runs `bash ${CLAUDE_PLUGIN_ROOT}/scripts/install-cli.sh` to install the `~/.kobiton/bin/kobiton` symlink. The Codex mirror at `.codex/hooks/hooks.json` carries the same hook, and `.cursor/hooks/hooks.json` carries a `sessionStart` equivalent (`${CURSOR_PLUGIN_ROOT}` interpolation). On Codex, the user trusts the hook once via `/hooks`; subsequent sessions run it silently. On Claude Code it runs every session. Cursor ships the hook but does not currently execute SessionStart hooks for plugins — Cursor users run `/setup` once instead.
 
 When modifying `scripts/install-cli.sh` (or adding any new script that hooks invoke), run `pnpm run build:codex` to refresh the `.codex/scripts/` mirror — the `--check` mode in `pnpm run validate` will otherwise fail CI. Hook scripts should be idempotent.
 
