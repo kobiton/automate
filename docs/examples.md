@@ -10,7 +10,7 @@ A guide to every tool available in the Kobiton MCP server, organized by domain. 
 |---|--------|-------|
 | 1 | [Device Management](#1-device-management) | `listDevices`, `getDeviceStatus`, `reserveDevice`, `terminateReservation` |
 | 2 | [Session Management](#2-session-management) | `listSessions`, `getSession`, `getSessionArtifacts`, `terminateSession` |
-| 3 | [App Management](#3-app-management) | `listApps`, `getApp`, `uploadAppToStore`, `confirmAppUpload` |
+| 3 | [App Management](#3-app-management) | `listApps`, `getApp`, `uploadAppToStore`, `confirmAppUpload`, `getAppParsingStatus` |
 | 4 | [Running Automation Tests](#4-running-automation-tests) | `run-automation-suite` skill |
 
 ---
@@ -168,6 +168,18 @@ Confirm a previously uploaded app so it appears in the Kobiton portal's app repo
 > "Confirm the upload for app 42"
 
 > "Finish the upload process for the app I just uploaded"
+
+---
+
+### `getAppParsingStatus`
+
+Check whether an uploaded app version has finished parsing. After `confirmAppUpload` the app is parsed asynchronously, so poll this by `versionId` until the state is terminal (`OK` or a `FAILURE_*`) before reserving devices or starting a session.
+
+**Prompt examples:**
+
+> "Is the app I just uploaded done parsing yet?"
+
+> "Check the parsing status for app version 100"
 
 ---
 
