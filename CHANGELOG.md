@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.5.0 - 2026-06-11
+
+- New `getAppParsingStatus` MCP tool — checks the async parse status of an uploaded app version by `versionId`. After `confirmAppUpload` the app is created in state `PARSING`; poll this tool until the state is terminal (`OK` or a `FAILURE_*` value) before reserving devices or starting sessions. Also resolves the real `appId` when `confirmAppUpload` returned `appId: null` for a brand-new upload.
+- `confirmAppUpload` description now documents the async parsing flow and points to `getAppParsingStatus` for polling.
+- `docs/examples.md` gains an upload-then-poll example covering the new tool.
+
 ## 1.4.3 - 2026-06-02
 
 - New `getUserInputEvents` MCP tool — surfaces the touch/swipe gestures a human makes on the device-only live view so an agent-driven session can be redirected mid-run. The user's tap reaches the device in real time AND is reported to the agent as an observation to react to ("the user just tapped Settings → pivot the test plan to Settings"). Keystroke / right-click / pinch / drag-off-canvas remain suppressed.
