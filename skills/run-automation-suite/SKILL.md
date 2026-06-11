@@ -75,11 +75,11 @@ Wait for their response before proceeding. Do not call any upload or app-related
 
 Ask the user which device or platform to target.
 
-Call `listDevices` with the relevant platform filter to show available options.
+Call `listDevices` with the relevant platform filter to show available options. For natural-language device asks (e.g., "any Pixel on Android 14+"), delegate ranking to the `device-picker` agent and resume here with the chosen UDID.
 
 If the user has a specific device in mind, confirm its availability with `getDeviceStatus`.
 
-Reserve the device with `reserveDevice` if needed.
+Reserve the device with `reserveDevice` if needed. If `reserveDevice` returns `device_unavailable`, exclude that UDID and re-rank: call `listDevices` again (or `device-picker` if delegating) for the next-ranked candidate. Cap at 2 retries before surfacing to the user — repeat `device_unavailable` failures on the same UDID likely indicate the post-`terminateSession` cleanup cooldown window (~5 min).
 
 ### 3. Identify script & parse capabilities
 
@@ -290,7 +290,7 @@ On failure, the skill surfaces error output from the test runner, the session UR
 - `listDevices` returns empty: suggest broadening filters (remove platform/group constraints) or trying again later when devices free up.
 - Upload fails or times out: retry the upload. Pre-signed URLs expire after 30 minutes - if expired, call the upload tool again to get a fresh URL.
 - Session stuck in a non-terminal state: poll `getSession` with a reasonable timeout. If still running, offer to call `terminateSession` and retry.
-- `reserveDevice` fails (device already taken): call `listDevices` again to find another available device.
+- `reserveDevice` fails (device already taken): exclude that UDID and re-rank — call `listDevices` again, or invoke `device-picker` for natural-language reselection. Cap at 2 retries before handing back to the user (see § 2 — the post-`terminateSession` ~5 min cleanup cooldown is a common cause of repeat `device_unavailable`).
 - Script execution fails: check error output for missing dependencies (e.g. `wd`, `appium`), incorrect UDID, or network issues. Suggest fixes.
 
 ## Examples
