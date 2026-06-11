@@ -67,7 +67,7 @@ Ask the user:
 
 Wait for their response before proceeding. Do not call any upload or app-related tools until the user responds.
 
-**If uploading a new app:** Look for .apk, .ipa, .zip files in the project context, or ask the user for the file path. Upload via `uploadAppToStore` (permanent, visible in app repository). This is a three-step process: call the tool to get a pre-signed URL, upload the file via PUT, then confirm the upload.
+**If uploading a new app:** Look for .apk, .ipa, .zip files in the project context, or ask the user for the file path. Upload via `uploadAppToStore` (permanent, visible in app repository). This is a four-step process: call the tool to get a pre-signed URL, upload the file via PUT, confirm the upload via `confirmAppUpload`, then poll `getAppParsingStatus` with the returned `versionId` until the state is terminal - `OK` means ready to use; a `FAILURE_*` state means parsing failed. `confirmAppUpload` may return `appId: null` for a brand-new upload - `getAppParsingStatus` resolves the real `appId`.
 
 **If reusing an existing app:** Check `appium:app` field of capabilities in the test script. Call `listApps` with that app version as keywork to check uploaded or not. Let the user pick the version to use (e.g., `kobiton-store:v72107`) if needed
 
@@ -289,6 +289,7 @@ On failure, the skill surfaces error output from the test runner, the session UR
 
 - `listDevices` returns empty: suggest broadening filters (remove platform/group constraints) or trying again later when devices free up.
 - Upload fails or times out: retry the upload. Pre-signed URLs expire after 30 minutes - if expired, call the upload tool again to get a fresh URL.
+- App parsing fails (`getAppParsingStatus` returns a `FAILURE_*` state): surface the state to the user and stop - do not reserve devices or start a session with that build.
 - Session stuck in a non-terminal state: poll `getSession` with a reasonable timeout. If still running, offer to call `terminateSession` and retry.
 - `reserveDevice` fails (device already taken): call `listDevices` again to find another available device.
 - Script execution fails: check error output for missing dependencies (e.g. `wd`, `appium`), incorrect UDID, or network issues. Suggest fixes.

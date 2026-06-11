@@ -325,7 +325,7 @@ The script is idempotent - safe to re-run.
 
 ## Tools
 
-13 MCP tools across 4 domains.
+29 MCP tools across 5 domains.
 
 ### Devices
 
@@ -343,6 +343,7 @@ The script is idempotent - safe to re-run.
 | `listSessions` | List test sessions with filters for status, device, platform |
 | `getSession` | Get session details including commands, capabilities, metadata |
 | `getSessionArtifacts` | Get download URLs for video, logs, screenshots, reports |
+| `getUserInputEvents` | Get the touch/swipe gestures a human made on the device-only live view during a session |
 | `terminateSession` | Stop a running test session |
 
 ### Apps
@@ -351,8 +352,28 @@ The script is idempotent - safe to re-run.
 |------|-------------|
 | `listApps` | List uploaded app builds in your organization |
 | `uploadAppToStore` | Upload an app to Kobiton Store (permanent, visible in portal) |
-| `confirmAppUpload` | Confirm uploaded app for tracking record |
+| `confirmAppUpload` | Confirm an uploaded file so Kobiton creates the app record (parsing runs asynchronously) |
+| `getAppParsingStatus` | Check the async parse status of an uploaded app version until it reaches a terminal state |
 | `getApp` | Get app details and version history |
+
+### Test Management
+
+| Tool | Description |
+|------|-------------|
+| `saveTestCase` | Convert a finished manual session into a reusable test case |
+| `listTestCases` | List test cases with team and keyword filters |
+| `getTestCase` | Get test case details including its steps |
+| `updateTestCase` | Update a test case's metadata and steps |
+| `deleteTestCase` | Delete a test case |
+| `createTestRun` | Create a test run from a test suite or selected test cases |
+| `listTestRuns` | List test runs with team, keyword, and platform filters |
+| `getTestRun` | Get test run details including its sessions |
+| `terminateTestRun` | Stop a running test run |
+| `listTestSuites` | List test suites with team and keyword filters |
+| `getTestSuite` | Get test suite details including member test cases |
+| `createTestSuite` | Create a test suite from existing test cases |
+| `updateTestSuite` | Update a test suite's metadata and membership |
+| `deleteTestSuite` | Delete a test suite (member test cases are kept) |
 
 ### Account
 
