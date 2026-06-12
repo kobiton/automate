@@ -149,4 +149,73 @@ describe('render-capabilities', () => {
     expect(stderr).toContain('browserName')
   })
 
+  it('omits appium:newCommandTimeout when --newCommandTimeout is not set', () => {
+    const result = run([
+      '--platformName', 'Android',
+      '--udid', '21161FDF60051K',
+      '--deviceName', 'Pixel 6',
+      '--platformVersion', '15',
+      '--app', 'kobiton-store:v72116',
+      '--testingType', 'app'
+    ])
+
+    expect(result['appium:newCommandTimeout']).toBeUndefined()
+  })
+
+  it('emits appium:newCommandTimeout when --newCommandTimeout is set', () => {
+    const result = run([
+      '--platformName', 'Android',
+      '--udid', '21161FDF60051K',
+      '--deviceName', 'Pixel 6',
+      '--platformVersion', '15',
+      '--app', 'kobiton-store:v72116',
+      '--testingType', 'app',
+      '--newCommandTimeout', '1800'
+    ])
+
+    expect(result['appium:newCommandTimeout']).toBe(1800)
+  })
+
+  it('omits kobiton:scriptlessCapture when --scriptlessCapture is not set', () => {
+    const result = run([
+      '--platformName', 'Android',
+      '--udid', '21161FDF60051K',
+      '--deviceName', 'Pixel 6',
+      '--platformVersion', '15',
+      '--app', 'kobiton-store:v72116',
+      '--testingType', 'app'
+    ])
+
+    expect(result['kobiton:scriptlessCapture']).toBeUndefined()
+  })
+
+  it('emits kobiton:scriptlessCapture: true when --scriptlessCapture is passed', () => {
+    const result = run([
+      '--platformName', 'Android',
+      '--udid', '21161FDF60051K',
+      '--deviceName', 'Pixel 6',
+      '--platformVersion', '15',
+      '--app', 'kobiton-store:v72116',
+      '--testingType', 'app',
+      '--scriptlessCapture'
+    ])
+
+    expect(result['kobiton:scriptlessCapture']).toBe(true)
+  })
+
+  it('fails when --newCommandTimeout is not a positive integer', () => {
+    const {exitCode, stderr} = runExpectError([
+      '--platformName', 'Android',
+      '--udid', 'ABC123',
+      '--deviceName', 'Pixel 6',
+      '--platformVersion', '15',
+      '--app', 'kobiton-store:v1',
+      '--testingType', 'app',
+      '--newCommandTimeout', '-5'
+    ])
+
+    expect(exitCode).toBe(1)
+    expect(stderr).toContain('newCommandTimeout')
+  })
+
 })

@@ -9,15 +9,17 @@ const TEMPLATE_PATH = resolve(
 
 const {values: flags} = parseArgs({
   options: {
-    platformName:    {type: 'string'},
-    udid:            {type: 'string'},
-    deviceName:      {type: 'string'},
-    platformVersion: {type: 'string'},
-    automationName:  {type: 'string'},
-    app:             {type: 'string'},
-    browserName:     {type: 'string'},
-    testingType:     {type: 'string', default: 'app'},
-    aiToolName:      {type: 'string'}
+    platformName:       {type: 'string'},
+    udid:               {type: 'string'},
+    deviceName:         {type: 'string'},
+    platformVersion:    {type: 'string'},
+    automationName:     {type: 'string'},
+    app:                {type: 'string'},
+    browserName:        {type: 'string'},
+    testingType:        {type: 'string', default: 'app'},
+    aiToolName:         {type: 'string'},
+    newCommandTimeout:  {type: 'string'},
+    scriptlessCapture:  {type: 'boolean'}
   },
   strict: false
 })
@@ -67,6 +69,20 @@ if (errors.length) {
   process.exit(1)
 }
 
+// Parse --newCommandTimeout: integer seconds. Optional. When omitted the
+// capability is not emitted, preserving Appium's default behavior for
+// run-automation-suite's existing callers (KOB-53296: drive-automation-session
+// uses 1800 so its loop survives human-in-the-loop pauses).
+let newCommandTimeout = 0
+if (flags.newCommandTimeout !== undefined) {
+  const n = Number(flags.newCommandTimeout)
+  if (!Number.isInteger(n) || n <= 0) {
+    process.stderr.write('--newCommandTimeout must be a positive integer (seconds)\n')
+    process.exit(1)
+  }
+  newCommandTimeout = n
+}
+
 // Build template variables: CLI flags + hardcoded defaults
 const templateVars = {
   // From CLI
@@ -78,6 +94,8 @@ const templateVars = {
   app: flags.app || '',
   browser: flags.browserName || '',
   testingType: flags.testingType,
+  newCommandTimeout,
+  scriptlessCapture: Boolean(flags.scriptlessCapture),
 
   // Hardcoded defaults
   sessionName: 'Automation test session',

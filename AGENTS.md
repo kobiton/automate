@@ -39,7 +39,28 @@ For exploratory testing or repro work (not running a pre-written script):
 3. **Interact**: relay WebDriver commands through the plugin; capture artifacts on demand.
 4. **End the session**: `terminateSession` when the user is done.
 
-Detailed step-by-step instructions live in `skills/run-interactive-test/SKILL.md`. Response shapes for the WebDriver layer are documented at `skills/run-interactive-test/references/response-shapes.md`.
+Detailed step-by-step instructions live in `skills/run-interactive-cli-session/SKILL.md`. Response shapes for the WebDriver layer are documented at `skills/run-interactive-cli-session/references/response-shapes.md`.
+
+## When the user asks to drive a device from a natural-language intent
+
+For agent-driven flows the user describes in plain language ("open YouTube and play the first world cup video", "log in then enable Bluetooth, then go home"). Different from interactive driving above — this one auto-pilots from observation to action without a human in the loop on each step. The result is a saveable test case.
+
+1. **Ask before picking the device and the live view** (the skill blocks here): which device + which observation mode (foreground live view vs background run). For the device, the same `listDevices` / `reserveDevice` flow as the other skills applies.
+2. **Render capabilities** via `skills/run-automation-suite/scripts/render-capabilities.js` with `--newCommandTimeout 1800` (30 min — survives human-in-the-loop pauses) and `--scriptlessCapture` (so the resulting session is consumable by `saveTestCase`).
+3. **Resolve credentials** once into the process env via `skills/drive-automation-session/scripts/load-credentials.sh` — exports `KOBITON_USER` / `KOBITON_API_KEY` / `KOBITON_PORTAL` from MCP `getCredential` (preferred) or `~/.kobiton/.credentials` (fallback). Per-call invocations stay flag-free.
+4. **Create the automation Appium session** via the Node-only `skills/drive-automation-session/scripts/appium.js` (no package deps — uses `node:https` directly). Returns the session id.
+5. **If the user chose foreground**, open the device-only live view URL via `skills/run-automation-suite/scripts/chromeless-launcher.sh` (Chrome `--app` window sized per device class) with the default-browser fallback table for Safari / Firefox / Default.
+6. **Per-turn loop** — three branches per turn:
+   - `screen`: capture `iter-N.xml` (stripped webview DOM or raw native source) AND `iter-N.png` by default. Compute a screen-state hash for stuck detection.
+   - `act`: emit a raw Appium HTTP call (`POST /session/{id}/element`, `POST /session/{id}/actions`, `POST /session/{id}/touch/perform`, ...). Selectors come from the observed XML — never invented.
+   - `control`: signal end-of-cycle with `--done` (goal reached) or `--blocked` (genuinely stuck).
+7. **Cleanup**: a Bash `trap` issues `DELETE /session/{id}` (idempotent — 404 = success). Follow up with `terminateSession` to guarantee the platform-side session ends.
+
+The session id is consumable by `getSession`, `getSessionArtifacts`, and `saveTestCase` exactly like a session created by `run-automation-suite`.
+
+Detailed step-by-step instructions live in `skills/drive-automation-session/SKILL.md`. The endpoint allowlist + selector-construction guide live in `skills/drive-automation-session/references/endpoint-reference.md`; per-turn loop discipline (stuck patterns, error catalog, artifact layout) lives in `skills/drive-automation-session/references/loop-discipline.md`.
+
+This skill complements — it does NOT replace — `run-interactive-cli-session`. Use it for AI-driven flows; use `run-interactive-cli-session` for human-driven exploration via the CLI session type.
 
 ## When the user asks to save or manage test cases
 

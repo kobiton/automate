@@ -1,5 +1,5 @@
 ---
-name: run-interactive-test
+name: run-interactive-cli-session
 description: >-
   Perform interactive testing on Kobiton devices using natural language.
   Translates user intents into CLI commands - WebDriver actions (find
@@ -436,7 +436,7 @@ Assumes a session is already active (run `session ping` first; if expired, creat
 ## Resources
 
 - [Appium 2.x documentation](https://appium.io/docs/en/2.0/) - driver-specific docs (UiAutomator2 for Android, XCUITest for iOS) for the WebDriver endpoints called via `wd post` / `wd get`.
-- [`kobiton/automate` plugin source](https://github.com/kobiton/automate) - issue tracker and source for the bundled CLI wrapper (`skills/run-interactive-test/scripts/run.sh`) and platform binaries.
+- [`kobiton/automate` plugin source](https://github.com/kobiton/automate) - issue tracker and source for the bundled CLI wrapper (`skills/run-interactive-cli-session/scripts/run.sh`) and platform binaries.
 - [`run-automation-suite`](../run-automation-suite/SKILL.md) - sister skill for non-interactive runs of an existing Appium script. Use it when the user wants to execute a full test suite rather than drive the device step-by-step, or when the host platform isn't supported by this skill's bundled binary.
 - `/automate:setup` - install / refresh the CLI symlink and the credentials profile at `~/.kobiton/.credentials`.
 - `/automate:doctor` - read-only health check for CLI symlink, credentials file, active profile, and required fields.
