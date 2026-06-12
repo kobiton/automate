@@ -1,7 +1,7 @@
 # chromeless-launcher-windows.ps1 — Windows shim invoked by SKILL.md Step 5.
 #
 # Launches Chrome in --app mode pointing at the device-only URL, then polls
-# (up to 10s) for the new window and resizes it via SetWindowPos. Matches
+# (up to 30s) for the new window and resizes it via SetWindowPos. Matches
 # the new window by a snapshot-before / diff-after over all visible
 # top-level Chrome windows: this works whether Chrome was already running
 # (in which case `chrome.exe --app=` delegates to the existing instance
@@ -138,12 +138,12 @@ $snapshot = [ChromelessWin]::SnapshotChromeWindows()
 Start-Process -FilePath $chrome -ArgumentList @("--app=$Url") -WindowStyle Normal
 
 # --- Poll for the new window, then resize ----------------------------------
-$deadline = (Get-Date).AddSeconds(10)
+$deadline = (Get-Date).AddSeconds(30)
 $hwnd = [IntPtr]::Zero
 
 while ((Get-Date) -lt $deadline -and $hwnd -eq [IntPtr]::Zero) {
   $hwnd = [ChromelessWin]::FindNewChromeWindow($snapshot)
-  if ($hwnd -eq [IntPtr]::Zero) { Start-Sleep -Milliseconds 500 }
+  if ($hwnd -eq [IntPtr]::Zero) { Start-Sleep -Seconds 1 }
 }
 
 if ($hwnd -ne [IntPtr]::Zero) {
@@ -152,5 +152,5 @@ if ($hwnd -ne [IntPtr]::Zero) {
   exit 0
 }
 
-Write-Error 'chromeless-launcher-windows: window did not appear within 10s; user can resize manually'
+Write-Error 'chromeless-launcher-windows: window did not appear within 30s; user can resize manually'
 exit 0

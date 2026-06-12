@@ -32,7 +32,7 @@ else
   PLUGIN_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 fi
 
-TARGET="${PLUGIN_ROOT}/skills/run-interactive-test/scripts/run.sh"
+TARGET="${PLUGIN_ROOT}/skills/run-interactive-cli-session/scripts/run.sh"
 LINK="$HOME/.kobiton/bin/kobiton"
 
 # Only act if the target script exists in this plugin

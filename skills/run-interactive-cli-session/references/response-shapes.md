@@ -1,6 +1,6 @@
 # Per-Command Response Shapes
 
-Reference material for the `run-interactive-test` skill. The skill drives a Kobiton device by translating natural-language intent into CLI commands; this file holds the parsing guidance for every command's response so the skill knows how to extract values, detect success, and surface results to the user.
+Reference material for the `run-interactive-cli-session` skill. The skill drives a Kobiton device by translating natural-language intent into CLI commands; this file holds the parsing guidance for every command's response so the skill knows how to extract values, detect success, and surface results to the user.
 
 Most WebDriver endpoints return a JSON envelope `{"value": <result>}`. A few commands (`wd get screenshot`, `wd get source`) are unwrapped by the CLI and emit raw bytes/text directly. Non-WebDriver commands (`session`, `device`, `file`, `app`, `test`) typically emit plain text and signal failure through exit code.
 
