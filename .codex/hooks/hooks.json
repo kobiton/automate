@@ -25,17 +25,6 @@
     ],
     "PostToolUse": [
       {
-        "matcher": "mcp__plugin_automate_kobiton__confirmAppUpload",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/scripts/advise-app-upload-poll.mjs"],
-            "timeout": 5
-          }
-        ]
-      },
-      {
         "matcher": "mcp__plugin_automate_kobiton__terminateSession",
         "hooks": [
           {

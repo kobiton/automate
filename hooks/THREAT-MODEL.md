@@ -1,6 +1,6 @@
 # Threat model — `hooks/`
 
-Threat model for the three advisory Claude Code hooks in this directory. Written in response to a multi-reviewer pre-flight (code-reviewer + security-auditor + test-automator) on the original proposal.
+Threat model for the two advisory Claude Code hooks in this directory. Written in response to a multi-reviewer pre-flight (code-reviewer + security-auditor + test-automator) on the original proposal.
 
 ## Trust boundaries
 
@@ -39,7 +39,6 @@ If a future hook adds an authenticated API call, it MUST:
 **Threat:** a hook echoes user-controlled input (e.g., the `userIntent` argument value, an `appId` from a tool response) back into the agent's context via the `additionalContext` or `permissionDecisionReason` fields. An attacker crafts an input containing prompt-injection text (`"} ignore previous instructions ...`) which then runs as part of the next agent turn.
 
 **Mitigation:**
-- `advise-app-upload-poll.mjs`: only `appId` and `versionId` are echoed, both sanitized to digits-only before string interpolation. Tested negatively in `advise-app-upload-poll.test.mjs`.
 - `advise-post-terminate-cooldown.mjs`: only `sessionId` is echoed, sanitized to digits-only. Tested negatively in `advise-post-terminate-cooldown.test.mjs`.
 - `advise-pre-terminate-cooldown.mjs`: emits a fully static advisory with no input echo at all.
 
@@ -62,7 +61,7 @@ If a future hook adds an authenticated API call, it MUST:
 
 **Threat:** an attacker submits a tool-call argument value crafted to trigger catastrophic backtracking on a hook-side regex, spiking CPU on every Kobiton MCP call.
 
-**Mitigation:** the three remaining hooks use regex only for digit-only sanitization of numeric IDs — `String(id).replace(/[^0-9]/g, '').slice(0, 20)` in `advise-app-upload-poll.mjs` and `advise-post-terminate-cooldown.mjs`. That pattern is a single character-class match with a global flag and a hard slice — linear-time, no quantifier nesting, no backtracking surface. No hook in this directory uses regex to *validate* user input against a structural pattern.
+**Mitigation:** the only hook that echoes an input ID (`advise-post-terminate-cooldown.mjs`) uses regex solely for digit-only sanitization — `String(id).replace(/[^0-9]/g, '').slice(0, 20)`. That pattern is a single character-class match with a global flag and a hard slice — linear-time, no quantifier nesting, no backtracking surface. No hook in this directory uses regex to *validate* user input against a structural pattern.
 
 Any future hook that adds a validation regex MUST:
 - Length-bound the input via `.slice()` or `length` short-circuit BEFORE the regex runs
@@ -74,19 +73,19 @@ Any future hook that adds a validation regex MUST:
 
 **Threat:** an earlier draft used `${CLAUDE_PROJECT_DIR}` (the user's project root) instead of `${CLAUDE_PLUGIN_ROOT}` (the plugin install directory). If the user runs the plugin in a project where `hooks/scripts/` doesn't exist at the project root, every hook invocation crashes — and a crash on a `PreToolUse` hook is treated as non-blocking, defeating the validation.
 
-**Mitigation:** all four hooks reference `${CLAUDE_PLUGIN_ROOT}/hooks/scripts/...` in `hooks.json`. The plugin install location is stable; the user's project location is not.
+**Mitigation:** both hooks reference `${CLAUDE_PLUGIN_ROOT}/hooks/scripts/...` in `hooks.json`. The plugin install location is stable; the user's project location is not.
 
 ### T7 — Shell metachar interpretation via shell-form `command`
 
 **Threat:** if `hooks.json` uses shell form (`"command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/X.mjs"`), a `CLAUDE_PLUGIN_ROOT` value containing spaces or special characters (think Windows paths like `C:\Users\My Name\.claude\plugins\...`) breaks the command or — worse — executes unintended path components.
 
-**Mitigation:** all four hooks use **exec form** (`"command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/scripts/X.mjs"]`). Args are passed literally to the OS exec call, not interpreted by a shell.
+**Mitigation:** both hooks use **exec form** (`"command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/scripts/X.mjs"]`). Args are passed literally to the OS exec call, not interpreted by a shell.
 
 ### T8 — Timeout-based denial of service
 
 **Threat:** a hook that hangs (e.g., waiting on stdin that never closes) ties up the agent for the full hook timeout. With Claude Code's 600s default, this can stall an agent for 10 minutes per tool call.
 
-**Mitigation:** every hook in `hooks.json` has an explicit `"timeout": 5` (seconds). All four scripts have stdin-read code paths that exit gracefully on read failure or empty input.
+**Mitigation:** every hook in `hooks.json` has an explicit `"timeout": 5` (seconds). Both scripts have stdin-read code paths that exit gracefully on read failure or empty input.
 
 ### T9 — Supply chain integrity
 
