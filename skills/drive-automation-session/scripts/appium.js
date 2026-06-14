@@ -383,7 +383,6 @@ async function main() {
       // Common
       'session-id':        {type: 'string'},
       // screen helper
-      'include-screenshot': {type: 'boolean'},  // deprecated; PNG is now default
       'xml-only':           {type: 'boolean'},
       'png-only':           {type: 'boolean'},
       // actions helper

@@ -219,7 +219,7 @@ Every Claude surface that supports MCP can call the Kobiton [tools](#tools). The
 | **Claude Cowork** (macOS / Windows) |           ✅ Yes            |        ⚠️ Manual upload ²        | Add `https://api.kobiton.com/mcp` as a connector under **Connectors** |
 | **claude.ai web · Claude Desktop · Claude mobile** |           ✅ Yes            |        ⚠️ Manual upload ²        | Add `https://api.kobiton.com/mcp` as a Custom Connector at [claude.ai](https://claude.ai); for mobile, configure it on the web first and it syncs to the app |
 
-¹ `run-interactive-test` also requires the bundled `kobiton` CLI binary (macOS Apple Silicon only) - see the [platform support note](#skills).
+¹ `run-interactive-cli-session` also requires the bundled `kobiton` CLI binary (macOS Apple Silicon only) - see the [platform support note](#skills).
 ² This plugin is not listed in the [Claude directory](https://support.claude.com/en/articles/14328846-browse-skills-connectors-and-plugins-in-one-directory) yet, so these surfaces can't install it as a plugin. As a workaround, zip a skill folder from this repo (e.g. `skills/run-automation-suite/`) and upload it as a [custom skill](https://support.claude.com/en/articles/12512198-how-to-create-custom-skills).
 
 ## Login
@@ -387,6 +387,7 @@ The script is idempotent - safe to re-run.
 |-------|-------------|
 | **run-automation-suite** | Guided workflow for app upload, device selection, local Appium script execution (Node.js, Python, .NET, Java), and result collection. |
 | **run-interactive-cli-session** | Guided workflow for interactive testing using natural language. WebDriver actions, device operations (adb shell, logs, screen), file management (push/pull), and more. |
+| **drive-automation-session** | Drives an already-reserved device from a natural-language intent via a direct Appium HTTP session (observe-decide-act loop). Returns a session id consumable by `saveTestCase`. Complements `run-interactive-cli-session` — it uses the automation session type rather than the CLI. |
 
 > **Platform support note:** all MCP tools and the `run-automation-suite` skill work on every platform the host CLI supports. The `run-interactive-cli-session` skill ships a CLI binary for **macOS Apple Silicon** only. On other platforms, use `run-automation-suite` or the MCP tools directly.
 

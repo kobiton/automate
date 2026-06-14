@@ -39,7 +39,9 @@ Drive a Kobiton device from a natural-language intent. The caller provides:
 2. A UDID for a device the caller has already reserved.
 3. An app reference (`kobiton-store:vXXXXX`) or a browser name for web sessions.
 
-The skill opens an **automation-type** Appium session (with `appium:newCommandTimeout: 1800` so the session survives pauses while the model asks for guidance), runs an observe-decide-act loop, and returns the session id. The returned session is consumable by `mcp__plugin_automate_kobiton__getSession`, `getSessionArtifacts`, and `saveTestCase` exactly like any other automation session.
+The skill opens an **automation-type** Appium session (with `appium:newCommandTimeout: 1800` so the session survives pauses while the model asks for guidance), runs an observe-decide-act loop, and returns the session id. The returned session is consumable by the Kobiton MCP tools `getSession`, `getSessionArtifacts`, and `saveTestCase` exactly like any other automation session.
+
+> **Tool naming.** This doc refers to Kobiton MCP tools by their bare names (`getSession`, `reserveDevice`, `terminateSession`, …). The exact registered name depends on how the host loaded the MCP server (e.g. Claude Code as a plugin exposes `mcp__plugin_automate_kobiton__getSession`; a repo-local `.mcp.json` or `claude mcp add` exposes `mcp__kobiton__getSession`; other hosts differ). Models fuzzy-match on the bare name, so use it and let the host resolve the prefix.
 
 This skill complements — and does NOT replace — `run-interactive-cli-session`. They serve different session types:
 
@@ -50,7 +52,7 @@ This skill complements — and does NOT replace — `run-interactive-cli-session
 
 ## Prerequisites
 
-- **Credentials available.** The skill reads credentials from the `mcp__plugin_automate_kobiton__getCredential` MCP tool by default — no `/automate:setup` prerequisite. If MCP is unavailable, the skill falls back to `~/.kobiton/.credentials` (written by `/automate:setup`). If neither source produces credentials, the skill stops with a helpful message.
+- **Credentials available.** The skill reads credentials from the Kobiton MCP `getCredential` tool by default — no `/automate:setup` prerequisite. If MCP is unavailable, the skill falls back to `~/.kobiton/.credentials` (written by `/automate:setup`). If neither source produces credentials, the skill stops with a helpful message.
 - **A device.** Either the user provides one (UDID, deviceName, platformVersion) or the skill helps pick + reserve one (see Step 0 below).
 - **An app** (for app testing) — a Kobiton-store reference like `kobiton-store:vXXXXX`, an `.apk` / `.ipa` to upload, or a browser name (for web testing). The skill helps locate or upload it in Step 0.
 
@@ -63,7 +65,7 @@ Before reserving anything, the skill clarifies what the user wants. **Do NOT aut
 If the user didn't specify a device in their intent:
 
 1. Ask: *"Which device or platform? (e.g., 'a Pixel running Android 14', 'an iPhone 15 Pro', or pick any available Android)."* Wait for the response.
-2. If they name a class (e.g., "any Pixel", "any iOS phone"), call `mcp__plugin_automate_kobiton__listDevices` with the relevant platform filter and present the top 3-5 options with name + OS version + availability.
+2. If they name a class (e.g., "any Pixel", "any iOS phone"), call `listDevices` with the relevant platform filter and present the top 3-5 options with name + OS version + availability.
 3. If they name a specific device, verify availability via `getDeviceStatus` before reserving.
 4. Reserve via `reserveDevice`. Capture the UDID, deviceName, platformVersion, automationName for Step 2's caps render.
 
@@ -75,7 +77,7 @@ For an `app` testing session:
 
 - If the user referenced a build (`@build.apk`, "the latest staging build", `kobiton-store:vXXXXX`), use it. Verify the store reference exists via `listApps` if uncertain.
 - If they didn't reference one, ask: *"Which app should the session install? (path to a local `.apk`/`.ipa`, an existing `kobiton-store:vXXXXX` reference, or none if the intent is browser-only)."*
-- Upload local files via `uploadAppToStore` → `confirmAppUpload`.
+- Upload local files via `uploadAppToStore` → `confirmAppUpload` → poll `getAppParsingStatus` until the state is terminal (`OK` = ready; stop on a `FAILURE_*` value). `confirmAppUpload` only kicks off async parsing on the backend — it does NOT guarantee the app is ready, so the session can fail to install if you skip the poll.
 
 For a `web` testing session, skip the app step — `--testingType web --browserName chrome|safari` is enough.
 
@@ -266,7 +268,7 @@ node "$SKILL_DIR/scripts/appium.js" <YOUR-ARGV> --session-dir "$SESSION_DIR"
 #   --method POST --url /session/$SESSION_ID/element --req-body '{"using":"xpath","value":"//Button"}'
 #   actions --session-id $SESSION_ID --type swipe --from-x 540 --from-y 1800 --to-x 540 --to-y 600
 #   touch-perform --session-id $SESSION_ID --steps @/tmp/steps.json
-#   --method DELETE --url /session/$SESSION_ID/element/$EL_ID/clear
+#   --method POST --url /session/$SESSION_ID/element/$EL_ID/clear --req-body '{}'
 
 # Branch C: end the cycle.
 node "$SKILL_DIR/scripts/appium.js" control \
@@ -315,7 +317,7 @@ The full loop discipline (artifact paths, error feedback, termination conditions
 
 The Bash `trap` (set up in Step 3) issues `DELETE /wd/hub/session/$SESSION_ID` on exit (loop end, error, user stop). That's the **clean** way to end the session — Kobiton records the session state as `COMPLETE`, which is what `saveTestCase` and analytics expect.
 
-Do **NOT** call `mcp__plugin_automate_kobiton__terminateSession` here. That MCP tool ends the session via Kobiton's platform-side kill path, which marks the session state as `TERMINATED` — distinct from `COMPLETE` and treated as an abnormal exit by the recording pipeline. Reserve `terminateSession` for the genuinely-stuck case where the WebDriver `DELETE` is unreachable (network down, Appium hub unresponsive) AND the user explicitly asks to force-kill the session.
+Do **NOT** call the `terminateSession` MCP tool here. It ends the session via Kobiton's platform-side kill path, which marks the session state as `TERMINATED` — distinct from `COMPLETE` and treated as an abnormal exit by the recording pipeline. Reserve `terminateSession` for the genuinely-stuck case where the WebDriver `DELETE` is unreachable (network down, Appium hub unresponsive) AND the user explicitly asks to force-kill the session.
 
 If the `DELETE` somehow fails silently, the session will time out on the Kobiton side per `appium:newCommandTimeout` (30 min, set in Step 2). Better to wait for that timeout than to mark the session `TERMINATED`.
 
@@ -323,9 +325,9 @@ If the `DELETE` somehow fails silently, the session will time out on the Kobiton
 
 Emit the session id back to the caller. The session is now consumable by:
 
-- `mcp__plugin_automate_kobiton__getSession({sessionId})` — session metadata, device info, results.
-- `mcp__plugin_automate_kobiton__getSessionArtifacts({sessionId})` — video, logs, screenshots, reports.
-- `mcp__plugin_automate_kobiton__saveTestCase({sessionId})` — persist as a re-runnable test case (sibling feature, out of scope here).
+- `getSession({sessionId})` — session metadata, device info, results.
+- `getSessionArtifacts({sessionId})` — video, logs, screenshots, reports.
+- `saveTestCase({sessionId})` — persist as a re-runnable test case (sibling feature, out of scope here).
 
 ## Endpoint reference
 

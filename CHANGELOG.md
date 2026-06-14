@@ -4,64 +4,30 @@
 
 ### New `drive-automation-session` skill
 
-`automate:drive-automation-session` drives an already-reserved Kobiton device from a natural-language intent. Opens an **automation-type** Appium session directly against the Kobiton WebDriver hub (the first direct-Appium-HTTP path in this plugin), runs a turn-based observe-act cycle, and returns a session id consumable by `getSession`, `getSessionArtifacts`, and `saveTestCase` unchanged. Complements `run-interactive-cli-session` (CLI session type) — does not replace it. Sessions open with `appium:newCommandTimeout: 1800` (30 min) so they survive human-in-the-loop pauses; the platform-side session-duration cap remains the wall-clock bound.
+`automate:drive-automation-session` drives an already-reserved Kobiton device from a natural-language intent. Opens an **automation-type** Appium session directly against the Kobiton WebDriver hub (the first direct-Appium-HTTP path in this plugin), runs a turn-based observe-act cycle, and returns a session id consumable by `getSession`, `getSessionArtifacts`, and `saveTestCase` unchanged. Complements `run-interactive-cli-session` (CLI session type) — does not replace it. Sessions open with `appium:newCommandTimeout: 1800` (30 min) so they survive human-in-the-loop pauses, and `kobiton:scriptlessCapture: true` so the result is `saveTestCase`-consumable.
 
-### Skill architecture (in `skills/drive-automation-session/`)
+- **`scripts/appium.js`** — Node `node:https`-only Appium HTTP client; no package dependencies. Generic mode (`--method`/`--url`/`--req-body`) for raw Appium calls, plus `screen` / `actions` / `touch-perform` / `control` helpers. Reads `~/.kobiton/.credentials` (written by `/automate:setup`) directly each invocation — credentials never appear in argv, env, or the AI host's transcript. `screen` captures both `iter-N.xml` and `iter-N.png` by default (`--xml-only` / `--png-only` to skip one); webview `/source` is stripped before write (see below). Exits 0 for every outcome and writes `iter-N.error.json` on failure, leaving recoverable-vs-fatal classification to the host.
+- **`scripts/strip-webview-dom.js`** — pure-regex strip that drops `<script>`/`<style>`/`<head>`/`<noscript>` blocks, base64 `<img>`, and attributes outside an agent-driving whitelist. Cuts webview source ~10× (558KB → ~50KB on the pilot YouTube run) so the host can read `iter-N.xml` whole; the raw body is kept as `iter-N.full.xml` as an escape hatch.
+- **Per-turn pattern (`SKILL.md`)** — each turn the host picks exactly one of three branches: `screen` (observe), an Appium call (act), or `control` (end). The script enforces no blocker thresholds; the host watches the screen-state hash and emits `control --blocked` when stuck. `MAX_ITERS=100` (overridable) is the only programmatic safety net.
+- **Cleanup** — a Bash `trap` issues `DELETE /wd/hub/session/{id}` on exit, so Kobiton records the session `COMPLETE`. `terminateSession` is not called by default (it would mark the session `TERMINATED`); reserved for force-kill.
+- **Live view** — Step 0 asks device + foreground/background preference before session create. Foreground reuses `run-automation-suite`'s chromeless-launcher; URL shape `<portal>/devices/launch?id=<deviceId>&view=device-only`.
+- **`references/`** — `endpoint-reference.md` (allowlisted endpoints + selector-construction guide), `loop-discipline.md` (per-turn pattern + stuck patterns + reading errors), `capabilities.md` (desired-caps payload + credentials model).
 
-- **`scripts/appium.js`** — Node `node:https`-only Appium HTTP client. No package dependencies. Five subcommand shapes:
-  - **Generic mode**: `node appium.js --method <GET|POST|DELETE> --url <path-after-/wd/hub> [--req-body '<json>'|@<file>]`. The AI host emits raw Appium calls per `references/endpoint-reference.md`.
-  - **`screen`** helper: captures `iter-N.xml` (and `iter-N.png` with `--include-screenshot`); emits `{hash, xmlBytes, pngBytes}` on stdout. XML-only default saves tokens.
-  - **`actions`** helper: builds the W3C `/session/{id}/actions` body for `touch`/`swipe`/`key` sub-types — too verbose to hand-write.
-  - **`touch-perform`** helper: wraps a JSON-array of `{action, options}` steps for the legacy MJSONWP `/session/{id}/touch/perform`.
-  - **`control`** subcommand: `--done` or `--blocked --reason "..."` writes `iter-N.control.json`; no HTTP call. Signals the host to end the cycle.
-- **`references/`** — three docs the AI host reads: `endpoint-reference.md` (allowlisted endpoints + selector-construction guide), `loop-discipline.md` (per-turn pattern + stuck patterns + reading errors), `capabilities.md` (desired-caps payload).
+### Renamed: `run-interactive-test` → `run-interactive-cli-session`
 
-### Per-turn pattern (in `SKILL.md`)
+The CLI-session skill is renamed to make the `<verb>-<session-type>-session` naming consistent with the new `drive-automation-session` (automation session type). Skill behavior is unchanged. `/automate:setup`, `scripts/install-cli.sh`, `AGENTS.md`, `README.md`, and `CLAUDE.md` updated to the new path.
 
-Each turn, the host exports `ITER=$((ITER + 1))` and picks **exactly one** of three branches: `screen` (observe), an Appium call (act), or `control` (end). A decision guide maps each previous-turn outcome to the next branch — e.g., a failed act with `no such element` calls for another `act` (with a corrected selector), not a fresh `screen` (the screen didn't change).
+### Cross-skill: `run-automation-suite/scripts/render-capabilities.js`
 
-The script never enforces blocker thresholds. The host watches the `hash` emitted by `screen` and its own conversation context to detect stuck patterns (same-call repetition, A→B→A oscillation, credentials prompt, CAPTCHA, lazy load, network spinner) — see `loop-discipline.md` "Stuck patterns". The only hard programmatic stop besides fatal errors is **`MAX_ITERS=100`** (overridable per session), a safety net against runaway cycles.
+Two new optional flags, both default-off (existing callers unaffected); `drive-automation-session` passes both:
+- `--newCommandTimeout <seconds>` — emits `appium:newCommandTimeout`.
+- `--scriptlessCapture` — emits `kobiton:scriptlessCapture: true` (KOB-41142), gating platform-side capture for `saveTestCase`.
 
-### Credentials
-
-Three sources, in precedence order: explicit flags (`--portal --user --api-key` or `--hub-url`), env vars (`KOBITON_USER` / `KOBITON_API_KEY` / `KOBITON_PORTAL`), then a fallback to parsing `~/.kobiton/.credentials` (file written by `/automate:setup`). The SKILL.md per-turn block exports the env vars once at startup — from `mcp__plugin_automate_kobiton__getCredential` when MCP is available, else from the file — so individual `appium.js` invocations stay flag-free. Credentials never appear in `argv`/`ps` listings. The file is parsed via a Bash `while IFS='=' read` loop, not `eval`, so a tampered credentials file cannot inject shell commands.
-
-### Single exit code; host classifies errors
-
-`appium.js` exits 0 for every outcome — success, Appium-level failure (4xx/5xx/parse/network/timeout), or host-fixable CLI usage error (missing flag, malformed JSON, unknown helper). The script writes `iter-N.error.json` on every failure path (when `--session-dir` is set): line 1 is `{status}` (HTTP) or `{error, message}` (usage/runtime); line 2+ is the verbatim response body. The host reads the file on the next turn and decides. The only non-zero exit is a Node literal crash. `references/loop-discipline.md` "Reading errors" documents which Appium W3C errors are typically re-plannable (`no such element`, `stale element reference`, `invalid selector`, `invalid argument`, `timeout`, HTTP 408) vs. likely-fatal (`invalid session id`, HTTP 5xx, non-Appium error pages).
-
-### Cross-skill change: `run-automation-suite/scripts/render-capabilities.js`
-
-Two new optional flags:
-- `--newCommandTimeout <seconds>` — emits `appium:newCommandTimeout` when set; omitted when unset (preserves existing-caller behavior).
-- `--scriptlessCapture` — emits `kobiton:scriptlessCapture: true` per KOB-41142, gating platform-side capture of WebDriver actions for `saveTestCase` consumability.
-
-Both default off. `drive-automation-session` always passes both.
-
-### `/automate:setup` documentation
-
-Clarifies that `drive-automation-session` consumes the credentials file alongside MCP tools and `run-automation-suite`. Only `run-interactive-cli-session` depends on the additional CLI symlink. No behavior change in setup.
-
-### Cleanup contract
-
-The skill ends the WebDriver session on exit (normal, user interrupt, error) via a Bash `trap` that issues `DELETE /wd/hub/session/{id}` (idempotent — 404 is treated as success). This is the **only** path used in the happy case — Kobiton records the session state as `COMPLETE`. `mcp__plugin_automate_kobiton__terminateSession` is NOT called by default; it would mark the session `TERMINATED` (treated as abnormal exit by the recording pipeline) and is reserved for the force-kill case where the WebDriver DELETE is genuinely unreachable AND the user explicitly asks for it.
-
-### Pilot-feedback follow-up (post-review tweaks within 1.5.0)
-
-A first pilot run (`/automate:drive-automation-session "open youtube.com on chrome, search 'world cup 2026' and play the first video"` on a Pixel 8a, 32 iterations, end-to-end success) surfaced real workarounds that weren't in the skill docs and ergonomics gaps versus `run-automation-suite`. A second review (with a pre-session screenshot showing Chrome's "notifications" welcome dialog blocking the first turn) revealed that XML-only observation misses native overlays entirely. All addressed in the same 1.5.0 release without a version bump:
-
-- **`screen` captures PNG by default.** Previously XML-only with `--include-screenshot` opt-in; now writes both `iter-N.xml` and `iter-N.png` by default. Native overlays (Chrome's "notifications" welcome card, OS-level permission prompts, system dialogs) are NOT in the webview source XML — only the screenshot catches them. New `--xml-only` flag skips the screenshot when you trust the source is complete (token savings); new `--png-only` flag skips the source for visual-only verification turns. `--include-screenshot` retained as a no-op for backward compatibility. +4 vitest cases covering all three modes plus the mutually-exclusive guard.
-- **`appium.js` auto-wraps caps in W3C envelope** when generic-mode hits `POST /session` with a flat caps body. `render-capabilities.js` emits flat caps (`{platformName: ..., appium:udid: ..., ...}`) but the Appium hub requires `{capabilities: {alwaysMatch: ...}}`. Pre-wrapped bodies pass through unchanged. Avoids the `400 "desiredCapabilities or capabilities is required"` the pilot hit on its first attempt. +3 vitest cases covering auto-wrap, passthrough, and non-`/session` no-false-positive.
-- **`references/endpoint-reference.md` "Web sessions" section rewritten** to lead with the universal approach: switch to NATIVE_APP context, tap viewport coordinates via the `actions` helper. Works for both clicks and media activation, routes through the scriptless-capture allowlist, and sidesteps the three chromedriver pitfalls (in-webview click failures, missing user-activation, unstable context names) in one move. `execute/sync` is a brief fallback subsection for web-only operations (DOM manipulation, hidden elements, custom events).
-- **SKILL.md emphasizes credential-export-once.** The pilot re-parsed `~/.kobiton/.credentials` on every Bash call. Added an explicit "DON'T re-parse per call" anti-pattern callout under Step 1.
-- **Step 0: Device + app selection (ask before picking).** Inherited from `run-automation-suite`. If the user didn't specify a device, the skill asks before auto-picking. Auto-pick is allowed only when the intent unambiguously implies a platform AND the user didn't constrain — and even then, the skill states which device it picked and why.
-- **Step 3b: Offer to open the live view after session start.** Inherited from `run-automation-suite`. After session create, the skill asks whether the user wants to watch the device drive in real time via `<portal>/devices/launch?id=<deviceId>&view=device-only`. Open via `Bash(open:*)` / `Bash(xdg-open:*)` on user confirm — never auto-open.
+The shared chromeless launcher's resize-polling budget is raised 10s → 30s (poll interval 0.5s → 1s) to cover Chrome cold starts.
 
 ### Test surface
 
-154 vitest cases total, up from 116:
-- `skills/drive-automation-session/scripts/appium.test.js` — 40 cases against an in-proc HTTP mock. Covers generic mode (GET/POST/DELETE, inline + `@file` bodies, `/wd/hub` prefix normalization, idempotent DELETE on 404, **auto-wrap of flat caps on POST /session, passthrough of already-wrapped bodies, no-wrap on non-`/session` URLs**), all three credential paths (triple, env, `--hub-url` backward-compat) and flag override of env, exit-0-always semantics for every error category, **`screen` helper (default both-by-default, `--xml-only`, `--png-only`, mutually-exclusive guard)**, `--session-dir` artifact persistence (request/response/error, no-files-without-flags, 3-digit padding, `ITER` env fallback + explicit `--iter` override, bad-input-writes-error-file), `actions` helper (all three sub-types + validation), `touch-perform` helper + validation, `control` helper for DONE/BLOCKED + validation, generic-mode usage errors.
-- `skills/run-automation-suite/scripts/render-capabilities.test.js` — 5 new cases for `--newCommandTimeout` (3) and `--scriptlessCapture` (2).
+176 vitest cases total (up from 105): `appium.test.js` (53 — generic mode + auto-wrap of flat caps on `POST /session` + `screen` modes + webview-strip/native detection + credentials file-source + injection safety), `strip-webview-dom.test.js` (14), and `render-capabilities.test.js` (+5).
 
 ## 1.5.0 - 2026-06-11
 
@@ -113,8 +79,8 @@ A first pilot run (`/automate:drive-automation-session "open youtube.com on chro
 ## 1.2.2 - 2026-05-25
 
 - Added 14 Test Case Management MCP tool schemas in `tools/test-management.yaml` — test cases (`saveTestCase`, `listTestCases`, `getTestCase`, `updateTestCase`, `deleteTestCase`), test runs (`createTestRun`, `listTestRuns`, `getTestRun`, `terminateTestRun`), and test suites (`listTestSuites`, `getTestSuite`, `createTestSuite`, `updateTestSuite`, `deleteTestSuite`)
-- Updated bundled `kobiton` CLI binary in `run-interactive-cli-session` skill to the latest version
-- Expanded `run-interactive-cli-session` adb-shell documentation for AI agents: quoting rules (local vs device shell parsing), platform guard (Android only), 22-row intent-to-command cookbook, big-output redirect pattern (to avoid 25k-token MCP overflow), long-running command guidance, and response parsing gotchas in `references/response-shapes.md` — notably that `adb` returns exit code 0 even when the inner command fails
+- Updated bundled `kobiton` CLI binary in `run-interactive-test` skill to the latest version
+- Expanded `run-interactive-test` adb-shell documentation for AI agents: quoting rules (local vs device shell parsing), platform guard (Android only), 22-row intent-to-command cookbook, big-output redirect pattern (to avoid 25k-token MCP overflow), long-running command guidance, and response parsing gotchas in `references/response-shapes.md` — notably that `adb` returns exit code 0 even when the inner command fails
 
 ## 1.2.1 - 2026-05-20
 
@@ -125,7 +91,7 @@ A first pilot run (`/automate:drive-automation-session "open youtube.com on chro
 ## 1.2.0 - 2026-05-18
 
 - Multi-CLI support: install on GitHub Copilot CLI, Gemini CLI, and Codex CLI in addition to Claude Code
-- New `run-interactive-cli-session` skill — natural-language WebDriver/device/file commands powered by the bundled `kobiton` CLI wrapper (macOS Apple Silicon binary included)
+- New `run-interactive-test` skill — natural-language WebDriver/device/file commands powered by the bundled `kobiton` CLI wrapper (macOS Apple Silicon binary included)
 - New `/automate:setup` command — bootstraps `~/.kobiton/.credentials` from the authenticated MCP session, no manual file editing
 - New `/automate:doctor` command — read-only health checks for CLI install, credentials file, active profile, and required fields
 - New `getCredential` MCP tool — backs `/automate:setup`; returns the OAuth user's username, API key (existing or freshly generated), and portal URL

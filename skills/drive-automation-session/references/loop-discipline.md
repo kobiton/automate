@@ -179,15 +179,19 @@ trap 'cleanup' EXIT INT TERM
 
 cleanup() {
   [ -z "$SESSION_ID" ] && return 0
-  node "$SCRIPT_DIR/scripts/appium.js" \
-    --method DELETE --url "/session/$SESSION_ID" >/dev/null 2>&1 || true
-  printf '%s session=%s end-via-trap\n' "$(date -u +%FT%TZ)" "$SESSION_ID" >> "$SESSION_DIR/session.log"
+  delete_err=$(node "$SCRIPT_DIR/scripts/appium.js" \
+    --method DELETE --url "/session/$SESSION_ID" 2>&1 >/dev/null)
+  if [ -z "$delete_err" ]; then
+    printf '%s session=%s end-via-trap status=COMPLETE\n' "$(date -u +%FT%TZ)" "$SESSION_ID" >> "$SESSION_DIR/session.log"
+  else
+    printf '%s session=%s end-via-trap delete-failed err=%s\n' "$(date -u +%FT%TZ)" "$SESSION_ID" "$delete_err" >> "$SESSION_DIR/session.log"
+  fi
 }
 ```
 
-`appium.js` treats `DELETE /session/{id}` returning 404 as success (idempotent), so the trap is safe to fire even if the session has already been ended by the loop's DONE path or by Kobiton's platform-side cap.
+`appium.js` treats `DELETE /session/{id}` returning 404 as success (idempotent), so the trap is safe to fire even if the session has already been ended by the loop's DONE path or by Kobiton's platform-side cap. The `DELETE` is the **only** cleanup path — it ends the WebDriver session cleanly and Kobiton records the session state as `COMPLETE`.
 
-After the trap fires, the AI host SHOULD additionally invoke `mcp__plugin_automate_kobiton__terminateSession({sessionId})` as a belt-and-braces guarantee in case the WebDriver `DELETE` failed (network blip, hub down). The trap is shell-level so it cannot call MCP directly — that's why this step is the host's responsibility.
+Do NOT call the `terminateSession` MCP tool as a belt-and-braces follow-up: it marks the session `TERMINATED` (treated as an abnormal exit by the recording pipeline, distinct from `COMPLETE`). Reserve it for the force-kill case where the `DELETE` is genuinely unreachable AND the user asks to force-kill. If the `DELETE` fails silently, the session times out on its own per `appium:newCommandTimeout` — preferable to a `TERMINATED` mark.
 
 ## Reading errors
 

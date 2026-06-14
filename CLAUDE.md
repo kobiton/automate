@@ -61,7 +61,8 @@ There is no local way to test that a new tool YAML matches a deployed server-sid
 | Skill | Runtime | Notes |
 |---|---|---|
 | `run-automation-suite` | `scripts/render-capabilities.js` parses Appium test scripts and reconciles capabilities against the selected device | refs: `references/capabilities.md`, `references/templates/appium.ejs` |
-| `run-interactive-test` | `scripts/run.sh` wraps the bundled `skills/run-interactive-test/bin/kobiton` CLI for natural-language WebDriver / device / file commands | binary ships for **macOS Apple Silicon only**; other platforms can use `run-automation-suite` instead |
+| `run-interactive-cli-session` | `scripts/run.sh` wraps the bundled `skills/run-interactive-cli-session/bin/kobiton` CLI for natural-language WebDriver / device / file commands | binary ships for **macOS Apple Silicon only**; other platforms can use `run-automation-suite` instead |
+| `drive-automation-session` | `scripts/appium.js` (`node:https`-only Appium HTTP client) drives an automation-type session from a natural-language intent; `scripts/strip-webview-dom.js` shrinks webview source | refs: `references/endpoint-reference.md`, `references/loop-discipline.md`, `references/capabilities.md` |
 
 ### Build pipeline
 
@@ -87,7 +88,7 @@ The plugin ships configs for five AI CLI hosts. Source-of-truth is the root file
 
 **Header field-name differs by host.** Claude / Copilot / Gemini / Cursor use `headers` in MCP config; Codex uses `http_headers` (snake_case wrapper). The `X-AI-Tool-Name` value also differs per host (`Claude` / `Codex` / `Gemini` / `Cursor`). When adding a new host config, copy from the closest existing one — don't mix idioms across hosts.
 
-`AGENTS.md` is the cross-tool brief read by every non-Claude-Code host. When extending a skill's workflow or known-limitations list, mirror substantive changes into `AGENTS.md` so non-Claude hosts stay current. The current `AGENTS.md` covers `run-automation-suite` only; `run-interactive-test` should be added the next time it's touched.
+`AGENTS.md` is the cross-tool brief read by every non-Claude-Code host. When extending a skill's workflow or known-limitations list, mirror substantive changes into `AGENTS.md` so non-Claude hosts stay current. `AGENTS.md` currently covers `run-automation-suite`, `run-interactive-cli-session`, and `drive-automation-session`.
 
 ## Slash commands
 
@@ -98,7 +99,7 @@ Two commands ship in two file formats so each host can read its preferred one. M
 | `/automate:setup` | `commands/setup.md` | `commands/automate/setup.toml` |
 | `/automate:doctor` | `commands/doctor.md` | `commands/automate/doctor.toml` |
 
-- `/automate:setup` — bootstraps `~/.kobiton/.credentials` from the authenticated MCP session by calling the `getCredential` tool. Also re-installs the `~/.kobiton/bin/kobiton` symlink the `run-interactive-test` skill depends on (Codex CLI installs it automatically via SessionStart; other CLIs run setup once).
+- `/automate:setup` — bootstraps `~/.kobiton/.credentials` from the authenticated MCP session by calling the `getCredential` tool. Also re-installs the `~/.kobiton/bin/kobiton` symlink the `run-interactive-cli-session` skill depends on (Codex CLI installs it automatically via SessionStart; other CLIs run setup once).
 - `/automate:doctor` — read-only health check: CLI install, credentials file, active profile, required fields.
 
 Gemini CLI derives `/automate:setup` from the directory path `commands/automate/setup.toml`. Claude Code and Copilot CLI read `commands/setup.md` with the plugin name (`automate`) supplying the namespace. When changing one command's behavior, change both file formats so cross-host parity holds.

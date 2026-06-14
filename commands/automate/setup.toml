@@ -11,7 +11,7 @@ The bundled installer just ran:
 
 Parse the output above:
 - "INSTALL_OK": symlink in place at `~/.kobiton/bin/kobiton`, continue to Step 1.
-- "INSTALL_FAIL" or other error: the installer couldn't locate a binary for this platform (only macOS arm64 and Linux x64 ship a binary). Surface the error to the user, then continue anyway — credentials still need to be written so the MCP tools work; only `run-interactive-test` is affected.
+- "INSTALL_FAIL" or other error: the installer couldn't locate a binary for this platform (only macOS arm64 and Linux x64 ship a binary). Surface the error to the user, then continue anyway — credentials still need to be written so the MCP tools work; only `run-interactive-cli-session` is affected.
 
 ## Step 1: Fetch credentials via the `kobiton` MCP server
 
@@ -77,7 +77,7 @@ Substitute `<username>`, `<apiKey>`, `<portal>` with the actual values from Step
 
 After the write succeeds, tell the user: `Profile [default] written to ~/.kobiton/.credentials. Run /automate:doctor to verify.`
 
-If Step 0 reported `INSTALL_FAIL`, also append: `Note: the ~/.kobiton/bin/kobiton CLI symlink could not be installed (likely an unsupported platform). MCP tools and run-automation-suite still work; only run-interactive-test requires the symlink.`
+If Step 0 reported `INSTALL_FAIL`, also append: `Note: the ~/.kobiton/bin/kobiton CLI symlink could not be installed (likely an unsupported platform). MCP tools and run-automation-suite still work; only run-interactive-cli-session requires the symlink.`
 
 ## Note on advanced cases
 
