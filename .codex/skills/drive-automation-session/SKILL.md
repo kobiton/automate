@@ -129,6 +129,10 @@ Reuse `run-automation-suite`'s renderer. The `--newCommandTimeout 1800` flag is 
 SKILL_DIR=$(dirname "$0")   # this skill's directory
 RENDER=$(realpath "$SKILL_DIR/../run-automation-suite/scripts/render-capabilities.js")
 
+# Unique temp file — two concurrent sessions (two terminals / conversations)
+# must not clobber each other's rendered caps before Step 3 reads them.
+CAPS_TMP=$(mktemp "${TMPDIR:-/tmp}/drive-automation-session-caps.XXXXXX.json")
+
 node "$RENDER" \
   --platformName "$PLATFORM_NAME" \
   --udid "$UDID" \
@@ -139,7 +143,7 @@ node "$RENDER" \
   --testingType "${TESTING_TYPE:-app}" \
   --newCommandTimeout 1800 \
   --scriptlessCapture \
-  > /tmp/drive-automation-session-caps.json
+  > "$CAPS_TMP"
 ```
 
 `appium.js` reads `~/.kobiton/.credentials` on each invocation. No flags, no env vars.
@@ -149,12 +153,12 @@ node "$RENDER" \
 ```bash
 SESSION_ID=$(node "$SKILL_DIR/scripts/appium.js" \
   --method POST --url /session \
-  --req-body @/tmp/drive-automation-session-caps.json \
+  --req-body "@$CAPS_TMP" \
   | jq -r '.value.sessionId // .sessionId')
 
 SESSION_DIR=".kobiton/sessions/$SESSION_ID"
 mkdir -p "$SESSION_DIR"
-mv /tmp/drive-automation-session-caps.json "$SESSION_DIR/caps.json"
+mv "$CAPS_TMP" "$SESSION_DIR/caps.json"
 printf '%s session=%s started intent=%q\n' "$(date -u +%FT%TZ)" "$SESSION_ID" "$INTENT" > "$SESSION_DIR/session.log"
 
 trap 'cleanup' EXIT INT TERM

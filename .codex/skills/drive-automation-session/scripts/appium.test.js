@@ -161,6 +161,17 @@ describe('appium.js generic mode', () => {
     expect(r.ok).toBe(true)
     expect(JSON.parse(r.stderr.trim().split('\n')[0]).status).toBe(500)
   })
+
+  it('response exceeding the size cap is aborted (exit 0; error surfaced)', async () => {
+    // Return a body larger than the test cap (set via env below).
+    reset(() => ({status: 200, body: {value: 'x'.repeat(5000)}}))
+    const r = await runWithCreds(
+      ['--method', 'GET', '--url', '/session/x/source'],
+      {KOBITON_MAX_RESPONSE_BYTES: '1024'}
+    )
+    expect(r.ok).toBe(true) // single exit-code policy
+    expect(r.stderr).toMatch(/exceeded 1024 bytes|request/i)
+  })
 })
 
 describe('appium.js credentials', () => {

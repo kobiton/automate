@@ -17,14 +17,17 @@ import {stripWebviewDom} from './strip-webview-dom.js'
 // Stashed by main() so fail() can find the artifact base without re-parsing argv.
 let currentFlags = null
 
-function fail(_unusedCode, error, message) {
+// `explicitBase`, when provided, wins over the currentFlags-derived path — so a
+// caller that already resolved the artifact base (e.g. softFail in cmdScreen)
+// still writes the error file even if currentFlags isn't set yet.
+function fail(_unusedCode, error, message, explicitBase) {
   process.stderr.write(JSON.stringify({error, message}) + '\n')
-  const base = currentFlags ? artifactBase(currentFlags) : null
+  const base = explicitBase ?? (currentFlags ? artifactBase(currentFlags) : null)
   if (base) persistError(base, 0, JSON.stringify({error, message}))
   process.exit(0)
 }
 
-const softFail = (_base, error, message) => fail(0, error, message)
+const softFail = (base, error, message) => fail(0, error, message, base)
 
 function getFlag(flags, name) {
   if (flags[name] == null) fail(1, 'bad-input', `--${name} is required`)
@@ -97,6 +100,12 @@ function buildPath(target, url) {
   return p
 }
 
+// Cap the buffered response. A high-DPI /screenshot (base64 PNG in a JSON
+// wrapper) is the largest legitimate payload and stays well under this; the cap
+// only bites on a rogue or misconfigured hub returning an unbounded body.
+// Overridable via env for tests.
+const MAX_RESPONSE_BYTES = Number(process.env.KOBITON_MAX_RESPONSE_BYTES) || 64 * 1024 * 1024
+
 function hubFetch(target, method, url, body) {
   return new Promise((resolve, reject) => {
     const u = new URL(target.origin + buildPath(target, url))
@@ -119,8 +128,20 @@ function hubFetch(target, method, url, body) {
       timeout: 60_000
     }, (res) => {
       const chunks = []
-      res.on('data', (c) => chunks.push(c))
-      res.on('end', () => resolve({status: res.statusCode, body: Buffer.concat(chunks)}))
+      let total = 0
+      let aborted = false
+      res.on('data', (c) => {
+        if (aborted) return
+        total += c.length
+        if (total > MAX_RESPONSE_BYTES) {
+          aborted = true
+          req.destroy()  // no error arg — avoids an unhandled 'error' on the socket
+          reject(new Error(`response exceeded ${MAX_RESPONSE_BYTES} bytes`))
+          return
+        }
+        chunks.push(c)
+      })
+      res.on('end', () => { if (!aborted) resolve({status: res.statusCode, body: Buffer.concat(chunks)}) })
     })
     req.on('timeout', () => req.destroy(new Error('request timeout')))
     req.on('error', reject)
