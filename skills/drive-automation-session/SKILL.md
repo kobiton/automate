@@ -18,7 +18,7 @@ allowed-tools: >-
   Bash(mkdir:*), Bash(mv:*), Bash(date:*), Bash(echo:*), Bash(printf:*),
   Bash(jq:*),
   Bash(open:*), Bash(xdg-open:*)
-version: 1.5.0
+version: 1.0.0
 author: Kobiton Inc.
 license: MIT
 compatibility: >-
