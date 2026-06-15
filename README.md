@@ -148,7 +148,7 @@ Then exit and relaunch `agent`. Cursor CLI currently loads plugin skills only at
 
 Run `/mcp list`, select **Kobiton**, and choose **Login** to complete Kobiton OAuth in the browser.
 
-Run `/setup` once to install the `~/.kobiton/bin/kobiton` CLI wrapper used by the `run-interactive-test` skill. Cursor registers plugin commands without a namespace prefix, so the plugin's setup and doctor commands appear as `/setup` and `/doctor` — pick the one with the Kobiton description to tell them apart from Cursor's built-ins.
+Run `/setup` once to install the `~/.kobiton/bin/kobiton` CLI wrapper used by the `run-interactive-cli-session` skill. Cursor registers plugin commands without a namespace prefix, so the plugin's setup and doctor commands appear as `/setup` and `/doctor` — pick the one with the Kobiton description to tell them apart from Cursor's built-ins.
 
 If you also use the Cursor IDE, install the plugin only once. Installs are shared between the CLI and the IDE (see the note in the next section).
 
@@ -219,7 +219,7 @@ Every Claude surface that supports MCP can call the Kobiton [tools](#tools). The
 | **Claude Cowork** (macOS / Windows) |           ✅ Yes            |        ⚠️ Manual upload ²        | Add `https://api.kobiton.com/mcp` as a connector under **Connectors** |
 | **claude.ai web · Claude Desktop · Claude mobile** |           ✅ Yes            |        ⚠️ Manual upload ²        | Add `https://api.kobiton.com/mcp` as a Custom Connector at [claude.ai](https://claude.ai); for mobile, configure it on the web first and it syncs to the app |
 
-¹ `run-interactive-test` also requires the bundled `kobiton` CLI binary (macOS Apple Silicon only) - see the [platform support note](#skills).
+¹ `run-interactive-cli-session` also requires the bundled `kobiton` CLI binary (macOS Apple Silicon only) - see the [platform support note](#skills).
 ² This plugin is not listed in the [Claude directory](https://support.claude.com/en/articles/14328846-browse-skills-connectors-and-plugins-in-one-directory) yet, so these surfaces can't install it as a plugin. As a workaround, zip a skill folder from this repo (e.g. `skills/run-automation-suite/`) and upload it as a [custom skill](https://support.claude.com/en/articles/12512198-how-to-create-custom-skills).
 
 ## Login
@@ -301,7 +301,7 @@ To verify everything is wired correctly, run the diagnostic:
 
 > **On Cursor (CLI and IDE)** the plugin's commands carry no `automate:` prefix. Run `/setup` and `/doctor` instead, picking the entry with the Kobiton description next to it to tell it apart from Cursor's built-in command of the same name.
 
-**CLI symlink install behavior across CLIs:** The `run-interactive-test` skill depends on a `~/.kobiton/bin/kobiton` symlink.
+**CLI symlink install behavior across CLIs:** The `run-interactive-cli-session` skill depends on a `~/.kobiton/bin/kobiton` symlink.
 
 - **Claude Code, Codex CLI**: recreated automatically by a bundled SessionStart hook on every session start. On Codex CLI, the first session prompts you to trust the hook once via `/hooks`; subsequent sessions run it silently. Running `/automate:setup` also recreates the symlink on demand.
 - **GitHub Copilot CLI, Gemini CLI, Cursor CLI**: no SessionStart hook runs, so create the symlink manually by running the setup command once after install: `/automate:setup` on Copilot and Gemini, `/setup` (the one with the Kobiton description) on Cursor (Copilot reads Claude-format Markdown commands; Gemini reads bundled TOML at `commands/automate/setup.toml`). Re-run it if the symlink goes missing.
@@ -386,9 +386,10 @@ The script is idempotent - safe to re-run.
 | Skill | Description |
 |-------|-------------|
 | **run-automation-suite** | Guided workflow for app upload, device selection, local Appium script execution (Node.js, Python, .NET, Java), and result collection. |
-| **run-interactive-test** | Guided workflow for interactive testing using natural language. WebDriver actions, device operations (adb shell, logs, screen), file management (push/pull), and more. |
+| **run-interactive-cli-session** | Guided workflow for interactive testing using natural language. WebDriver actions, device operations (adb shell, logs, screen), file management (push/pull), and more. |
+| **drive-automation-session** | Drives an already-reserved device from a natural-language intent via a direct Appium HTTP session (observe-decide-act loop). Returns a session id consumable by `saveTestCase`. Complements `run-interactive-cli-session` — it uses the automation session type rather than the CLI. |
 
-> **Platform support note:** all MCP tools and the `run-automation-suite` skill work on every platform the host CLI supports. The `run-interactive-test` skill ships a CLI binary for **macOS Apple Silicon** only. On other platforms, use `run-automation-suite` or the MCP tools directly.
+> **Platform support note:** all MCP tools and the `run-automation-suite` skill work on every platform the host CLI supports. The `run-interactive-cli-session` skill ships a CLI binary for **macOS Apple Silicon** only. On other platforms, use `run-automation-suite` or the MCP tools directly.
 
 ## Commands
 
@@ -405,7 +406,7 @@ Use the **run-automation-suite** skill to run local Appium test scripts. Your AI
 
 ## Interactive Device Testing
 
-Use the **run-interactive-test** skill to interact with devices using natural language. Describe what you want — "tap the login button", "type hello in the search field", "swipe down" — and your assistant translates your intent into CLI commands.
+Use the **run-interactive-cli-session** skill to interact with devices using natural language. Describe what you want — "tap the login button", "type hello in the search field", "swipe down" — and your assistant translates your intent into CLI commands.
 
 Beyond WebDriver, the skill also supports device operations (adb shell, logs, screen capture), file management (push/pull files to device), and app management.
 

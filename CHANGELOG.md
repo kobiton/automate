@@ -1,5 +1,34 @@
 # Changelog
 
+## 1.6.0 - 2026-06-12
+
+### New `drive-automation-session` skill
+
+`automate:drive-automation-session` drives an already-reserved Kobiton device from a natural-language intent. Opens an **automation-type** Appium session directly against the Kobiton WebDriver hub (the first direct-Appium-HTTP path in this plugin), runs a turn-based observe-act cycle, and returns a session id consumable by `getSession`, `getSessionArtifacts`, and `saveTestCase` unchanged. Complements `run-interactive-cli-session` (CLI session type) — does not replace it. Sessions open with `appium:newCommandTimeout: 1800` (30 min) so they survive human-in-the-loop pauses, and `kobiton:scriptlessCapture: true` so the result is `saveTestCase`-consumable.
+
+- **`scripts/appium.js`** — Node `node:https`-only Appium HTTP client; no package dependencies. Generic mode (`--method`/`--url`/`--req-body`) for raw Appium calls, plus `screen` / `actions` / `touch-perform` / `control` helpers. Reads `~/.kobiton/.credentials` (written by `/automate:setup`) directly each invocation — credentials never appear in argv, env, or the AI host's transcript. `screen` captures both `iter-N.xml` and `iter-N.png` by default (`--xml-only` / `--png-only` to skip one); webview `/source` is stripped before write (see below). Exits 0 for every outcome and writes `iter-N.error.json` on failure, leaving recoverable-vs-fatal classification to the host.
+- **`scripts/strip-webview-dom.js`** — pure-regex strip that drops `<script>`/`<style>`/`<head>`/`<noscript>` blocks, base64 `<img>`, and attributes outside an agent-driving whitelist. Cuts webview source ~10× (558KB → ~50KB on the pilot YouTube run) so the host can read `iter-N.xml` whole; the raw body is kept as `iter-N.full.xml` as an escape hatch.
+- **Per-turn pattern (`SKILL.md`)** — each turn the host picks exactly one of three branches: `screen` (observe), an Appium call (act), or `control` (end). The script enforces no blocker thresholds; the host watches the screen-state hash and emits `control --blocked` when stuck. `MAX_ITERS=100` (overridable) is the only programmatic safety net.
+- **Cleanup** — a Bash `trap` issues `DELETE /wd/hub/session/{id}` on exit, so Kobiton records the session `COMPLETE`. `terminateSession` is not called by default (it would mark the session `TERMINATED`); reserved for force-kill.
+- **Live view** — Step 0 asks device + foreground/background preference before session create. Foreground reuses `run-automation-suite`'s chromeless-launcher; URL shape `<portal>/devices/launch?id=<deviceId>&view=device-only`.
+- **`references/`** — `endpoint-reference.md` (allowlisted endpoints + selector-construction guide), `loop-discipline.md` (per-turn pattern + stuck patterns + reading errors), `capabilities.md` (desired-caps payload + credentials model).
+
+### Renamed: `run-interactive-test` → `run-interactive-cli-session`
+
+The CLI-session skill is renamed to make the `<verb>-<session-type>-session` naming consistent with the new `drive-automation-session` (automation session type). Skill behavior is unchanged. `/automate:setup`, `scripts/install-cli.sh`, `AGENTS.md`, `README.md`, and `CLAUDE.md` updated to the new path.
+
+### Cross-skill: `run-automation-suite/scripts/render-capabilities.js`
+
+Two new optional flags, both default-off (existing callers unaffected); `drive-automation-session` passes both:
+- `--newCommandTimeout <seconds>` — emits `appium:newCommandTimeout`.
+- `--scriptlessCapture` — emits `kobiton:scriptlessCapture: true` (KOB-41142), gating platform-side capture for `saveTestCase`.
+
+The shared chromeless launcher's resize-polling budget is raised 10s → 30s (poll interval 0.5s → 1s) to cover Chrome cold starts.
+
+### Test surface
+
+176 vitest cases total (up from 105): `appium.test.js` (53 — generic mode + auto-wrap of flat caps on `POST /session` + `screen` modes + webview-strip/native detection + credentials file-source + injection safety), `strip-webview-dom.test.js` (14), and `render-capabilities.test.js` (+5).
+
 ## 1.5.0 - 2026-06-11
 
 - New `getAppParsingStatus` MCP tool — checks the async parse status of an uploaded app version by `versionId`. After `confirmAppUpload` the app is created in state `PARSING`; poll this tool until the state is terminal (`OK` or a `FAILURE_*` value) before reserving devices or starting sessions. Also resolves the real `appId` when `confirmAppUpload` returned `appId: null` for a brand-new upload.

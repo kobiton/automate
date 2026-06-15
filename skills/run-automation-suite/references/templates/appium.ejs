@@ -15,6 +15,12 @@
 <% if (automationName) { %>
   "appium:automationName": "<%= automationName %>",
 <% } %>
+<% if (newCommandTimeout) { %>
+  "appium:newCommandTimeout": <%= newCommandTimeout %>,
+<% } %>
+<% if (scriptlessCapture) { %>
+  "kobiton:scriptlessCapture": true,
+<% } %>
 <% if (testingType === 'web') { %>
   "browserName": "<%= browser %>",
 <% } else { %>

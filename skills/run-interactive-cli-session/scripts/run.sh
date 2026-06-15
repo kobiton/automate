@@ -1,7 +1,7 @@
 #!/bin/bash
 # Wrapper that resolves binary, portal URL, and credentials automatically.
 # Usage: kobiton [kobiton-cli args...]
-# Install: ln -sf <plugin-path>/skills/run-interactive-test/scripts/run.sh ~/.kobiton/bin/kobiton
+# Install: ln -sf <plugin-path>/skills/run-interactive-cli-session/scripts/run.sh ~/.kobiton/bin/kobiton
 
 set -euo pipefail
 

@@ -203,7 +203,7 @@ Test this app <PATH_TO_APP> by my script <PATH_TO_SCRIPT> on Kobiton <PLATFORM> 
 
 ---
 
-## 5. Running `run-interactive-test` skill
+## 5. Running `run-interactive-cli-session` skill
 
 Guided workflow for interactive testing using natural language. WebDriver actions, device operations (adb shell, logs, screen), file management (push/pull), and more.
 

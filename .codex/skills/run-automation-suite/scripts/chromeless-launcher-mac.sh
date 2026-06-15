@@ -86,16 +86,17 @@ disown
 X2=$((X + WIDTH))
 Y2=$((Y + HEIGHT))
 
-# Poll up to 10 seconds (20 attempts × 0.5s) for a Chrome window whose
+# Poll up to 30 seconds (30 attempts × 1s) for a Chrome window whose
 # active tab URL contains "view=device-only", then resize it. Matching by
 # URL substring (rather than "window 1") avoids hitting a pre-existing
-# Chrome window the user already had open.
+# Chrome window the user already had open. The 30s budget covers Chrome
+# cold starts, profile-picker prompts, and slow page loads.
 #
 # The inner per-window check is wrapped in `try` so a stray window that
 # has no active tab (e.g. a popped-out DevTools window) raises an error
 # only for that window, not the whole `repeat` block — otherwise a single
 # unrelated background window would abort every poll iteration.
-for _ in $(seq 1 20); do
+for _ in $(seq 1 30); do
   if osascript >/dev/null 2>&1 <<EOF
     tell application "Google Chrome"
       repeat with w in windows
@@ -112,15 +113,15 @@ EOF
   then
     exit 0
   fi
-  sleep 0.5
+  sleep 1
 done
 
-# 10s elapsed without a successful resize. The window may exist but
+# 30s elapsed without a successful resize. The window may exist but
 # osascript was denied Automation rights for Chrome (error -1743), or
 # the window never opened (slow page load, Chrome cold start). Either
 # way, the session is unaffected — log and return success so the caller
 # proceeds.
 HOST_PROC="${TERM_PROGRAM:-${SHELL:-the host terminal}}"
-echo "chromeless-launcher-mac: window did not resize within 10s (host=${HOST_PROC})" >&2
+echo "chromeless-launcher-mac: window did not resize within 30s (host=${HOST_PROC})" >&2
 echo "if a system prompt appeared, grant '${HOST_PROC}' permission to control Google Chrome in System Settings → Privacy & Security → Automation" >&2
 exit 0
