@@ -63,6 +63,14 @@ Detailed step-by-step instructions live in `skills/drive-automation-session/SKIL
 
 The plugin exposes test-management tools covering test cases, test runs, and test suites. The most common ask is *"save the session I just ran as a reusable test case"*. For that, call `saveTestCase` with the session ID and a name. The remaining tools follow standard CRUD patterns (`createTestRun` / `listTestCases` / `getTestSuite` / `updateTestCase` / `terminateTestRun` etc.). For multi-step orchestration, ask the user to confirm before any `delete*` or `terminateTestRun` call.
 
+## When the user asks to create / run a test run
+
+Mirrors the `create-test-run` skill. Resolve the target (test case or suite id), fill defaults for anything unspecified, confirm a summary, then call `createTestRun`. **Use the exact enum values — upper-case, case-sensitive; lower-case is rejected:** `testSelection.type` ∈ `TEST_CASE` | `TEST_SUITE`; `deviceSelection.type` ∈ `INDIVIDUAL_DEVICES` | `DEVICE_BUNDLE`; `deviceAllocationStrategy` ∈ `CROSS_DEVICE` | `SINGLE_DEVICE`. Default to `INDIVIDUAL_DEVICES` with explicit `{ udid, isCloud }`, 1 device matching the target platform unless the user asked for more, and `CROSS_DEVICE`. After creating, offer to monitor (see below). Full workflow in `skills/create-test-run/SKILL.md`.
+
+## When the user asks to watch / monitor a test run
+
+Mirrors the `monitor-test-run` skill. Read `getOrgSettings` once for `live_remediation_enabled`, then **stream** the bundled poller `skills/monitor-test-run/scripts/poll-test-run.js --run-id <id>` so each emitted line re-engages you — it polls run state over REST (reads `~/.kobiton/.credentials`) and prints only on real state changes, exiting on `DONE`. **Claude Code uses its `Monitor` tool for this; other hosts must substitute their own streamed-shell / watch / loop affordance** (do NOT launch it as a silent detached background process — its stdout won't come back, which defeats the watch). On a blocker, surface the `<portal>/devices/launch?id=<deviceId>` URL (and optionally open it via `run-automation-suite`'s chromeless launcher); a flag-ON blocker is on a resolution timeout, so treat it as an open ask of the user, not a passive watch. Full workflow + the poller's line protocol in `skills/monitor-test-run/SKILL.md`.
+
 ## Known limitations
 
 Several behaviors of the current Kobiton MCP server have known gaps that agents should plan around:
