@@ -308,6 +308,24 @@ The skill detects the `.apk` build, uploads it via `uploadAppToStore`, queries `
 
 The skill resolves the two `@`-referenced files from the chat context, uploads `TestApp.ipa` via `uploadAppToStore`, queries `listDevices` filtered to iOS iPhone 15 Pro, reserves the matching device, parses `automation.js` for capabilities, reconciles them against the rendered defaults for the selected device, confirms the launch summary with the user, runs `node automation.js <udid>` in the background, opens the live session URL in the user's browser, and surfaces the session ID plus artifacts when the run completes.
 
+## Known Limitations
+
+The full set of documented behavioural gaps in the Kobiton MCP surface — and the recommended agent workaround for each — lives in [`references/known-limitations.md`](references/known-limitations.md). Consult that file when a tool call returns an unexpected result and the symptom matches one of the categories below:
+
+- App upload state ambiguity, async parser races, or empty `FAILURE_PARSING` bodies
+- `reserveDevice` conflict ambiguity, post-`terminateSession` cooldown windows
+- W3C-strict Appium endpoint silently rejecting legacy `driver.getLogs()` calls
+- Per-command session data, screenshots, or assertion semantics not surfacing from any tool
+- Read-side field-naming divergence between `getSession` and `getSessionArtifacts`
+- `listSessions` 25k-token response cap, or a returned session count that doesn't match the requested `limit`
+- `getSession.video_url` null where video may exist; missing `has_video` indicator
+- `getSessionArtifacts` missing the documented `screenshots` category
+- `getDeviceStatus` returning only 3 fields when richer detail (battery, current session, network state) was expected
+- `getApp.is_expired` and `listApps.is_expired` disagreeing for the same app id
+- `uploadAppToStore` confirm-upload response carrying contradictory v1/v2 path strings
+
+Each entry in `references/known-limitations.md` carries: the upstream issue link, the symptom in plain language, severity for plugin DX, and the documented agent workaround. Reference rather than recite when the symptom matches.
+
 ## Resources
 
 - [Kobiton available capabilities reference](https://docs.kobiton.com/automation-testing/capabilities/available-capabilities) - canonical list of `kobiton:*` and supported `appium:*` capabilities the skill's `render-capabilities` step compares against.
