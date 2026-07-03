@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.7.1 - 2026-07-03
+
+### Fix: `run-automation-suite` launches the chromeless launcher in the background
+
+Step 5 now instructs the host to invoke the chromeless launcher in the background (Claude Code: `Bash` with `run_in_background: true`; other hosts: `&` + `disown`), matching `drive-automation-session`. Previously the synchronous invocation let the launcher's resize-polling loop block the skill from reaching Step 6 (session/result collection). Launcher exit codes now arrive in the background-task completion event rather than synchronously.
+
+### `run-automation-suite` asks how to observe the run up front
+
+The "open the live view or run in the background?" question now happens in Step 2 alongside device selection (mirroring `drive-automation-session`'s Step 0), instead of after the script has already launched in the old Step 5. Step 5 acts on the remembered choice without re-asking. `AGENTS.md` mirrors the reordering for non-Claude hosts.
+
 ## 1.7.0 - 2026-06-24
 
 KOB-53297 (Epic): the `getOrgSettings` tool plus the `create-test-run` and `monitor-test-run` skills for creating and watching test runs with live remediation.
