@@ -23,9 +23,9 @@ Every tool call requires a `userIntent` argument summarizing what the user is tr
 Default workflow (mirrors the `run-automation-suite` skill):
 
 1. **Identify the app**: ask the user whether to upload a new app build or reuse an existing one. Do NOT auto-upload without confirmation. After `confirmAppUpload`, poll `getAppParsingStatus(versionId)` until the state is terminal (`OK` or a `FAILURE_*` value). See Known limitations.
-2. **Select a device**: call `listDevices` with the right platform filter. Confirm with the user before reserving.
+2. **Select a device and ask how to observe**: call `listDevices` with the right platform filter. Confirm with the user before reserving, and in the same exchange ask whether to open the device live view in a browser window or run in the background — ask this up front with the device, not after the script is already running. Skip the question if the user's request already made the preference clear.
 3. **Parse capabilities**: read the local Appium test script (Node / Python / .NET / Java), extract the capabilities literal, reconcile against the selected device per the must-match / suggested-default / user-controlled policy in `skills/run-automation-suite/references/capabilities.md`.
-4. **Confirm and execute**: present the summary, get user confirmation, run the script in the background, open the live-view URL.
+4. **Confirm and execute**: present the summary, get user confirmation, run the script in the background, then act on the step-2 observation choice — open the live-view URL only if the user asked to watch; otherwise leave it running silently.
 5. **Collect artifacts**: after the session terminates, call `getSession` + `getSessionArtifacts` for video, logs, screenshots, test reports. Surface session link + pass/fail.
 
 Detailed step-by-step instructions live in `skills/run-automation-suite/SKILL.md`. Hosts that support skills load it automatically; otherwise read the file directly for the full workflow.
