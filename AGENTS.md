@@ -34,6 +34,42 @@ Route by intent:
 
 Vocabulary: **session** = one recorded device connection (commands, video, logs under a session id); **test case** = saved replayable steps, usually created from a session; **test run** = execution of a case/suite across devices with per-device results; **test suite** = ordered collection of cases; **reservation** = exclusive device hold; **device UDID** = unique device identifier; **live remediation** = browser takeover to fix a blocked test-run execution mid-run.
 
+### Routing ambiguous prompts
+
+A prompt like *"test the login screen of app ABC"* names a goal but not a method — three skills could serve it, with different outcomes. Check for routing signals first:
+
+| Signal in the prompt | Route |
+|---|---|
+| Local test scripts/files mentioned (`.js`/`.py`/`.cs`/`.java`, "my Appium tests") | `run-automation-suite` |
+| A flow described in plain language; wants it repeatable ("save", "rerun later", "as a test case") | `drive-automation-session` |
+| Hands-on/diagnostic verbs: explore, poke, inspect, debug, adb, logs, push/pull a file | `run-interactive-session` |
+| Names an existing test case or suite to execute | `create-test-run` |
+| A run is already in flight ("watch", "follow", "track") | `monitor-test-run` |
+
+If no signal decides it, ask ONE short question — *"Run your own test scripts, have me drive the flow (saveable as a test case), or explore the device hands-on?"* — and recommend `drive-automation-session` as the default: it works from a plain-language goal on any platform, and its session can be saved with `saveTestCase`, so nothing is lost if the user later wants to rerun. Do not silently route a "test X" goal to `run-interactive-session` — CLI sessions don't feed `saveTestCase` (see the session model below), so that choice quietly forfeits the saveable-test-case outcome.
+
+### Intent synonyms
+
+Users say the same thing many ways; route by what the phrase means, not the keyword:
+
+| The user says… | They mean | Route |
+|---|---|---|
+| "rerun / run again / revisit / replay **this test case** (on other devices)" | execute the saved steps as a new test run | `create-test-run` |
+| "rerun **this session**" | sessions aren't rerun directly — save it as a test case, then run that | `saveTestCase` → `create-test-run` |
+| "replay / review **the session recording**" | watch what happened, not execute again | `getSessionArtifacts` / the session's portal page |
+| "watch / follow / track the run" | live progress + blockers | `monitor-test-run` |
+| "explore / poke around / grab logs / adb / push a file" | hands-on device access | `run-interactive-session` |
+| "test the X flow / log in and do Y" | agent-driven flow | `drive-automation-session` |
+| "run my (Appium) tests / scripts" | execute local scripts | `run-automation-suite` |
+
+### Kobiton session model (background the routing relies on)
+
+- **Everything on a device happens inside a session, and every session has a type**: `AUTOMATION` (script- or agent-driven Appium), `CLI` (the bundled CLI wrapper), `MANUAL` (a human driving the portal live view). If a human opens the live view and interacts while an automation session runs, the session becomes `MIXED` — human gestures and script commands interleave on the same recording (see the device-only-view note in `skills/run-automation-suite/SKILL.md`).
+- **Test cases are session-based**: a test case is created FROM a completed session's recorded steps via `saveTestCase`. Only automation sessions opened with `kobiton:scriptlessCapture` record saveable steps, and only actions on allowlisted endpoints are captured (`skills/drive-automation-session/references/endpoint-reference.md`); CLI sessions don't feed `saveTestCase`.
+- **A test run re-executes (revisits) a test case's steps** on the devices you choose — the platform models each per-device execution as a revisit execution (`getTestRun.revisit_executions[]`). "Rerun on 3 devices" = one test run, three executions.
+- **Session end state matters**: ending an automation session cleanly (`DELETE /wd/hub/session/{id}`) records it `COMPLETE`, which `saveTestCase` expects; `terminateSession` marks it `TERMINATED` (abnormal exit). Prefer the clean path when a test case might be saved later.
+- **Live remediation is rerun-scoped**: when a revisit execution blocks, a human fixes the step in the portal and the resolution applies on the **next** rerun (details in `skills/monitor-test-run/SKILL.md`).
+
 Prerequisites: Kobiton account, credentials via the setup command, supported host. The `run-interactive-session` skill's bundled CLI runs on macOS Apple Silicon only — on other platforms route the user to `run-automation-suite` or `drive-automation-session` instead of dead-ending. A worked end-to-end example lives in README's Getting Started section.
 
 ## When the user asks to run tests on Kobiton

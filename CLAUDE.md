@@ -17,6 +17,18 @@ Every skill is a step on that path; route by intent:
 
 Vocabulary the skills assume: **session** (one recorded device connection), **test case** (saved replayable steps, usually from a session), **test run** (execution of a case/suite across devices), **test suite** (ordered collection of cases), **reservation** (exclusive device hold), **device UDID** (unique device identifier), **live remediation** (browser takeover to fix a blocked execution mid-run).
 
+**Ambiguous prompts** (*"test the login screen of app ABC"* — goal named, method not): route by signal — script files mentioned → `run-automation-suite`; flow described / wants it repeatable → `drive-automation-session`; diagnostic verbs (explore, poke, logs, adb, push/pull) → `run-interactive-session`; names an existing case/suite → `create-test-run`; run already in flight → `monitor-test-run`.
+With no deciding signal, ask ONE question (scripts / agent-driven / hands-on) and recommend `drive-automation-session` — any platform, plain-language goal, and the session stays saveable via `saveTestCase`.
+Never silently pick `run-interactive-session` for a "test X" goal: CLI sessions don't feed `saveTestCase`, so that route forfeits the saveable outcome.
+
+**Intent synonyms**: "rerun / run again / revisit / replay a **test case**" → `create-test-run`; "rerun a **session**" → `saveTestCase` first, then `create-test-run` (sessions aren't rerun directly); "replay / review the **recording**" → `getSessionArtifacts` / session portal page, not a new run; "watch / follow / track" → `monitor-test-run`.
+
+**Session model** (the UX facts routing relies on): every session has a type — `AUTOMATION` (script/agent Appium), `CLI` (bundled CLI wrapper), `MANUAL` (human in the portal live view); a human interacting in the live view during an automation session makes it `MIXED`.
+Test cases are session-based (`saveTestCase` on a completed session; requires `kobiton:scriptlessCapture` + allowlisted endpoints — see `skills/drive-automation-session/references/endpoint-reference.md`).
+A test run **revisits** a case's steps per device (`getTestRun.revisit_executions[]`).
+Clean Appium session end (`DELETE /wd/hub/session/{id}`) records `COMPLETE` (what `saveTestCase` expects); `terminateSession` records `TERMINATED`.
+Live-remediation resolutions apply on the **next** rerun.
+
 Prerequisites: a Kobiton account, credentials via `/automate:setup`, and a supported host.
 `run-interactive-session`'s bundled CLI is macOS-Apple-Silicon-only — on other platforms route to `run-automation-suite` or `drive-automation-session`.
 README's [Getting Started](README.md#getting-started) carries the full narrated path and a copy-pasteable worked example.

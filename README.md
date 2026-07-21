@@ -341,12 +341,16 @@ That's the full loop: device → session → test case → test run. Every skill
 | You have a test case or suite and want to kick off a test run from it | `create-test-run` |
 | A test run is already going and you want to watch it and catch blockers | `monitor-test-run` |
 
+Say it your way — your assistant routes by meaning, not keyword: "rerun / revisit / replay **a test case** on other devices" goes to `create-test-run`; "rerun **a session**" means saving it as a test case first (sessions aren't rerun directly); "replay **the recording**" just opens the session's artifacts, no new run. And if your prompt names a goal but not a method ("test the login screen of app ABC"), the assistant asks one short question — run your scripts, let it drive the flow, or explore hands-on — defaulting to `drive-automation-session` so the result stays saveable as a test case.
+
 ### Concepts
 
 | Term | Meaning |
 |------|---------|
 | Session | One connection to a device — everything you did (commands, video, logs) is recorded under a session id. |
-| Test case | A saved, replayable sequence of steps, typically created by saving a session. |
+| Session type | How the session is driven: `AUTOMATION` (script or agent via Appium), `CLI` (the bundled CLI wrapper), `MANUAL` (you, in the portal live view). Interacting in the live view while an automation session runs makes it `MIXED`. |
+| Test case | A saved, replayable sequence of steps, created by saving a completed session (`saveTestCase`). Automation sessions are saveable; CLI sessions are not. |
+| Revisit | What a test run does: re-executes a test case's saved steps on each selected device — one "revisit execution" per device. |
 | Test run | An execution of a test case or test suite across one or more devices, with per-device results. |
 | Test suite | An ordered collection of test cases run together. |
 | Reservation | An exclusive hold on a device so nothing else can use it while you work. |
