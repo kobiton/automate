@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.8.0 - 2026-07-21
+
+### Renamed: `run-interactive-cli-session` → `run-interactive-session`
+
+The interactive testing skill is now named `run-interactive-session`. Behavior is unchanged — same CLI wrapper, same workflow, same macOS-Apple-Silicon binary. The skill directory, frontmatter, and every docs reference use the new name; only this changelog keeps the old one for history.
+
+### New: Getting Started onboarding section
+
+README's Getting Started now walks a first-time Kobiton user from install to a saved test case: a narrated first-session path, an intent-based skill-routing table covering all 5 skills, a concepts glossary (session, test case, test run, suite, reservation, UDID, live remediation), and a prerequisites checklist with one copy-pasteable end-to-end example. `CLAUDE.md` carries a condensed version and `AGENTS.md` mirrors the substance for non-Claude hosts.
+
 ## 1.7.1 - 2026-07-03
 
 ### Fix: `run-automation-suite` launches the chromeless launcher in the background

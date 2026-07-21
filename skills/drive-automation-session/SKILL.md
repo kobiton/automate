@@ -8,7 +8,7 @@ description: >-
   model self-declared blocker), and returns the session id. Use when the
   user says "drive the device to X", describes a flow they want exercised
   on a reserved device, or asks to "automate this intent on Kobiton".
-  Complements run-interactive-cli-session (which uses the CLI session type) by
+  Complements run-interactive-session (which uses the CLI session type) by
   using the automation session type so the resulting session is consumable
   by saveTestCase and the existing test-run authoring flow.
 allowed-tools: >-
@@ -43,11 +43,11 @@ The skill opens an **automation-type** Appium session (with `appium:newCommandTi
 
 > **Tool naming.** This doc refers to Kobiton MCP tools by their bare names (`getSession`, `reserveDevice`, `terminateSession`, …). The exact registered name depends on how the host loaded the MCP server (e.g. Claude Code as a plugin exposes `mcp__plugin_automate_kobiton__getSession`; a repo-local `.mcp.json` or `claude mcp add` exposes `mcp__kobiton__getSession`; other hosts differ). Models fuzzy-match on the bare name, so use it and let the host resolve the prefix.
 
-This skill complements — and does NOT replace — `run-interactive-cli-session`. They serve different session types:
+This skill complements — and does NOT replace — `run-interactive-session`. They serve different session types:
 
 | Skill | Session type | Best for |
 |-------|--------------|----------|
-| `run-interactive-cli-session` | CLI session (`~/.kobiton/bin/kobiton`) | Human-driven exploration, ad-hoc inspection |
+| `run-interactive-session` | CLI session (`~/.kobiton/bin/kobiton`) | Human-driven exploration, ad-hoc inspection |
 | `drive-automation-session` | Automation session (direct Appium HTTP) | AI-driven flows, saveable as a test case |
 
 ## Prerequisites
@@ -356,5 +356,5 @@ The only hard programmatic stop is `MAX_ITERS=100` (override per session), which
 ## Notes
 
 - The `kobiton:aiToolName` capability is auto-detected by `render-capabilities.js` (Claude / Codex / Copilot / Gemini). No flag needed.
-- Artifacts live under `.kobiton/sessions/<session-id>/` — workspace-relative, not `/tmp` (consistent with `run-interactive-cli-session`).
+- Artifacts live under `.kobiton/sessions/<session-id>/` — workspace-relative, not `/tmp` (consistent with `run-interactive-session`).
 - The skill writes nothing to `tools/*.yaml` and does not add any MCP tool. It only consumes existing MCP tools (`reserveDevice`, `getSession`, `terminateSession`, etc.).

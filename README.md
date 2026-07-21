@@ -21,6 +21,10 @@ Plugin for the [Kobiton](https://kobiton.com) mobile testing platform. Works wit
 - [Login](#login)
   - [API Key Authentication (Alternative)](#api-key-authentication-alternative)
 - [Getting Started](#getting-started)
+  - [Your First Session](#your-first-session)
+  - [Which Skill Do I Want?](#which-skill-do-i-want)
+  - [Concepts](#concepts)
+  - [Prerequisites](#prerequisites)
 - [What You Can Do](#what-you-can-do)
 - [Tools](#tools)
 - [Skills](#skills)
@@ -148,7 +152,7 @@ Then exit and relaunch `agent`. Cursor CLI currently loads plugin skills only at
 
 Run `/mcp list`, select **Kobiton**, and choose **Login** to complete Kobiton OAuth in the browser.
 
-Run `/setup` once to install the `~/.kobiton/bin/kobiton` CLI wrapper used by the `run-interactive-cli-session` skill. Cursor registers plugin commands without a namespace prefix, so the plugin's setup and doctor commands appear as `/setup` and `/doctor` — pick the one with the Kobiton description to tell them apart from Cursor's built-ins.
+Run `/setup` once to install the `~/.kobiton/bin/kobiton` CLI wrapper used by the `run-interactive-session` skill. Cursor registers plugin commands without a namespace prefix, so the plugin's setup and doctor commands appear as `/setup` and `/doctor` — pick the one with the Kobiton description to tell them apart from Cursor's built-ins.
 
 If you also use the Cursor IDE, install the plugin only once. Installs are shared between the CLI and the IDE (see the note in the next section).
 
@@ -219,7 +223,7 @@ Every Claude surface that supports MCP can call the Kobiton [tools](#tools). The
 | **Claude Cowork** (macOS / Windows) |           ✅ Yes            |        ⚠️ Manual upload ²        | Add `https://api.kobiton.com/mcp` as a connector under **Connectors** |
 | **claude.ai web · Claude Desktop · Claude mobile** |           ✅ Yes            |        ⚠️ Manual upload ²        | Add `https://api.kobiton.com/mcp` as a Custom Connector at [claude.ai](https://claude.ai); for mobile, configure it on the web first and it syncs to the app |
 
-¹ `run-interactive-cli-session` also requires the bundled `kobiton` CLI binary (macOS Apple Silicon only) - see the [platform support note](#skills).
+¹ `run-interactive-session` also requires the bundled `kobiton` CLI binary (macOS Apple Silicon only) - see the [platform support note](#skills).
 ² This plugin is not listed in the [Claude directory](https://support.claude.com/en/articles/14328846-browse-skills-connectors-and-plugins-in-one-directory) yet, so these surfaces can't install it as a plugin. As a workaround, zip a skill folder from this repo (e.g. `skills/run-automation-suite/`) and upload it as a [custom skill](https://support.claude.com/en/articles/12512198-how-to-create-custom-skills).
 
 ## Login
@@ -301,7 +305,7 @@ To verify everything is wired correctly, run the diagnostic:
 
 > **On Cursor (CLI and IDE)** the plugin's commands carry no `automate:` prefix. Run `/setup` and `/doctor` instead, picking the entry with the Kobiton description next to it to tell it apart from Cursor's built-in command of the same name.
 
-**CLI symlink install behavior across CLIs:** The `run-interactive-cli-session` skill depends on a `~/.kobiton/bin/kobiton` symlink.
+**CLI symlink install behavior across CLIs:** The `run-interactive-session` skill depends on a `~/.kobiton/bin/kobiton` symlink.
 
 - **Claude Code, Codex CLI**: recreated automatically by a bundled SessionStart hook on every session start. On Codex CLI, the first session prompts you to trust the hook once via `/hooks`; subsequent sessions run it silently. Running `/automate:setup` also recreates the symlink on demand.
 - **GitHub Copilot CLI, Gemini CLI, Cursor CLI**: no SessionStart hook runs, so create the symlink manually by running the setup command once after install: `/automate:setup` on Copilot and Gemini, `/setup` (the one with the Kobiton description) on Cursor (Copilot reads Claude-format Markdown commands; Gemini reads bundled TOML at `commands/automate/setup.toml`). Re-run it if the symlink goes missing.
@@ -313,6 +317,63 @@ bash "$(find ~/.codex -name install-cli.sh -path '*automate*' 2>/dev/null | head
 ```
 
 The script is idempotent - safe to re-run.
+
+### Your First Session
+
+New to Kobiton? This is the whole journey, start to finish. Each step is one thing you say to your assistant:
+
+1. **Set up credentials** — run `/automate:setup` once (see above).
+2. **Find a device** — "List my available Android devices." Kobiton's cloud devices are real phones and tablets; pick one and note its name or UDID.
+3. **Reserve it** — "Reserve the Pixel 8." A reservation holds the device exclusively for you.
+4. **Do one thing on it** — "Open the browser and search for kobiton" (the `drive-automation-session` skill auto-pilots it), or drive it step by step yourself with `run-interactive-session`.
+5. **Save it as a test case** — "Save that session as a test case named smoke-search." Now the flow is repeatable.
+6. **(Optional) Run it at scale** — "Create a test run for smoke-search on 3 devices and watch it." The `create-test-run` and `monitor-test-run` skills take it from here.
+
+That's the full loop: device → session → test case → test run. Every skill in this plugin is a step on that path.
+
+### Which Skill Do I Want?
+
+| Reach for this when… | Skill |
+|----------------------|-------|
+| You have local Appium test scripts (Node.js, Python, .NET, Java) to run on Kobiton devices | `run-automation-suite` |
+| You want a clean, hands-off run of a described flow that you'll SAVE as a test case and rerun | `drive-automation-session` |
+| You want quick inspection or troubleshooting when something breaks — poke at the device, pull logs, push files | `run-interactive-session` |
+| You have a test case or suite and want to kick off a test run from it | `create-test-run` |
+| A test run is already going and you want to watch it and catch blockers | `monitor-test-run` |
+
+### Concepts
+
+| Term | Meaning |
+|------|---------|
+| Session | One connection to a device — everything you did (commands, video, logs) is recorded under a session id. |
+| Test case | A saved, replayable sequence of steps, typically created by saving a session. |
+| Test run | An execution of a test case or test suite across one or more devices, with per-device results. |
+| Test suite | An ordered collection of test cases run together. |
+| Reservation | An exclusive hold on a device so nothing else can use it while you work. |
+| Device UDID | The unique identifier of a specific device — the unambiguous way to target one. |
+| Live remediation | When a test run execution hits a blocker, Kobiton lets you take over the device in the browser, fix the step live, and let the run continue. |
+
+### Prerequisites
+
+Before your first session, you need:
+
+- **A Kobiton account** — [sign up](https://kobiton.com) or use your organization's account.
+- **A supported host CLI** — Claude Code, GitHub Copilot CLI, Gemini CLI, Codex CLI, or Cursor (see [Installation](#installation)).
+- **Credentials configured** — run `/automate:setup` once after install.
+- **Your app build** (`.apk` / `.ipa`), if you're testing your own app rather than a system app or website.
+- **Platform note:** the `run-interactive-session` skill's bundled CLI runs on **macOS Apple Silicon only**. On any other platform, use `run-automation-suite` or `drive-automation-session` instead — no dead end.
+
+**One worked example, end to end** — paste these to your assistant one at a time:
+
+```
+Upload ./builds/my-app.apk to Kobiton
+List my available Android devices and reserve a Pixel
+Open my app on the reserved device, log in, and add the first item to the cart
+Save that session as a test case named smoke-add-to-cart
+Create a test run for smoke-add-to-cart on 3 Android devices and watch it
+```
+
+Every step above uses only what this plugin ships: the app tools (`uploadAppToStore`, `confirmAppUpload`), device tools (`listDevices`, `reserveDevice`), the `drive-automation-session` skill, the `saveTestCase` tool, and the `create-test-run` / `monitor-test-run` skills.
 
 ## What You Can Do
 
@@ -386,12 +447,12 @@ The script is idempotent - safe to re-run.
 | Skill | Description |
 |-------|-------------|
 | **run-automation-suite** | Guided workflow for app upload, device selection, local Appium script execution (Node.js, Python, .NET, Java), and result collection. |
-| **run-interactive-cli-session** | Guided workflow for interactive testing using natural language. WebDriver actions, device operations (adb shell, logs, screen), file management (push/pull), and more. |
-| **drive-automation-session** | Drives an already-reserved device from a natural-language intent via a direct Appium HTTP session (observe-decide-act loop). Returns a session id consumable by `saveTestCase`. Complements `run-interactive-cli-session` — it uses the automation session type rather than the CLI. |
+| **run-interactive-session** | Guided workflow for interactive testing using natural language. WebDriver actions, device operations (adb shell, logs, screen), file management (push/pull), and more. Renamed from `run-interactive-cli-session` in 1.8.0. |
+| **drive-automation-session** | Drives an already-reserved device from a natural-language intent via a direct Appium HTTP session (observe-decide-act loop). Returns a session id consumable by `saveTestCase`. Complements `run-interactive-session` — it uses the automation session type rather than the CLI. |
 | **create-test-run** | Creates a test run from a test case or suite — fills sensible defaults from the `createTestRun` schema when details are omitted, confirms a summary, then offers to monitor it and hands off to `monitor-test-run`. |
 | **monitor-test-run** | Watches a running test run and narrates it: reads the live-remediation flag up front, surfaces the live-remediation URL the moment an execution is blocked (optionally auto-opening the window), and post-mortems so a `BLOCKER_ENCOUNTERED` execution is never reported as passed. Quiet between real state changes. |
 
-> **Platform support note:** all MCP tools and the `run-automation-suite` skill work on every platform the host CLI supports. The `run-interactive-cli-session` skill ships a CLI binary for **macOS Apple Silicon** only. On other platforms, use `run-automation-suite` or the MCP tools directly.
+> **Platform support note:** all MCP tools and the `run-automation-suite` skill work on every platform the host CLI supports. The `run-interactive-session` skill ships a CLI binary for **macOS Apple Silicon** only. On other platforms, use `run-automation-suite` or the MCP tools directly.
 
 ## Commands
 
@@ -408,7 +469,7 @@ Use the **run-automation-suite** skill to run local Appium test scripts. Your AI
 
 ## Interactive Device Testing
 
-Use the **run-interactive-cli-session** skill to interact with devices using natural language. Describe what you want — "tap the login button", "type hello in the search field", "swipe down" — and your assistant translates your intent into CLI commands.
+Use the **run-interactive-session** skill to interact with devices using natural language. Describe what you want — "tap the login button", "type hello in the search field", "swipe down" — and your assistant translates your intent into CLI commands.
 
 Beyond WebDriver, the skill also supports device operations (adb shell, logs, screen capture), file management (push/pull files to device), and app management.
 
