@@ -27,7 +27,7 @@ Never silently pick `run-interactive-session` for a "test X" goal: CLI sessions 
 Test cases are session-based (`saveTestCase` on a completed session; requires `kobiton:scriptlessCapture` + allowlisted endpoints — see `skills/drive-automation-session/references/endpoint-reference.md`).
 A test run **revisits** a case's steps per device (`getTestRun.revisit_executions[]`).
 Clean Appium session end (`DELETE /wd/hub/session/{id}`) records `COMPLETE` (what `saveTestCase` expects); `terminateSession` records `TERMINATED`.
-Live-remediation resolutions apply on the **next** rerun.
+Live remediation is flag-dependent: flag ON → a blocked execution pauses (`BLOCKED_WAITING`), the human fixes it live, and the **same** run resumes; flag OFF → the execution fails and a portal-submitted resolution applies on the **next** rerun.
 
 Prerequisites: a Kobiton account, credentials via `/automate:setup`, and a supported host.
 `run-interactive-session`'s bundled CLI is macOS-Apple-Silicon-only — on other platforms route to `run-automation-suite` or `drive-automation-session`.
