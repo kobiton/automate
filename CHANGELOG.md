@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.8.0 - 2026-07-21
+
+### Renamed: `run-interactive-cli-session` → `run-interactive-session`
+
+The interactive testing skill is now named `run-interactive-session`. Behavior is unchanged — same CLI wrapper, same workflow, same macOS-Apple-Silicon binary. The skill directory, frontmatter, and every docs reference use the new name; only this changelog keeps the old one for history.
+
+### New: Getting Started onboarding section
+
+README's Getting Started now walks a first-time Kobiton user from install to a saved test case: a narrated first-session path, an intent-based skill-routing table covering all 5 skills, a concepts glossary (session, session type, test case, revisit, test run, suite, reservation, UDID, live remediation), and a prerequisites checklist with one copy-pasteable end-to-end example. `CLAUDE.md` carries a condensed version and `AGENTS.md` mirrors the substance for non-Claude hosts.
+
+### New: ambiguous-prompt routing + Kobiton session model for agents
+
+The agent context files (`AGENTS.md`, `CLAUDE.md`) now document how to route prompts that name a goal but not a method ("test the login screen of app ABC"): route by signal when one exists, otherwise ask one short question with `drive-automation-session` as the recommended default (its sessions stay saveable via `saveTestCase`). An intent-synonym table maps phrasing like "rerun / revisit / replay a test case" → `create-test-run`, "rerun a session" → save it as a test case first, and "replay the recording" → session artifacts, not a new run. A session-model section promotes cross-skill platform knowledge into one place: session types (`AUTOMATION` / `CLI` / `MANUAL`, and `MIXED` when a human interacts in the live view during an automation session), test cases being session-based, test runs as per-device revisit executions, `COMPLETE` vs `TERMINATED` end states, and rerun-scoped live-remediation resolutions.
+
 ## 1.7.1 - 2026-07-03
 
 ### Fix: `run-automation-suite` launches the chromeless launcher in the background

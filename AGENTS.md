@@ -18,6 +18,60 @@ The MCP server runs at `https://api.kobiton.com/mcp`. Authentication is OAuth 2.
 
 Every tool call requires a `userIntent` argument summarizing what the user is trying to accomplish, a natural-language sentence is sufficient (e.g., `"reserve a Pixel 7 to run the checkout suite"`). The plugin's audit logging consumes this; include it on every tool call.
 
+## Getting started (new users)
+
+The full journey a first-time user takes: `/automate:setup` (credentials) → `listDevices` / `reserveDevice` → drive the device with one skill (routing table below) → `saveTestCase` on the finished session → optionally `createTestRun` + monitor. Frame the skills as steps of that one flow, not a menu.
+
+Route by intent:
+
+| The user wants… | Use |
+|---|---|
+| to run local Appium scripts (Node.js/Python/.NET/Java) on Kobiton devices | `run-automation-suite` |
+| a clean hands-off run of a described flow, saveable as a test case | `drive-automation-session` |
+| quick inspection / troubleshooting — poke at a device, pull logs, push files | `run-interactive-session` |
+| to kick off a test run from a test case or suite | `create-test-run` |
+| to watch a running test run and catch blockers | `monitor-test-run` |
+
+Vocabulary: **session** = one recorded device connection (commands, video, logs under a session id); **test case** = saved replayable steps, usually created from a session; **test run** = execution of a case/suite across devices with per-device results; **test suite** = ordered collection of cases; **reservation** = exclusive device hold; **device UDID** = unique device identifier; **live remediation** = browser takeover to fix a blocked test-run execution mid-run.
+
+### Routing ambiguous prompts
+
+A prompt like *"test the login screen of app ABC"* names a goal but not a method — three skills could serve it, with different outcomes. Check for routing signals first:
+
+| Signal in the prompt | Route |
+|---|---|
+| Local test scripts/files mentioned (`.js`/`.py`/`.cs`/`.java`, "my Appium tests") | `run-automation-suite` |
+| A flow described in plain language; wants it repeatable ("save", "rerun later", "as a test case") | `drive-automation-session` |
+| Hands-on/diagnostic verbs: explore, poke, inspect, debug, adb, logs, push/pull a file | `run-interactive-session` |
+| Names an existing test case or suite to execute | `create-test-run` |
+| A run is already in flight ("watch", "follow", "track") | `monitor-test-run` |
+
+If no signal decides it, ask ONE short question — *"Run your own test scripts, have me drive the flow (saveable as a test case), or explore the device hands-on?"* — and recommend `drive-automation-session` as the default: it works from a plain-language goal on any platform, and its session can be saved with `saveTestCase`, so nothing is lost if the user later wants to rerun. Do not silently route a "test X" goal to `run-interactive-session` — CLI sessions don't feed `saveTestCase` (see the session model below), so that choice quietly forfeits the saveable-test-case outcome.
+
+### Intent synonyms
+
+Users say the same thing many ways; route by what the phrase means, not the keyword:
+
+| The user says… | They mean | Route |
+|---|---|---|
+| "rerun / run again / revisit / replay **this test case** (on other devices)" | execute the saved steps as a new test run | `create-test-run` |
+| "rerun **this session**" | sessions aren't rerun directly — save it as a test case, then run that | `saveTestCase` → `create-test-run` |
+| "replay / review **the session recording**" | watch what happened, not execute again | `getSessionArtifacts` / the session's portal page |
+| "watch / follow / track the run" | live progress + blockers | `monitor-test-run` |
+| "explore / poke around / grab logs / adb / push a file" | hands-on device access | `run-interactive-session` |
+| "test the X flow / log in and do Y" | agent-driven flow | `drive-automation-session` |
+| "run my (Appium) tests / scripts" | execute local scripts | `run-automation-suite` |
+
+### Kobiton session model (background the routing relies on)
+
+- **Everything on a device happens inside a session, and every session has a type**: `AUTOMATION` (script- or agent-driven Appium), `CLI` (the bundled CLI wrapper), `MANUAL` (a human driving the portal live view). If a human opens the live view and interacts while an automation session runs, the session becomes `MIXED` — human gestures and script commands interleave on the same recording (see the device-only-view note in `skills/run-automation-suite/SKILL.md`).
+- **Test cases are session-based**: a test case is created FROM a completed session's recorded steps via `saveTestCase`. Only automation sessions opened with `kobiton:scriptlessCapture` record saveable steps, and only actions on allowlisted endpoints are captured (`skills/drive-automation-session/references/endpoint-reference.md`); CLI sessions don't feed `saveTestCase`.
+- **A test run re-executes (revisits) a test case's steps** on the devices you choose — the platform models each per-device execution as a revisit execution (`getTestRun.revisit_executions[]`). "Rerun on 3 devices" = one test run, three executions.
+- **Session end state matters**: ending an automation session cleanly (`DELETE /wd/hub/session/{id}`) records it `COMPLETE`, which `saveTestCase` expects; `terminateSession` marks it `TERMINATED` (abnormal exit). Prefer the clean path when a test case might be saved later.
+- **Live remediation depends on the org flag**: with live remediation ON, a blocked revisit execution **pauses** (`BLOCKED_WAITING`) so a human can take over the device in the portal and fix the step live — the execution then resumes within the **same** run. With the flag OFF, the blocker fails the execution and a resolution submitted in the portal applies on the **next** rerun (details in `skills/monitor-test-run/SKILL.md`).
+
+Prerequisites: Kobiton account, credentials via the setup command, supported host. The `run-interactive-session` skill's bundled CLI runs on macOS Apple Silicon only — on other platforms route the user to `run-automation-suite` or `drive-automation-session` instead of dead-ending. A worked end-to-end example lives in README's Getting Started section.
+
 ## When the user asks to run tests on Kobiton
 
 Default workflow (mirrors the `run-automation-suite` skill):
@@ -39,11 +93,11 @@ For exploratory testing or repro work (not running a pre-written script):
 3. **Interact**: relay WebDriver commands through the plugin; capture artifacts on demand.
 4. **End the session**: `terminateSession` when the user is done.
 
-Detailed step-by-step instructions live in `skills/run-interactive-cli-session/SKILL.md`. Response shapes for the WebDriver layer are documented at `skills/run-interactive-cli-session/references/response-shapes.md`.
+Detailed step-by-step instructions live in `skills/run-interactive-session/SKILL.md`. Response shapes for the WebDriver layer are documented at `skills/run-interactive-session/references/response-shapes.md`.
 
 ## When the user asks to drive a device from a natural-language intent
 
-**Pick this skill** for agent-driven flows the user describes in plain language ("open YouTube and play the first world cup video", "log in then enable Bluetooth, then go home") — it auto-pilots from observation to action without a human in the loop on each step, and the result is a saveable test case. It complements (does NOT replace) `run-interactive-cli-session`: that one is for human-driven exploration via the CLI session type; this one uses the automation session type via direct Appium HTTP. (Tool names below are the Kobiton MCP tools' bare names — the host resolves the registered prefix.)
+**Pick this skill** for agent-driven flows the user describes in plain language ("open YouTube and play the first world cup video", "log in then enable Bluetooth, then go home") — it auto-pilots from observation to action without a human in the loop on each step, and the result is a saveable test case. It complements (does NOT replace) `run-interactive-session`: that one is for human-driven exploration via the CLI session type; this one uses the automation session type via direct Appium HTTP. (Tool names below are the Kobiton MCP tools' bare names — the host resolves the registered prefix.)
 
 1. **Ask before picking the device and the live view** (the skill blocks here): which device + which observation mode (foreground live view vs background run). For the device, the same `listDevices` / `reserveDevice` flow as the other skills applies.
 2. **Render capabilities** via `skills/run-automation-suite/scripts/render-capabilities.js` with `--newCommandTimeout 1800` (30 min — survives human-in-the-loop pauses) and `--scriptlessCapture` (so the resulting session is consumable by `saveTestCase`).

@@ -96,10 +96,10 @@ function setupValidProject(dir) {
     '## Workflow',
   ].join('\n'))
 
-  mkdirSync(join(dir, 'skills/run-interactive-cli-session'), {recursive: true})
-  writeFileSync(join(dir, 'skills/run-interactive-cli-session/SKILL.md'), [
+  mkdirSync(join(dir, 'skills/run-interactive-session'), {recursive: true})
+  writeFileSync(join(dir, 'skills/run-interactive-session/SKILL.md'), [
     '---',
-    'name: run-interactive-cli-session',
+    'name: run-interactive-session',
     'description: Test skill',
     '---',
     '## Setup',

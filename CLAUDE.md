@@ -2,6 +2,37 @@
 
 This file provides guidance to Claude Code when working with code in this repository.
 
+## Getting started
+
+The user journey the plugin serves, end to end: `/automate:setup` → list/reserve a device → drive it (one skill, below) → save the session as a test case (`saveTestCase`) → optionally create and monitor a test run.
+Every skill is a step on that path; route by intent:
+
+| Reach for this when the user wants… | Skill |
+|---|---|
+| to run local Appium scripts (Node.js/Python/.NET/Java) on Kobiton devices | `run-automation-suite` |
+| a clean hands-off run of a described flow, saveable as a test case | `drive-automation-session` |
+| quick inspection / troubleshooting — poke at a device, pull logs, push files | `run-interactive-session` |
+| to kick off a test run from a test case or suite | `create-test-run` |
+| to watch a running test run and catch blockers | `monitor-test-run` |
+
+Vocabulary the skills assume: **session** (one recorded device connection), **test case** (saved replayable steps, usually from a session), **test run** (execution of a case/suite across devices), **test suite** (ordered collection of cases), **reservation** (exclusive device hold), **device UDID** (unique device identifier), **live remediation** (browser takeover to fix a blocked execution mid-run).
+
+**Ambiguous prompts** (*"test the login screen of app ABC"* — goal named, method not): route by signal — script files mentioned → `run-automation-suite`; flow described / wants it repeatable → `drive-automation-session`; diagnostic verbs (explore, poke, logs, adb, push/pull) → `run-interactive-session`; names an existing case/suite → `create-test-run`; run already in flight → `monitor-test-run`.
+With no deciding signal, ask ONE question (scripts / agent-driven / hands-on) and recommend `drive-automation-session` — any platform, plain-language goal, and the session stays saveable via `saveTestCase`.
+Never silently pick `run-interactive-session` for a "test X" goal: CLI sessions don't feed `saveTestCase`, so that route forfeits the saveable outcome.
+
+**Intent synonyms**: "rerun / run again / revisit / replay a **test case**" → `create-test-run`; "rerun a **session**" → `saveTestCase` first, then `create-test-run` (sessions aren't rerun directly); "replay / review the **recording**" → `getSessionArtifacts` / session portal page, not a new run; "watch / follow / track" → `monitor-test-run`.
+
+**Session model** (the UX facts routing relies on): every session has a type — `AUTOMATION` (script/agent Appium), `CLI` (bundled CLI wrapper), `MANUAL` (human in the portal live view); a human interacting in the live view during an automation session makes it `MIXED`.
+Test cases are session-based (`saveTestCase` on a completed session; requires `kobiton:scriptlessCapture` + allowlisted endpoints — see `skills/drive-automation-session/references/endpoint-reference.md`).
+A test run **revisits** a case's steps per device (`getTestRun.revisit_executions[]`).
+Clean Appium session end (`DELETE /wd/hub/session/{id}`) records `COMPLETE` (what `saveTestCase` expects); `terminateSession` records `TERMINATED`.
+Live remediation is flag-dependent: flag ON → a blocked execution pauses (`BLOCKED_WAITING`), the human fixes it live, and the **same** run resumes; flag OFF → the execution fails and a portal-submitted resolution applies on the **next** rerun.
+
+Prerequisites: a Kobiton account, credentials via `/automate:setup`, and a supported host.
+`run-interactive-session`'s bundled CLI is macOS-Apple-Silicon-only — on other platforms route to `run-automation-suite` or `drive-automation-session`.
+README's [Getting Started](README.md#getting-started) carries the full narrated path and a copy-pasteable worked example.
+
 ## Commands
 
 ```bash
@@ -61,7 +92,7 @@ There is no local way to test that a new tool YAML matches a deployed server-sid
 | Skill | Runtime | Notes |
 |---|---|---|
 | `run-automation-suite` | `scripts/render-capabilities.js` parses Appium test scripts and reconciles capabilities against the selected device | refs: `references/capabilities.md`, `references/templates/appium.ejs` |
-| `run-interactive-cli-session` | `scripts/run.sh` wraps the bundled `skills/run-interactive-cli-session/bin/kobiton` CLI for natural-language WebDriver / device / file commands | binary ships for **macOS Apple Silicon only**; other platforms can use `run-automation-suite` instead |
+| `run-interactive-session` | `scripts/run.sh` wraps the bundled `skills/run-interactive-session/bin/kobiton` CLI for natural-language WebDriver / device / file commands | binary ships for **macOS Apple Silicon only**; other platforms can use `run-automation-suite` instead |
 | `drive-automation-session` | `scripts/appium.js` (`node:https`-only Appium HTTP client) drives an automation-type session from a natural-language intent; `scripts/strip-webview-dom.js` shrinks webview source | refs: `references/endpoint-reference.md`, `references/loop-discipline.md`, `references/capabilities.md` |
 | `create-test-run` | Conversational glue over the `createTestRun` MCP tool (no local runtime): fills defaults from the createTestRun schema, confirms a summary, creates the run, then offers monitoring in one prompt and delegates to `monitor-test-run` | uses `Skill` to delegate; no `scripts/` |
 | `monitor-test-run` | `scripts/poll-test-run.js` (`node:https`-only; reads `~/.kobiton/.credentials`) polls run state over REST and emits only on change; host streams it (Claude Code: `Monitor` tool). Surfaces blockers + the live-remediation URL; auto-opens the window via the shared chromeless launcher when opted in | refs: the bundled poller; reuses `run-automation-suite`'s `chromeless-launcher.*` |
@@ -90,7 +121,7 @@ The plugin ships configs for five AI CLI hosts. Source-of-truth is the root file
 
 **Header field-name differs by host.** Claude / Copilot / Gemini / Cursor use `headers` in MCP config; Codex uses `http_headers` (snake_case wrapper). The `X-AI-Tool-Name` value also differs per host (`Claude` / `Codex` / `Gemini` / `Cursor`). When adding a new host config, copy from the closest existing one — don't mix idioms across hosts.
 
-`AGENTS.md` is the cross-tool brief read by every non-Claude-Code host. When extending a skill's workflow or known-limitations list, mirror substantive changes into `AGENTS.md` so non-Claude hosts stay current. `AGENTS.md` currently covers `run-automation-suite`, `run-interactive-cli-session`, `drive-automation-session`, `create-test-run`, and `monitor-test-run`. Note `create-test-run`/`monitor-test-run` reference Claude Code's `Monitor` tool for streaming the poller; non-Claude hosts must substitute their own streamed-shell / watch / loop affordance (see the `monitor-test-run` SKILL.md host table).
+`AGENTS.md` is the cross-tool brief read by every non-Claude-Code host. When extending a skill's workflow or known-limitations list, mirror substantive changes into `AGENTS.md` so non-Claude hosts stay current. `AGENTS.md` currently covers `run-automation-suite`, `run-interactive-session`, `drive-automation-session`, `create-test-run`, and `monitor-test-run`. Note `create-test-run`/`monitor-test-run` reference Claude Code's `Monitor` tool for streaming the poller; non-Claude hosts must substitute their own streamed-shell / watch / loop affordance (see the `monitor-test-run` SKILL.md host table).
 
 ## Slash commands
 
@@ -101,7 +132,7 @@ Two commands ship in two file formats so each host can read its preferred one. M
 | `/automate:setup` | `commands/setup.md` | `commands/automate/setup.toml` |
 | `/automate:doctor` | `commands/doctor.md` | `commands/automate/doctor.toml` |
 
-- `/automate:setup` — bootstraps `~/.kobiton/.credentials` from the authenticated MCP session by calling the `getCredential` tool. Also re-installs the `~/.kobiton/bin/kobiton` symlink the `run-interactive-cli-session` skill depends on (Codex CLI installs it automatically via SessionStart; other CLIs run setup once).
+- `/automate:setup` — bootstraps `~/.kobiton/.credentials` from the authenticated MCP session by calling the `getCredential` tool. Also re-installs the `~/.kobiton/bin/kobiton` symlink the `run-interactive-session` skill depends on (Codex CLI installs it automatically via SessionStart; other CLIs run setup once).
 - `/automate:doctor` — read-only health check: CLI install, credentials file, active profile, required fields.
 
 Gemini CLI derives `/automate:setup` from the directory path `commands/automate/setup.toml`. Claude Code and Copilot CLI read `commands/setup.md` with the plugin name (`automate`) supplying the namespace. When changing one command's behavior, change both file formats so cross-host parity holds.
