@@ -1,0 +1,31 @@
+domain: AYA
+tools:
+  - name: getAyaIdentityAssertion
+    title: Get AYA Identity Assertion
+    description: >
+      Return a short-lived signed identity assertion (a JWT, RS256, expires in
+      60 seconds) proving the current OAuth-authenticated user's Kobiton
+      identity. Ask Your App (AYA, askyourapp.ai) accepts this assertion to
+      establish a session for the same user without a browser sign-in; it
+      verifies the signature against Kobiton's published JWKS endpoint
+      (/.well-known/jwks.json). The assertion is proof of the caller's own
+      identity only - it grants no access by itself and expires quickly, so
+      request it immediately before use. Aside from userIntent, the tool
+      accepts no input - it operates on the authenticated user from the OAuth
+      context. Returns an error if the environment has no assertion signing
+      key configured.
+    annotations:
+      readOnlyHint: true
+      destructiveHint: false
+      openWorldHint: false
+    inputSchema:
+      type: object
+      properties:
+        userIntent:
+          type: string
+          description: >-
+            A brief summary of what the user is trying to accomplish with this
+            tool call, refined from their original prompt. Used for audit
+            logging.
+      required:
+        - userIntent
