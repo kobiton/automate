@@ -73,7 +73,7 @@ There is no local way to test that a new tool YAML matches a deployed server-sid
 
 ### Tool inventory
 
-`tools/` holds 5 YAML files auto-discovered by `scripts/validate.js` (no manual array maintenance):
+`tools/` holds 6 YAML files auto-discovered by `scripts/validate.js` (no manual array maintenance):
 
 | File | Tools |
 |---|---|
@@ -82,6 +82,7 @@ There is no local way to test that a new tool YAML matches a deployed server-sid
 | `tools/apps.yaml` | `listApps`, `uploadAppToStore`, `confirmAppUpload`, `getAppParsingStatus`, `getApp` |
 | `tools/user.yaml` | `getCredential` |
 | `tools/test-management.yaml` | 14 test-case / test-run / test-suite CRUD tools |
+| `tools/aya.yaml` | `getAyaIdentityAssertion` |
 
 `tools/devices.yaml`, `tools/sessions.yaml`, `tools/apps.yaml` set the full 4-hint annotation block (`readOnlyHint`, `destructiveHint`, `idempotentHint` where meaningful, `openWorldHint: false`). `tools/user.yaml` and `tools/test-management.yaml` currently use the older 2-hint shape (`readOnlyHint` + `destructiveHint` only) — when modifying those files, prefer adding the missing hints rather than leaving them inconsistent.
 
