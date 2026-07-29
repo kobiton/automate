@@ -24,6 +24,14 @@ compatibility: >-
 tags: [testing, test-run, create, monitoring, live-remediation, kobiton]
 ---
 
+## Prerequisites
+
+**Runs anywhere** — pure MCP glue, no local binary and no filesystem needed, so this is the one skill
+in the plugin that works on a chat host (e.g. Claude Chat) as well as any CLI host. It needs only an
+authenticated Kobiton MCP connection. **But the monitoring handoff in Step 5 is not chat-safe**:
+`monitor-test-run` runs a local poller, so on a filesystem-less host create the run and stop there
+(Step 5 has the wording). See the Skill compatibility matrix in `CLAUDE.md`.
+
 ## Overview
 
 Turn a "run this" request into a created test run with as little friction as the
@@ -124,6 +132,18 @@ If `createTestRun` returns a validation error, fix it from the error text and th
 rather than guessing — do not retry the same body.
 
 ### 5. Offer monitoring — one prompt, then delegate
+
+**First, check you can actually monitor** (see Prerequisites). `monitor-test-run` runs a bundled
+Node poller that reads `~/.kobiton/.credentials`, so it needs a CLI host with local file access and
+a streamed-watch affordance. **If this host has no local filesystem or no shell tool** (a chat host),
+do **not** present the choices below — offering a watch you can't perform is the trap the matrix in
+`CLAUDE.md` / `AGENTS.md` warns about. Instead, close out:
+
+> Run created (`<testRunId>`) — <portal link>. I can't watch it from here (monitoring needs a local
+> poller, which this host can't run), so follow it in the portal, or ask me again from Claude Code or
+> another CLI host and I'll monitor it for you.
+
+Then stop. Everything below applies only when the host can run the poller.
 
 Read the live-remediation flag first: call `getOrgSettings` once and note `live_remediation_enabled`
 (`flagOn`). This decides whether the auto-open option is meaningful.

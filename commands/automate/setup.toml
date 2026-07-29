@@ -11,7 +11,7 @@ The bundled installer just ran:
 
 Parse the output above:
 - "INSTALL_OK": symlink in place at `~/.kobiton/bin/kobiton`, continue to Step 1.
-- "INSTALL_FAIL" or other error: the installer couldn't locate a binary for this platform (only macOS arm64 and Linux x64 ship a binary). Surface the error to the user, then continue anyway — credentials still need to be written so the MCP tools work; only `run-interactive-session` is affected.
+- "INSTALL_FAIL" or other error: the installer couldn't create the symlink or the bundled binary is missing (it ships for macOS only — a single x86_64 build, native on Intel and via Rosetta 2 on Apple Silicon). Surface the error to the user, then continue anyway — credentials still need to be written so the MCP tools work; only `run-interactive-session` is affected.
 
 ## Step 1: Fetch credentials via the `kobiton` MCP server
 

@@ -61,6 +61,15 @@ summary), not a value returned to a caller. It changes nothing server-side excep
 
 ## Prerequisites
 
+**Runs on any OS, but needs a CLI host that can stream a background command's output** — the watch is
+a local Node poller, so it can't run on a chat host with no filesystem; there, tell the user to follow
+the run in the portal. Node.js 18+. Claude Code streams via the `Monitor` tool; other hosts substitute
+their own streamed shell / watch / loop — see the per-host table in Step 2, including what NOT to use
+(a silent detached process misses the blocker window). See the Skill compatibility matrix in `CLAUDE.md`.
+
+- **`~/.kobiton/.credentials`** — `scripts/poll-test-run.js` reads it directly on each invocation and
+  has **no MCP fallback**, so this file is required. If it's missing, say so and point at
+  `/automate:setup` rather than starting a poller that will fail on its first REST call.
 - **An authenticated Kobiton MCP connection.** All three tools resolve the caller's org/user from the
   OAuth context.
 - **A `testRunId`** — usually the one `createTestRun` just returned, or one the user names.

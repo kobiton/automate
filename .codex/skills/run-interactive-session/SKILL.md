@@ -21,10 +21,14 @@ version: 1.0.0
 author: Kobiton Inc.
 license: MIT
 compatibility: >-
-  Requires the bundled Kobiton CLI binary, which targets macOS. On
-  other platforms, use run-automation-suite or the Kobiton MCP tools
-  directly. Run /automate:setup once before first use to install the
-  CLI wrapper symlink and write credentials.
+  macOS only. Requires the bundled Kobiton CLI binary, which is a
+  single-slice x86_64 Mach-O executable: it runs natively on Intel
+  Macs and under Rosetta 2 on Apple Silicon. On Linux and Windows,
+  use run-automation-suite or drive-automation-session (both
+  cross-platform) or the Kobiton MCP tools directly. Requires local
+  file access for the binary and ~/.kobiton/.credentials. Run
+  /automate:setup once before first use to install the CLI wrapper
+  symlink and write credentials.
 tags: [mobile, testing, interactive, webdriver, devices, kobiton]
 ---
 
@@ -38,9 +42,11 @@ Use this skill whenever the user wants to interact with a mobile device on Kobit
 
 ## Prerequisites
 
+**Runs only on a CLI host on macOS** — it drives a local binary, so it can't run on a chat host with no filesystem. On Linux, Windows, or a chat host, don't invoke this skill: route to `run-automation-suite` (user has a test script) or `drive-automation-session` (describe the flow instead), both cross-platform. Check this *before* reserving a device, so a doomed run doesn't burn device minutes. See the Skill compatibility matrix in `CLAUDE.md`.
+
 Before invoking this skill, ensure:
 
-- **Bundled Kobiton CLI** - `~/.kobiton/bin/kobiton` (a symlink to this plugin's `run.sh` wrapper) must exist and point at an executable. Claude Code and Codex CLI both recreate it automatically via a bundled SessionStart hook; on Codex, the user trusts the hook once via `/hooks` after install. `/automate:setup` re-installs the symlink on demand on any host. GitHub Copilot CLI and Gemini CLI load `/automate:setup` (Copilot via Claude-format `.md`, Gemini via bundled TOML at `commands/automate/setup.toml`) but have no SessionStart hook - run `/automate:setup` once after install. The bundled binary targets **macOS** - on other platforms, do not invoke this skill; recommend `run-automation-suite` or the MCP tools instead, which are platform-independent.
+- **Bundled Kobiton CLI** - `~/.kobiton/bin/kobiton` (a symlink to this plugin's `run.sh` wrapper) must exist and point at an executable. Claude Code and Codex CLI both recreate it automatically via a bundled SessionStart hook; on Codex, the user trusts the hook once via `/hooks` after install. `/automate:setup` re-installs the symlink on demand on any host. GitHub Copilot CLI and Gemini CLI load `/automate:setup` (Copilot via Claude-format `.md`, Gemini via bundled TOML at `commands/automate/setup.toml`) but have no SessionStart hook - run `/automate:setup` once after install. The bundled binary is **macOS-only and x86_64** (native on Intel Macs, Rosetta 2 on Apple Silicon); `run.sh` reports a missing binary or missing credentials with the right remedy, so surface its error rather than pre-flighting your own checks.
 - **Credentials file** - `~/.kobiton/.credentials` must contain a valid INI-formatted profile with `KOBITON_USER`, `KOBITON_API_KEY`, and `KOBITON_PORTAL`. Created by `/automate:setup`. The active profile is `$KOBITON_PROFILE` if set, otherwise `default`.
 - **Kobiton MCP connection** - useful for `listDevices` / `getDeviceStatus` calls when picking a device. Default `api.kobiton.com/mcp`; check `.mcp.json` for the configured endpoint.
 - **Kobiton account** - credentials with device access for the target platform (Android / iOS) and remaining session quota.

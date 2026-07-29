@@ -24,8 +24,12 @@ license: MIT
 compatibility: >-
   Cross-platform — talks WebDriver HTTP directly via Node's built-in
   node:https; no platform-specific binary dependency. Requires Node.js
-  >= 18 and an authenticated Kobiton MCP connection (or, as a fallback,
-  ~/.kobiton/.credentials written by /automate:setup).
+  >= 18, a CLI host with local file access (the observe-decide-act loop
+  passes state through local turn files), and ~/.kobiton/.credentials
+  written by /automate:setup — scripts/appium.js reads that file
+  directly and never calls the MCP getCredential tool, so it is
+  required, not a fallback. An authenticated Kobiton MCP connection is
+  additionally useful for device selection.
 tags: [mobile, testing, appium, natural-language, intent, automation, kobiton]
 ---
 
@@ -52,7 +56,9 @@ This skill complements — and does NOT replace — `run-interactive-session`. T
 
 ## Prerequisites
 
-- **Credentials available.** The skill reads credentials from the Kobiton MCP `getCredential` tool by default — no `/automate:setup` prerequisite. If MCP is unavailable, the skill falls back to `~/.kobiton/.credentials` (written by `/automate:setup`). If neither source produces credentials, the skill stops with a helpful message.
+**Runs on any OS, but needs a CLI host with local file access** — the observe-decide-act loop passes state between turns through `iter-N.*.json` files, so that file handoff *is* the loop. Not usable on a chat host with no filesystem; there, route to `create-test-run`. Node.js 18+; no native binary (`scripts/appium.js` uses `node:https`). See the Skill compatibility matrix in `CLAUDE.md`.
+
+- **Credentials available.** `scripts/appium.js` reads `~/.kobiton/.credentials` (written by `/automate:setup`) directly on every invocation and stops with `no-credentials` if it's missing — this file is **required**, not a fallback, and the script never calls the MCP `getCredential` tool. Reading it directly is deliberate: credentials never pass through argv, env, or the host transcript.
 - **A device.** Either the user provides one (UDID, deviceName, platformVersion) or the skill helps pick + reserve one (see Step 0 below).
 - **An app** (for app testing) — a Kobiton-store reference like `kobiton-store:vXXXXX`, an `.apk` / `.ipa` to upload, or a browser name (for web testing). The skill helps locate or upload it in Step 0.
 
@@ -347,7 +353,7 @@ The only hard programmatic stop is `MAX_ITERS=100` (override per session), which
 
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
-| `No credentials available...` | Kobiton MCP not connected AND no `~/.kobiton/.credentials` | Either authenticate the Kobiton MCP server, or run `/automate:setup` |
+| `No credentials available...` | No `~/.kobiton/.credentials` (an authenticated MCP connection does not substitute — `appium.js` only reads the file) | Run `/automate:setup`, which uses the MCP connection to fetch and write the file |
 | `iter-N.error.json` has `status: 401` on session create | Credentials stale | Re-authenticate the MCP server (or re-run `/automate:setup` for the file fallback); check the portal URL |
 | `iter-N.error.json` has a platform-cap message on session create | `newCommandTimeout: 1800` rejected by Kobiton | Lower the timeout in `references/capabilities.md` |
 | `iter-N.error.json` body has `value.error: "no such element"` | Selector matched nothing | Re-plan next turn with a different strategy / selector |

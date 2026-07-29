@@ -34,6 +34,8 @@ Use this skill when the user asks to run mobile tests, validate an APK or IPA ac
 
 ## Prerequisites
 
+**Runs on any OS, but needs a CLI host with local file access** — its whole job is running the user's *local* test script. Not usable on a chat host with no filesystem; there, route to `create-test-run` to execute a test case already saved in Kobiton. See the Skill compatibility matrix in `CLAUDE.md`.
+
 Before invoking this skill, ensure:
 
 - **Kobiton MCP connection** - the Kobiton MCP server is reachable (default `api.kobiton.com/mcp`; check `.mcp.json` for the configured endpoint).
