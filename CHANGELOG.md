@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.9.0 - 2026-07-29
+
+### New: per-skill compatibility matrix
+
+`CLAUDE.md` gains a **Skill compatibility matrix** — for each of the 5 skills: supported hosts, whether it needs local file access, any local-binary/OS constraint, whether it needs a streamed-watch affordance, and whether it is pure MCP glue (safe in a chat host with no filesystem). Every cell is derivable from that skill's `allowed-tools`, so it can be re-verified rather than trusted. It sits under Cross-tool surface, extending the existing host→config table rather than replacing it. `AGENTS.md` carries a prose summary that links to the matrix instead of duplicating it, so the two cannot drift apart.
+
+`create-test-run` is the only pure-MCP skill and therefore the only one usable in a file-access-less host; it now checks it can actually monitor before offering to, since `monitor-test-run` runs a local poller.
+
+### Changed: each skill states its host, platform, and file-access requirements up front
+
+All 5 `SKILL.md` files now open their existing `## Prerequisites` with the host/platform/file-access requirement and the route to take when it isn't met — instead of burying it mid-body (the CLI platform limit was ~43 lines in; the `Monitor` substitution ~169 lines in). One requirements list per skill, not a parallel block restating it.
+
+### Fixed: the bundled CLI is x86_64, not "Apple Silicon only"
+
+`bin/kobiton` is a single-slice **x86_64** Mach-O with no arm64 slice (`file` / `lipo -info`), so it runs **natively on Intel Macs** and on Apple Silicon **under Rosetta 2**. It had been documented as "macOS Apple Silicon only" — which both excluded Intel Macs, where it runs natively, and implied a native arm64 build that does not exist. Corrected in `CLAUDE.md`, `AGENTS.md`, and `README.md`. (The 1.8.0 entry below repeats the old wording; it is left as written for history.)
+
+Also corrected: the setup command claimed binaries ship for "only macOS arm64 and Linux x64" — no Linux binary ships and the installer does no per-platform selection; and `drive-automation-session`'s `compatibility` field described MCP `getCredential` with the credentials file as a fallback, when `appium.js` reads `~/.kobiton/.credentials` directly and never calls that tool, making the file required.
+
+Platform and credential enforcement remains in `scripts/run.sh`, which already reports a missing binary or missing credentials with the `/automate:setup` and `/automate:doctor` remedies; the skill docs state the constraint and route the user rather than re-implementing the check.
+
+No tool YAML or MCP server contract changed.
+
 ## 1.8.0 - 2026-07-21
 
 ### Renamed: `run-interactive-cli-session` → `run-interactive-session`
