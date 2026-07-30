@@ -152,7 +152,8 @@ same as "can run this skill", because a chat surface with code execution still h
 - **`monitor-test-run`** also needs a way to stream a background command's output (Claude Code's
   `Monitor`, or the host's own streamed shell / watch / loop — see that skill's Step 2 host table).
 - **`run-automation-suite`** needs a local filesystem plus the user's own Appium script and its language
-  runtime.
+  runtime — but **not** the credentials file: the user's script carries its own Kobiton credentials in
+  its capabilities / hub URL.
 - **`run-interactive-session`** additionally requires **macOS**: its bundled `bin/kobiton` is a
   single-slice x86_64 Mach-O — native on Intel Macs, Rosetta 2 on Apple Silicon, with no Linux or
   Windows build. Route those users to `run-automation-suite` or `drive-automation-session`.

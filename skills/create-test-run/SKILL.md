@@ -138,11 +138,11 @@ rather than guessing — do not retry the same body.
 
 ### 5. Offer monitoring — one prompt, then delegate
 
-**First, check you can actually monitor** (see Prerequisites). `monitor-test-run` runs a bundled
-Node poller that reads `~/.kobiton/.credentials`, so it needs a CLI host with local file access and
-a streamed-watch affordance. **If you can't write/read local files or run a shell command here**,
-do **not** present the choices below — offering a watch you can't perform is the trap the matrix in
-`CLAUDE.md` / `AGENTS.md` warns about. Instead, close out:
+**First, check you can actually monitor** (see Prerequisites). `monitor-test-run` runs a bundled Node
+poller that reads `~/.kobiton/.credentials`, so it needs three capabilities: a persistent local
+filesystem, that credentials file, and a way to stream a background command's output. **If any is
+missing here**, do **not** present the choices below — offering a watch you can't perform is the trap
+the matrix in `CLAUDE.md` warns about. Instead, close out:
 
 > Run created (`<testRunId>`) — <portal link>. I can't watch it from here (monitoring needs a local
 > poller, which this host can't run), so follow it in the portal, or ask me again from Claude Code or

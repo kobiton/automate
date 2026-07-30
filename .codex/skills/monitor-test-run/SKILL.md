@@ -27,16 +27,15 @@ compatibility: >-
   Any OS, but requires a persistent local filesystem, ~/.kobiton/.credentials
   (written by /automate:setup), and a host affordance that streams a background
   command's output — so it cannot run where the host offers only an MCP
-  connection. Uses the Kobiton MCP tools getOrgSettings (up front) and
+  connection. The watch loop runs the bundled scripts/poll-test-run.js (Node
+  18+), which reads those credentials, polls run state over REST, and emits
+  only on change. Uses the Kobiton MCP tools getOrgSettings (up front) and
   terminateTestRun (on request); requires an authenticated Kobiton MCP
-  connection, and
-  getOrgSettings requires the automate plugin release that ships it. The watch
-  loop runs the bundled scripts/poll-test-run.js (Node 18+; reads
-  ~/.kobiton/.credentials, same file /automate:setup writes) which polls run
-  state over REST and emits only on change. The optional live-remediation
-  window (Step 4a) reuses run-automation-suite's chromeless-launcher scripts
-  (Chrome; resize on macOS/Windows, launch-only on Linux) — if Chrome is absent
-  the skill falls back to printing the URL.
+  connection, and getOrgSettings requires the automate plugin release that
+  ships it. The optional live-remediation window (Step 4a) reuses
+  run-automation-suite's chromeless-launcher scripts (Chrome; resize on
+  macOS/Windows, launch-only on Linux) — if Chrome is absent the skill falls
+  back to printing the URL.
 tags: [testing, test-run, monitoring, live-remediation, blocker, kobiton]
 ---
 
