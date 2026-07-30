@@ -4,9 +4,13 @@
 
 ### New: per-skill compatibility matrix
 
-`CLAUDE.md` gains a **Skill compatibility matrix** — for each of the 5 skills: supported hosts, whether it needs local file access, any local-binary/OS constraint, whether it needs a streamed-watch affordance, and whether it is pure MCP glue (safe in a chat host with no filesystem). Every cell is derivable from that skill's `allowed-tools`, so it can be re-verified rather than trusted. It sits under Cross-tool surface, extending the existing host→config table rather than replacing it. `AGENTS.md` carries a prose summary that links to the matrix instead of duplicating it, so the two cannot drift apart.
+`CLAUDE.md` gains a **Skill compatibility matrix** — for each of the 5 skills: whether it needs a persistent local filesystem, whether it needs the `~/.kobiton/.credentials` file that `/automate:setup` writes, any local-binary/OS constraint, whether it needs a streamed-watch affordance, and whether it is pure MCP glue that runs with none of those. Every cell is checkable against that skill's `allowed-tools` **plus what its bundled scripts actually do** — `allowed-tools` grants a superset, so a declared tool is not proof the skill uses it. It sits under Cross-tool surface, extending the existing host→config table rather than replacing it. `AGENTS.md` carries a prose summary that links to the matrix instead of duplicating it, so the two cannot drift apart.
 
-`create-test-run` is the only pure-MCP skill and therefore the only one usable in a file-access-less host; it now checks it can actually monitor before offering to, since `monitor-test-run` runs a local poller.
+Columns are keyed on capabilities rather than product names, because "has a filesystem" is not the same as "can run this skill": a chat surface with code execution has both a filesystem and Node, yet still cannot run the credential-dependent skills, since nothing there can execute `/automate:setup`. Naming the specific missing capability tells a user what to do next in a way that naming a host class does not.
+
+`create-test-run` is the only pure-MCP skill — it needs nothing but an authenticated MCP connection — and it now confirms it can actually monitor before offering to, since `monitor-test-run` runs a local poller that reads the credentials file.
+
+Each skill's `compatibility:` frontmatter was brought in line with the matrix, so a skill file can no longer contradict itself about where it runs.
 
 ### Changed: each skill states its host, platform, and file-access requirements up front
 

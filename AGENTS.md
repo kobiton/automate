@@ -136,19 +136,30 @@ Several behaviors of the current Kobiton MCP server have known gaps that agents 
 
 ### Which skills run where
 
-Not every skill runs on every host — check before invoking one, so you don't start a workflow the
-environment can't finish. `create-test-run` is pure MCP glue and the only one safe on a host with no
-local filesystem (Claude Chat, or the MCP-only surfaces at the bottom of the Cross-host install table
-below). Every other skill reads or writes local files — a script directory, turn files, a credentials
-file, or a bundled binary — and needs a CLI host. `run-interactive-session` additionally requires
-**macOS** (its bundled `bin/kobiton` is an x86_64 Mach-O: native on Intel, Rosetta 2 on Apple
-Silicon); route Linux/Windows users to `run-automation-suite` or `drive-automation-session`.
-`monitor-test-run` additionally needs a way to stream a background command's output (Claude Code's
-`Monitor`, or the host's own streamed shell / watch / loop — see that skill's Step 2 host table).
+Not every skill runs everywhere — check before invoking one, so you don't start a workflow the
+environment can't finish. Judge by **capability, not by product name**: "has a filesystem" is not the
+same as "can run this skill", because a chat surface with code execution still has no way to run
+`/automate:setup` and write `~/.kobiton/.credentials`.
 
-When a required affordance is missing, say so and name the alternative rather than starting a workflow
-that cannot finish. Each skill's own `## Prerequisites` section states its requirements; the full
-per-skill matrix (columns for hosts, file access, binary/OS, streamed-watch, chat-safety) lives in
+- **`create-test-run`** needs only an authenticated MCP connection — no local filesystem, no
+  credentials file, no binary. It is the only such skill, so it is the only one usable where the host
+  supplies nothing else (a chat surface, or the MCP-only entries at the bottom of the Cross-host
+  install table below). Its monitoring hand-off does need a local poller, so where that's unavailable,
+  create the run and report its id rather than offering to watch it.
+- **`drive-automation-session`** and **`monitor-test-run`** each need a persistent local filesystem
+  **and** `~/.kobiton/.credentials` — their bundled scripts read that file directly and never call MCP
+  `getCredential`, so an authenticated MCP connection alone is not enough.
+- **`monitor-test-run`** also needs a way to stream a background command's output (Claude Code's
+  `Monitor`, or the host's own streamed shell / watch / loop — see that skill's Step 2 host table).
+- **`run-automation-suite`** needs a local filesystem plus the user's own Appium script and its language
+  runtime.
+- **`run-interactive-session`** additionally requires **macOS**: its bundled `bin/kobiton` is a
+  single-slice x86_64 Mach-O — native on Intel Macs, Rosetta 2 on Apple Silicon, with no Linux or
+  Windows build. Route those users to `run-automation-suite` or `drive-automation-session`.
+
+When a capability is missing, name the **specific** missing one and the alternative — "needs the
+credentials file `/automate:setup` writes" tells the user what to do next; "needs a CLI host" does not.
+Each skill's own `## Prerequisites` states its requirements; the full per-skill matrix lives in
 [`CLAUDE.md`](CLAUDE.md#skill-compatibility-matrix) — kept in one place so the two can't drift apart.
 
 ## Cross-host install

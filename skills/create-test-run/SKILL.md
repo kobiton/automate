@@ -18,19 +18,24 @@ version: 1.0.0
 author: Kobiton Inc.
 license: MIT
 compatibility: >-
+  Runs on any MCP-aware host, including hosts with no local filesystem — this
+  is the plugin's only pure-MCP skill, needing no local file, binary, or shell.
   Uses the Kobiton MCP tools createTestRun, getTestCase/getTestSuite,
   listDevices, and getOrgSettings; requires an authenticated Kobiton MCP
-  connection. Delegates monitoring to the monitor-test-run skill (same plugin).
+  connection. Delegates monitoring to the monitor-test-run skill (same plugin),
+  which does need a local poller — so on a filesystem-less host, create the run
+  and report its id rather than offering to watch it.
 tags: [testing, test-run, create, monitoring, live-remediation, kobiton]
 ---
 
 ## Prerequisites
 
-**Runs anywhere** — pure MCP glue, no local binary and no filesystem needed, so this is the one skill
-in the plugin that works on a chat host (e.g. Claude Chat) as well as any CLI host. It needs only an
-authenticated Kobiton MCP connection. **But the monitoring handoff in Step 5 is not chat-safe**:
-`monitor-test-run` runs a local poller, so on a filesystem-less host create the run and stop there
-(Step 5 has the wording). See the Skill compatibility matrix in `CLAUDE.md`.
+**Needs only an authenticated Kobiton MCP connection** — no local filesystem, no credentials file, no
+binary, no shell. It is the plugin's only pure-MCP skill, so it is the only one that works where the
+host supplies nothing else. **The monitoring hand-off in Step 5 is the exception**: `monitor-test-run`
+runs a local poller that reads `~/.kobiton/.credentials`, so where you can't write/read local files or
+run a shell command, create the run and report its id instead of offering to watch it (Step 5 carries
+the wording). See the Skill compatibility matrix in `CLAUDE.md`.
 
 ## Overview
 
@@ -135,7 +140,7 @@ rather than guessing — do not retry the same body.
 
 **First, check you can actually monitor** (see Prerequisites). `monitor-test-run` runs a bundled
 Node poller that reads `~/.kobiton/.credentials`, so it needs a CLI host with local file access and
-a streamed-watch affordance. **If this host has no local filesystem or no shell tool** (a chat host),
+a streamed-watch affordance. **If you can't write/read local files or run a shell command here**,
 do **not** present the choices below — offering a watch you can't perform is the trap the matrix in
 `CLAUDE.md` / `AGENTS.md` warns about. Instead, close out:
 

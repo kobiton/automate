@@ -24,8 +24,12 @@ version: 1.0.0
 author: Kobiton Inc.
 license: MIT
 compatibility: >-
-  Uses the Kobiton MCP tools getOrgSettings (up front) and terminateTestRun
-  (on request); requires an authenticated Kobiton MCP connection, and
+  Any OS, but requires a persistent local filesystem, ~/.kobiton/.credentials
+  (written by /automate:setup), and a host affordance that streams a background
+  command's output — so it cannot run where the host offers only an MCP
+  connection. Uses the Kobiton MCP tools getOrgSettings (up front) and
+  terminateTestRun (on request); requires an authenticated Kobiton MCP
+  connection, and
   getOrgSettings requires the automate plugin release that ships it. The watch
   loop runs the bundled scripts/poll-test-run.js (Node 18+; reads
   ~/.kobiton/.credentials, same file /automate:setup writes) which polls run
@@ -62,7 +66,7 @@ summary), not a value returned to a caller. It changes nothing server-side excep
 ## Prerequisites
 
 **Runs on any OS, but needs a CLI host that can stream a background command's output** — the watch is
-a local Node poller, so it can't run on a chat host with no filesystem; there, tell the user to follow
+a local Node poller reading a local credentials file, so where either is unavailable, tell the user to follow
 the run in the portal. Node.js 18+. Claude Code streams via the `Monitor` tool; other hosts substitute
 their own streamed shell / watch / loop — see the per-host table in Step 2, including what NOT to use
 (a silent detached process misses the blocker window). See the Skill compatibility matrix in `CLAUDE.md`.

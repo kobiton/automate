@@ -27,7 +27,7 @@ The script is idempotent and silent on success. After it returns, sanity-check t
 ```
 
 - **`OK`**: symlink in place, continue to Step 1.
-- **`MISSING`**: the install script could not locate the bundled `run.sh` (e.g., binary not shipped for the current platform). Surface this to the user and continue to Step 1 anyway — credentials still need to be written so other tools work; only `run-interactive-session` is affected.
+- **`MISSING`**: the install script could not create the symlink, or the bundled binary is absent (it ships for macOS only — a single x86_64 build, native on Intel and via Rosetta 2 on Apple Silicon). Surface this to the user and continue to Step 1 anyway — credentials still need to be written so other tools work; only `run-interactive-session` is affected.
 
 ## Step 1: Fetch credentials via MCP
 

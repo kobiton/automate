@@ -42,7 +42,7 @@ Use this skill whenever the user wants to interact with a mobile device on Kobit
 
 ## Prerequisites
 
-**Runs only on a CLI host on macOS** — it drives a local binary, so it can't run on a chat host with no filesystem. On Linux, Windows, or a chat host, don't invoke this skill: route to `run-automation-suite` (user has a test script) or `drive-automation-session` (describe the flow instead), both cross-platform. Check this *before* reserving a device, so a doomed run doesn't burn device minutes. See the Skill compatibility matrix in `CLAUDE.md`.
+**Runs only on macOS, and needs a local filesystem** — it executes a bundled binary and reads `~/.kobiton/.credentials`. On Linux or Windows, or anywhere those two aren't available, don't invoke this skill: route to `run-automation-suite` (user already has a test script) or `drive-automation-session` (describe the flow instead), both cross-platform. Check this *before* reserving a device, so a doomed run doesn't burn device minutes. See the Skill compatibility matrix in `CLAUDE.md`.
 
 Before invoking this skill, ensure:
 

@@ -24,7 +24,7 @@ license: MIT
 compatibility: >-
   Cross-platform — talks WebDriver HTTP directly via Node's built-in
   node:https; no platform-specific binary dependency. Requires Node.js
-  >= 18, a CLI host with local file access (the observe-decide-act loop
+  >= 18, a persistent local filesystem (the observe-decide-act loop
   passes state through local turn files), and ~/.kobiton/.credentials
   written by /automate:setup — scripts/appium.js reads that file
   directly and never calls the MCP getCredential tool, so it is
@@ -56,7 +56,7 @@ This skill complements — and does NOT replace — `run-interactive-session`. T
 
 ## Prerequisites
 
-**Runs on any OS, but needs a CLI host with local file access** — the observe-decide-act loop passes state between turns through `iter-N.*.json` files, so that file handoff *is* the loop. Not usable on a chat host with no filesystem; there, route to `create-test-run`. Node.js 18+; no native binary (`scripts/appium.js` uses `node:https`). See the Skill compatibility matrix in `CLAUDE.md`.
+**Runs on any OS, but needs two things from the host:** a persistent local filesystem — the observe-decide-act loop passes state between turns through `iter-N.*.json` files, so that file handoff *is* the loop — and `~/.kobiton/.credentials`, which `scripts/appium.js` reads directly (see below). A host with a filesystem but no way to run `/automate:setup` still can't finish; route those users to `create-test-run`. Node.js 18+; no native binary (`scripts/appium.js` uses `node:https`). See the Skill compatibility matrix in `CLAUDE.md`.
 
 - **Credentials available.** `scripts/appium.js` reads `~/.kobiton/.credentials` (written by `/automate:setup`) directly on every invocation and stops with `no-credentials` if it's missing — this file is **required**, not a fallback, and the script never calls the MCP `getCredential` tool. Reading it directly is deliberate: credentials never pass through argv, env, or the host transcript.
 - **A device.** Either the user provides one (UDID, deviceName, platformVersion) or the skill helps pick + reserve one (see Step 0 below).
