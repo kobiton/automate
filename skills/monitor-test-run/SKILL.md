@@ -24,12 +24,12 @@ version: 1.0.0
 author: Kobiton Inc.
 license: MIT
 compatibility: >-
-  Any OS, but requires a persistent local filesystem, ~/.kobiton/.credentials
-  (written by /automate:setup), and a host affordance that streams a background
-  command's output — so it cannot run where the host offers only an MCP
-  connection. The watch loop runs the bundled scripts/poll-test-run.js (Node
-  18+), which reads those credentials, polls run state over REST, and emits
-  only on change. Uses the Kobiton MCP tools getOrgSettings (up front) and
+  Any OS, but requires a persistent local filesystem and ~/.kobiton/.credentials
+  (written by /automate:setup) — so it cannot run where the host offers only an
+  MCP connection. A host affordance that streams a background command's output
+  is strongly preferred; without one the skill falls back to a foreground loop.
+  The watch loop runs the bundled scripts/poll-test-run.js (Node 18+), which
+  reads those credentials, polls run state over REST, and emits only on change. Uses the Kobiton MCP tools getOrgSettings (up front) and
   terminateTestRun (on request); requires an authenticated Kobiton MCP
   connection, and getOrgSettings requires the automate plugin release that
   ships it. The optional live-remediation window (Step 4a) reuses
@@ -64,11 +64,13 @@ summary), not a value returned to a caller. It changes nothing server-side excep
 
 ## Prerequisites
 
-**Runs on any OS, but needs a CLI host that can stream a background command's output** — the watch is
-a local Node poller reading a local credentials file, so where either is unavailable, tell the user to follow
-the run in the portal. Node.js 18+. Claude Code streams via the `Monitor` tool; other hosts substitute
-their own streamed shell / watch / loop — see the per-host table in Step 2, including what NOT to use
-(a silent detached process misses the blocker window). See the Skill compatibility matrix in `CLAUDE.md`.
+**Runs on any OS, but needs a local filesystem, Node.js 18+, and `~/.kobiton/.credentials`** — the watch
+is a bundled Node poller that reads that file. Where you can't run a local command at all, tell the user
+to follow the run in the portal instead. A **streamed-output affordance is strongly preferred but not
+required**: Claude Code uses the `Monitor` tool, other hosts substitute their own streamed shell / watch /
+loop, and a host with none falls back to the foreground loop in Step 2 — see that per-host table,
+including what NOT to use (a silent detached process misses the blocker window). See the Skill
+compatibility matrix in `CLAUDE.md`.
 
 - **`~/.kobiton/.credentials`** — `scripts/poll-test-run.js` reads it directly on each invocation and
   has **no MCP fallback**, so this file is required. If it's missing, say so and point at

@@ -149,8 +149,9 @@ same as "can run this skill", because a chat surface with code execution still h
 - **`drive-automation-session`** and **`monitor-test-run`** each need a persistent local filesystem
   **and** `~/.kobiton/.credentials` — their bundled scripts read that file directly and never call MCP
   `getCredential`, so an authenticated MCP connection alone is not enough.
-- **`monitor-test-run`** also needs a way to stream a background command's output (Claude Code's
-  `Monitor`, or the host's own streamed shell / watch / loop — see that skill's Step 2 host table).
+- **`monitor-test-run`** also wants a way to stream a background command's output (Claude Code's
+  `Monitor`, or the host's own streamed shell / watch / loop). This one is preferred, not required — a
+  host with none falls back to a foreground loop rather than refusing; see that skill's Step 2 host table.
 - **`run-automation-suite`** needs a local filesystem plus the user's own Appium script and its language
   runtime — but **not** the credentials file: the user's script carries its own Kobiton credentials in
   its capabilities / hub URL.
