@@ -70,7 +70,7 @@ Users say the same thing many ways; route by what the phrase means, not the keyw
 - **Session end state matters**: ending an automation session cleanly (`DELETE /wd/hub/session/{id}`) records it `COMPLETE`, which `saveTestCase` expects; `terminateSession` marks it `TERMINATED` (abnormal exit). Prefer the clean path when a test case might be saved later.
 - **Live remediation depends on the org flag**: with live remediation ON, a blocked revisit execution **pauses** (`BLOCKED_WAITING`) so a human can take over the device in the portal and fix the step live — the execution then resumes within the **same** run. With the flag OFF, the blocker fails the execution and a resolution submitted in the portal applies on the **next** rerun (details in `skills/monitor-test-run/SKILL.md`).
 
-Prerequisites: Kobiton account, credentials via the setup command, supported host. The `run-interactive-session` skill's bundled CLI runs on macOS Apple Silicon only — on other platforms route the user to `run-automation-suite` or `drive-automation-session` instead of dead-ending. A worked end-to-end example lives in README's Getting Started section.
+Prerequisites: Kobiton account, credentials via the setup command, supported host. The `run-interactive-session` skill's bundled CLI runs on macOS only — it is an x86_64 binary (native on Intel Macs, Rosetta 2 on Apple Silicon) — so on Linux and Windows route the user to `run-automation-suite` or `drive-automation-session` instead of dead-ending. See the Skill compatibility matrix under Known limitations for the full per-skill picture. A worked end-to-end example lives in README's Getting Started section.
 
 ## When the user asks to run tests on Kobiton
 
@@ -133,6 +133,36 @@ Several behaviors of the current Kobiton MCP server have known gaps that agents 
 - **`reserveDevice` ambiguous conflict**: `device_unavailable` lumps 4 failure modes. Don't retry the same device; broaden the filter and pick a different device.
 - **W3C `/se/log` silently breaks legacy `driver.getLogs()`**: Kobiton's Appium endpoint is W3C-strict. Warn the user if their test script uses the legacy log API.
 - **`terminateSession` ~5min device cooldown**: after termination the device enters cleanup; `reserveDevice` on the same device may return `device_unavailable` for ~5min.
+
+### Which skills run where
+
+Not every skill runs everywhere — check before invoking one, so you don't start a workflow the
+environment can't finish. Judge by **capability, not by product name**: "has a filesystem" is not the
+same as "can run this skill", because a chat surface with code execution still has no way to run
+`/automate:setup` and write `~/.kobiton/.credentials`.
+
+- **`create-test-run`** needs only an authenticated MCP connection — no local filesystem, no
+  credentials file, no binary. It is the only such skill, so it is the only one usable where the host
+  supplies nothing else (a chat surface, or the MCP-only entries at the bottom of the Cross-host
+  install table below). Its monitoring hand-off does need a local poller, so where that's unavailable,
+  create the run and report its id rather than offering to watch it.
+- **`drive-automation-session`** and **`monitor-test-run`** each need a persistent local filesystem
+  **and** `~/.kobiton/.credentials` — their bundled scripts read that file directly and never call MCP
+  `getCredential`, so an authenticated MCP connection alone is not enough.
+- **`monitor-test-run`** also wants a way to stream a background command's output (Claude Code's
+  `Monitor`, or the host's own streamed shell / watch / loop). This one is preferred, not required — a
+  host with none falls back to a foreground loop rather than refusing; see that skill's Step 2 host table.
+- **`run-automation-suite`** needs a local filesystem plus the user's own Appium script and its language
+  runtime — but **not** the credentials file: the user's script carries its own Kobiton credentials in
+  its capabilities / hub URL.
+- **`run-interactive-session`** additionally requires **macOS**: its bundled `bin/kobiton` is a
+  single-slice x86_64 Mach-O — native on Intel Macs, Rosetta 2 on Apple Silicon, with no Linux or
+  Windows build. Route those users to `run-automation-suite` or `drive-automation-session`.
+
+When a capability is missing, name the **specific** missing one and the alternative — "needs the
+credentials file `/automate:setup` writes" tells the user what to do next; "needs a CLI host" does not.
+Each skill's own `## Prerequisites` states its requirements; the full per-skill matrix lives in
+[`CLAUDE.md`](CLAUDE.md#skill-compatibility-matrix) — kept in one place so the two can't drift apart.
 
 ## Cross-host install
 

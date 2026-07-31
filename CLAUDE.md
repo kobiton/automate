@@ -30,7 +30,7 @@ Clean Appium session end (`DELETE /wd/hub/session/{id}`) records `COMPLETE` (wha
 Live remediation is flag-dependent: flag ON → a blocked execution pauses (`BLOCKED_WAITING`), the human fixes it live, and the **same** run resumes; flag OFF → the execution fails and a portal-submitted resolution applies on the **next** rerun.
 
 Prerequisites: a Kobiton account, credentials via `/automate:setup`, and a supported host.
-`run-interactive-session`'s bundled CLI is macOS-Apple-Silicon-only — on other platforms route to `run-automation-suite` or `drive-automation-session`.
+`run-interactive-session`'s bundled CLI is macOS-only (an x86_64 binary — native on Intel, Rosetta 2 on Apple Silicon) — on other platforms route to `run-automation-suite` or `drive-automation-session`.
 README's [Getting Started](README.md#getting-started) carries the full narrated path and a copy-pasteable worked example.
 
 ## Commands
@@ -92,7 +92,7 @@ There is no local way to test that a new tool YAML matches a deployed server-sid
 | Skill | Runtime | Notes |
 |---|---|---|
 | `run-automation-suite` | `scripts/render-capabilities.js` parses Appium test scripts and reconciles capabilities against the selected device | refs: `references/capabilities.md`, `references/templates/appium.ejs` |
-| `run-interactive-session` | `scripts/run.sh` wraps the bundled `skills/run-interactive-session/bin/kobiton` CLI for natural-language WebDriver / device / file commands | binary ships for **macOS Apple Silicon only**; other platforms can use `run-automation-suite` instead |
+| `run-interactive-session` | `scripts/run.sh` wraps the bundled `skills/run-interactive-session/bin/kobiton` CLI for natural-language WebDriver / device / file commands | binary ships as **x86_64 macOS only** (native on Intel, Rosetta 2 on Apple Silicon); other platforms can use `run-automation-suite` instead |
 | `drive-automation-session` | `scripts/appium.js` (`node:https`-only Appium HTTP client) drives an automation-type session from a natural-language intent; `scripts/strip-webview-dom.js` shrinks webview source | refs: `references/endpoint-reference.md`, `references/loop-discipline.md`, `references/capabilities.md` |
 | `create-test-run` | Conversational glue over the `createTestRun` MCP tool (no local runtime): fills defaults from the createTestRun schema, confirms a summary, creates the run, then offers monitoring in one prompt and delegates to `monitor-test-run` | uses `Skill` to delegate; no `scripts/` |
 | `monitor-test-run` | `scripts/poll-test-run.js` (`node:https`-only; reads `~/.kobiton/.credentials`) polls run state over REST and emits only on change; host streams it (Claude Code: `Monitor` tool). Surfaces blockers + the live-remediation URL; auto-opens the window via the shared chromeless launcher when opted in | refs: the bundled poller; reuses `run-automation-suite`'s `chromeless-launcher.*` |
@@ -122,6 +122,22 @@ The plugin ships configs for five AI CLI hosts. Source-of-truth is the root file
 **Header field-name differs by host.** Claude / Copilot / Gemini / Cursor use `headers` in MCP config; Codex uses `http_headers` (snake_case wrapper). The `X-AI-Tool-Name` value also differs per host (`Claude` / `Codex` / `Gemini` / `Cursor`). When adding a new host config, copy from the closest existing one — don't mix idioms across hosts.
 
 `AGENTS.md` is the cross-tool brief read by every non-Claude-Code host. When extending a skill's workflow or known-limitations list, mirror substantive changes into `AGENTS.md` so non-Claude hosts stay current. `AGENTS.md` currently covers `run-automation-suite`, `run-interactive-session`, `drive-automation-session`, `create-test-run`, and `monitor-test-run`. Note `create-test-run`/`monitor-test-run` reference Claude Code's `Monitor` tool for streaming the poller; non-Claude hosts must substitute their own streamed-shell / watch / loop affordance (see the `monitor-test-run` SKILL.md host table).
+
+### Skill compatibility matrix
+
+The table above answers *where config lives*. This one answers *whether a given skill can run here at all* — what each skill needs from its host. Every cell is checkable against the skill's `allowed-tools` frontmatter **plus what its bundled scripts actually do** — both halves are needed: `allowed-tools` grants a superset, so a declared tool isn't proof the skill uses it (`create-test-run` declares `Read` but bundles no files and reads none, which is why its file-access cell is "no"). **This matrix is the single source of truth** — `AGENTS.md` carries a prose summary that links here rather than a second copy, and each skill states its own requirements at the top of its `## Prerequisites`. If a skill's host support changes, update this table, that skill's Prerequisites, and its `compatibility:` frontmatter together.
+
+Columns are keyed on **capabilities**, not on product names. "Has a filesystem" is not the same as "can run this skill": a chat surface with code execution has a filesystem and Node, yet still can't run the credential-dependent skills, because nothing there can execute `/automate:setup` to write `~/.kobiton/.credentials`. Check the capability, not the brand.
+
+| Skill | Needs a persistent local FS | Needs `~/.kobiton/.credentials` (written by `/automate:setup`) | Local binary / OS constraint | Needs a streamed-watch affordance | Pure MCP — runs with none of the above |
+|---|---|---|---|---|---|
+| `create-test-run` | no | no — auth comes from the host's MCP connection | no | no — delegates the watch | **yes.** The only such skill. Caveat: opting into monitoring hands off to `monitor-test-run`, which needs the three columns to its left — so where those are unavailable, create the run and report its id instead of offering to watch |
+| `monitor-test-run` | **yes** — runs the bundled `scripts/poll-test-run.js` | **yes** — the poller reads it directly and has no MCP fallback | Node 18+ | **preferred, not required** — Claude Code's `Monitor`, or another host's streamed shell / watch / loop; a host with none degrades to a foreground loop rather than refusing (see the host table in the skill) | no |
+| `drive-automation-session` | **yes** — the observe-decide-act loop passes state through `iter-N.*.json` turn files | **yes** — `scripts/appium.js` reads it directly and never calls MCP `getCredential` | Node 18+; otherwise cross-platform (`node:https` only, no native binary) | no | no |
+| `run-automation-suite` | **yes** — reads the user's own Appium script directory and runs it | **no** — the skill never reads that file; the user's script carries its own Kobiton credentials in its capabilities / hub URL | Node 18+, Appium 2.x, plus the script's own language runtime (npm / python / java / dotnet / ruby) | no | no |
+| `run-interactive-session` | **yes** — executes the bundled CLI binary | **yes** — `run.sh` loads it before invoking the binary | **macOS only.** The bundled `bin/kobiton` is a single-slice **x86_64** Mach-O: native on Intel Macs, and on Apple Silicon it runs **under Rosetta 2**. No Linux or Windows build — route to `run-automation-suite` or `drive-automation-session` | no | no |
+
+**In one line:** `create-test-run` is the plugin's only pure-MCP skill, so it is the only one that works when the host provides nothing but an authenticated MCP connection — a chat surface, or the MCP-only entries at the bottom of `AGENTS.md`'s Cross-host install table. Every other skill needs a persistent local filesystem *and*, in most cases, a credentials file that only `/automate:setup` writes; those requirements are what a CLI host (Claude Code, Codex CLI, Gemini CLI, Copilot CLI, Cursor) supplies. When a capability is missing, name the specific missing one and the alternative — "needs the credentials file `/automate:setup` writes" tells the user what to do; "needs a CLI host" does not.
 
 ## Slash commands
 

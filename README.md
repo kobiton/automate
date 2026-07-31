@@ -223,7 +223,7 @@ Every Claude surface that supports MCP can call the Kobiton [tools](#tools). The
 | **Claude Cowork** (macOS / Windows) |           ✅ Yes            |        ⚠️ Manual upload ²        | Add `https://api.kobiton.com/mcp` as a connector under **Connectors** |
 | **claude.ai web · Claude Desktop · Claude mobile** |           ✅ Yes            |        ⚠️ Manual upload ²        | Add `https://api.kobiton.com/mcp` as a Custom Connector at [claude.ai](https://claude.ai); for mobile, configure it on the web first and it syncs to the app |
 
-¹ `run-interactive-session` also requires the bundled `kobiton` CLI binary (macOS Apple Silicon only) - see the [platform support note](#skills).
+¹ `run-interactive-session` also requires the bundled `kobiton` CLI binary (macOS only; x86_64 — native on Intel, Rosetta 2 on Apple Silicon) - see the [platform support note](#skills).
 ² This plugin is not listed in the [Claude directory](https://support.claude.com/en/articles/14328846-browse-skills-connectors-and-plugins-in-one-directory) yet, so these surfaces can't install it as a plugin. As a workaround, zip a skill folder from this repo (e.g. `skills/run-automation-suite/`) and upload it as a [custom skill](https://support.claude.com/en/articles/12512198-how-to-create-custom-skills).
 
 ## Login
@@ -365,7 +365,7 @@ Before your first session, you need:
 - **A supported host CLI** — Claude Code, GitHub Copilot CLI, Gemini CLI, Codex CLI, or Cursor (see [Installation](#installation)).
 - **Credentials configured** — run `/automate:setup` once after install.
 - **Your app build** (`.apk` / `.ipa`), if you're testing your own app rather than a system app or website.
-- **Platform note:** the `run-interactive-session` skill's bundled CLI runs on **macOS Apple Silicon only**. On any other platform, use `run-automation-suite` or `drive-automation-session` instead — no dead end.
+- **Platform note:** the `run-interactive-session` skill's bundled CLI runs on **macOS only** — it's an x86_64 binary, so it runs natively on Intel Macs and under Rosetta 2 on Apple Silicon. On Linux and Windows, use `run-automation-suite` or `drive-automation-session` instead — no dead end.
 
 **One worked example, end to end** — paste these to your assistant one at a time:
 
@@ -456,7 +456,7 @@ Every step above uses only what this plugin ships: the app tools (`uploadAppToSt
 | **create-test-run** | Creates a test run from a test case or suite — fills sensible defaults from the `createTestRun` schema when details are omitted, confirms a summary, then offers to monitor it and hands off to `monitor-test-run`. |
 | **monitor-test-run** | Watches a running test run and narrates it: reads the live-remediation flag up front, surfaces the live-remediation URL the moment an execution is blocked (optionally auto-opening the window), and post-mortems so a `BLOCKER_ENCOUNTERED` execution is never reported as passed. Quiet between real state changes. |
 
-> **Platform support note:** all MCP tools and the `run-automation-suite` skill work on every platform the host CLI supports. The `run-interactive-session` skill ships a CLI binary for **macOS Apple Silicon** only. On other platforms, use `run-automation-suite` or the MCP tools directly.
+> **Platform support note:** all MCP tools and the `run-automation-suite` skill work on every platform the host CLI supports. The `run-interactive-session` skill ships a CLI binary for **macOS only** — a single-slice x86_64 executable, so it runs natively on Intel Macs and under Rosetta 2 on Apple Silicon. On Linux and Windows, use `run-automation-suite` or the MCP tools directly. For the full per-skill picture — which skills need a persistent local filesystem, which need the `~/.kobiton/.credentials` file that `/automate:setup` writes, and which run on an MCP connection alone — see the Skill compatibility matrix in [`CLAUDE.md`](CLAUDE.md#skill-compatibility-matrix).
 
 ## Commands
 
