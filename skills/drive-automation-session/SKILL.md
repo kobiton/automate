@@ -354,7 +354,7 @@ The only hard programmatic stop is `MAX_ITERS=100` (override per session), which
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
 | `No credentials available...` | No `~/.kobiton/.credentials` (an authenticated MCP connection does not substitute — `appium.js` only reads the file) | Run `/automate:setup`, which uses the MCP connection to fetch and write the file |
-| `iter-N.error.json` has `status: 401` on session create | Credentials stale | Re-authenticate the MCP server (or re-run `/automate:setup` for the file fallback); check the portal URL |
+| `iter-N.error.json` has `status: 401` on session create | Credentials stale | Re-run `/automate:setup` to refresh `~/.kobiton/.credentials`; check the portal URL |
 | `iter-N.error.json` has a platform-cap message on session create | `newCommandTimeout: 1800` rejected by Kobiton | Lower the timeout in `references/capabilities.md` |
 | `iter-N.error.json` body has `value.error: "no such element"` | Selector matched nothing | Re-plan next turn with a different strategy / selector |
 | `iter-N.error.json` body has `value.error: "invalid session id"` | Kobiton platform-side session ended | Emit `control --blocked` (or just let MAX_ITERS catch it); trap cleans up |
