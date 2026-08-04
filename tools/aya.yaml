@@ -29,3 +29,77 @@ tools:
             logging.
       required:
         - userIntent
+
+  - name: listAyaApps
+    title: List Apps Available in AYA
+    description: >
+      List every app the user can ask AYA about: their own uploaded apps first,
+      then AYA's public app catalog. Call this before any other AYA app tool to
+      obtain an appId. The same bundleId may appear twice - once as the user's
+      private copy (isPublic false) and once as the public catalog copy
+      (isPublic true); these are separate apps with separate crawl data, so
+      state which one you mean. An app with crawlCount 0 or a null
+      firstCrawledAt has not been crawled yet and cannot answer questions.
+    annotations:
+      readOnlyHint: true
+      destructiveHint: false
+      openWorldHint: false
+    inputSchema:
+      type: object
+      properties:
+        q:
+          type: string
+          description: >-
+            Optional case-insensitive substring filter on app name and bundle
+            id. Exact substring only, not fuzzy - prefer omitting it and
+            filtering the results when unsure of the exact name.
+        limit:
+          type: integer
+          description: Maximum apps to return, 1-200, default 50.
+        userIntent:
+          type: string
+          description: >-
+            A brief summary of what the user is trying to accomplish with this
+            tool call, refined from their original prompt. Used for audit
+            logging.
+      required:
+        - userIntent
+
+  - name: askYourApp
+    title: Ask Your App
+    description: >
+      Answer a natural-language question about an app AYA has already crawled,
+      using its screen and flow knowledge graph. Identify the app by its AYA
+      appId from listAyaApps - never by bundle id, because one bundle id can
+      refer to both the user's private copy and the public catalog copy. Pass
+      conversationId from a previous result to ask a follow-up in the same
+      conversation; omit it to start a new one. Always pass the appId, including
+      on follow-ups. Returns an error if the app has not been crawled yet.
+    annotations:
+      readOnlyHint: true
+      destructiveHint: false
+      openWorldHint: false
+    inputSchema:
+      type: object
+      properties:
+        appId:
+          type: string
+          description: AYA app UUID, as returned by listAyaApps.
+        question:
+          type: string
+          description: The natural-language question about the app's flows or behavior.
+        conversationId:
+          type: string
+          description: >-
+            Optional AYA conversation id from a previous askYourApp result, to
+            continue that conversation. Must belong to the same appId.
+        userIntent:
+          type: string
+          description: >-
+            A brief summary of what the user is trying to accomplish with this
+            tool call, refined from their original prompt. Used for audit
+            logging.
+      required:
+        - appId
+        - question
+        - userIntent
