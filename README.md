@@ -275,7 +275,14 @@ For CI/CD pipelines or headless environments that cannot open a browser, use API
 >
 > **Gemini CLI:** API key auth requires editing `gemini-extension.json` instead of `.mcp.json`. Add a `headers` block under `mcpServers.kobiton` with `"Authorization": "${KOBITON_AUTH}"`.
 >
-> **Cursor (CLI and IDE):** API key auth requires editing `.cursor/mcp.json` instead of `.mcp.json` - that is the file the plugin manifest points `mcpServers` at. Cursor expands `${env:NAME}`, not the bare `${NAME}` other clients use, so copy `.cursor/mcp.apikey-example.json` rather than another client's config. A project-level `.cursor/mcp.json` survives plugin updates; the plugin's own copy lives in the version-pinned plugin cache and is replaced on reinstall.
+> **Cursor (CLI and IDE):** API key auth requires editing `.cursor/mcp.json` instead of `.mcp.json` - that is the file the plugin manifest points `mcpServers` at. Cursor expands `${env:NAME}`, not the bare `${NAME}` other clients use, so start from `.cursor/mcp.apikey-example.json` rather than another client's config:
+>
+> ```bash
+> mkdir -p .cursor
+> curl -sL -o .cursor/mcp.json https://raw.githubusercontent.com/kobiton/automate/main/.cursor/mcp.apikey-example.json
+> ```
+>
+> A project-level `.cursor/mcp.json` survives plugin updates; the plugin's own copy lives in the version-pinned plugin cache and is replaced on reinstall.
 >
 > **Codex CLI:** OAuth is the default. For CI/headless environments where a browser cannot open, switch to API key auth by adding an `env_http_headers` block to the plugin's `.mcp.json`, then export `KOBITON_AUTH` in the shell that launches `codex`:
 >
