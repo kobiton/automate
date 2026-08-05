@@ -57,7 +57,7 @@ CI runs `pnpm install --frozen-lockfile && pnpm run validate && pnpm test` on ev
 
 | File | Covers |
 |---|---|
-| `scripts/validate.test.js` | structural validation across manifests, tool YAMLs, skill frontmatter |
+| `scripts/validate.test.js` | structural validation across manifests, tool YAMLs, skill frontmatter, README tool parity |
 | `scripts/build-tool-definitions.test.js` | tool-definition YAML concatenation |
 | `scripts/sync-codex-artifacts.test.js` | `.codex/` mirror sync + `--check` parity |
 | `scripts/sync-version.test.js` | version field sync across host manifests + `CHANGELOG.md` top-entry match |
@@ -161,7 +161,7 @@ When modifying `scripts/install-cli.sh` (or adding any new script that hooks inv
 
 ## Tool schema conventions
 
-`scripts/validate.js` auto-discovers tool YAMLs. To add a tool: drop a YAML in `tools/` and run `pnpm run validate`. No `validate.js` edit required.
+`scripts/validate.js` auto-discovers tool YAMLs. To add a tool: drop a YAML in `tools/`, add its row to the README `## Tools` table and bump the "N MCP tools" count (validate fails otherwise), and run `pnpm run validate`. No `validate.js` edit required.
 
 **Annotation hints currently in use** — pattern by tool verb (matches the as-of-today YAML, not aspiration):
 

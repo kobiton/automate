@@ -87,6 +87,16 @@ function setupValidProject(dir) {
     ].join('\n'))
   }
 
+  writeFileSync(join(dir, 'README.md'), [
+    '## Tools',
+    '',
+    '4 MCP tools across 4 domains.',
+    '',
+    '| Tool | Description |',
+    '|------|-------------|',
+    '| `testTool` | A test tool |',
+  ].join('\n'))
+
   mkdirSync(join(dir, 'skills/run-automation-suite'), {recursive: true})
   writeFileSync(join(dir, 'skills/run-automation-suite/SKILL.md'), [
     '---',
@@ -173,6 +183,56 @@ describe('validateProject', () => {
     ].join('\n'))
     const {errors} = validateProject(tmpDir)
     expect(errors).toContainEqual(expect.stringContaining('missing "inputSchema"'))
+  })
+
+  it('fails when README.md is missing', () => {
+    setupValidProject(tmpDir)
+    rmSync(join(tmpDir, 'README.md'))
+    const {errors} = validateProject(tmpDir)
+    expect(errors).toContainEqual(expect.stringContaining('README.md does not exist'))
+  })
+
+  it('fails when README does not mention a tool', () => {
+    setupValidProject(tmpDir)
+    writeFileSync(join(tmpDir, 'tools/devices.yaml'), [
+      'tools:',
+      '  - name: undocumentedTool',
+      '    description: A test tool',
+      '    inputSchema:',
+      '      type: object',
+    ].join('\n'))
+    const {errors} = validateProject(tmpDir)
+    expect(errors).toContainEqual(expect.stringContaining('README.md does not mention `undocumentedTool`'))
+  })
+
+  it('fails when the README tool count is stale', () => {
+    setupValidProject(tmpDir)
+    writeFileSync(join(tmpDir, 'README.md'), [
+      '## Tools',
+      '',
+      '3 MCP tools across 4 domains.',
+      '',
+      '| `testTool` | A test tool |',
+    ].join('\n'))
+    const {errors} = validateProject(tmpDir)
+    expect(errors).toContainEqual(expect.stringContaining('README.md says "3 MCP tools" but tools/*.yaml define 4'))
+  })
+
+  it('does not match a tool name that is a prefix of a documented tool', () => {
+    setupValidProject(tmpDir)
+    writeFileSync(join(tmpDir, 'tools/devices.yaml'), [
+      'tools:',
+      '  - name: testTool',
+      '    description: A test tool',
+      '    inputSchema:',
+      '      type: object',
+      '  - name: test',
+      '    description: A prefix-named tool the README does not document',
+      '    inputSchema:',
+      '      type: object',
+    ].join('\n'))
+    const {errors} = validateProject(tmpDir)
+    expect(errors).toContainEqual(expect.stringContaining('README.md does not mention `test`'))
   })
 
   it('fails when skill is missing frontmatter', () => {

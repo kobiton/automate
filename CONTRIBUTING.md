@@ -95,7 +95,7 @@ Each skill file must have YAML frontmatter with `name` and `description`.
 
 ### Documentation Parity
 
-`pnpm run validate` checks schemas and manifests, not prose — a tool or skill that ships without its documentation row passes CI silently. When your change adds, renames, or removes any of the following, update every listed surface in the same PR:
+`pnpm run validate` enforces one slice of this: every tool name in `tools/*.yaml` must appear (backtick-wrapped) in `README.md`, and the README's "N MCP tools" count must match. Everything else in the table below is prose the validator cannot check — a skill or command that ships without its documentation row passes CI silently. When your change adds, renames, or removes any of the following, update every listed surface in the same PR:
 
 | Change | Surfaces to update |
 |--------|--------------------|
