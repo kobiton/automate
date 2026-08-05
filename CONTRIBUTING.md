@@ -93,6 +93,16 @@ Each skill file must have YAML frontmatter with `name` and `description`.
 1. Update the test fixtures in `scripts/validate.test.js` (`setupValidProject` function) if your addition exercises a validation path not already covered
 2. Run `pnpm run validate && pnpm test` to confirm
 
+### Documentation Parity
+
+`pnpm run validate` checks schemas and manifests, not prose — a tool or skill that ships without its documentation row passes CI silently. When your change adds, renames, or removes any of the following, update every listed surface in the same PR:
+
+| Change | Surfaces to update |
+|--------|--------------------|
+| Tool (`tools/*.yaml`) | README `## Tools` table **and its tool count**, `AGENTS.md` domain summary, `CLAUDE.md` tool inventory |
+| Skill (`skills/*/`) | README `## Skills` table, `AGENTS.md` skill routing table, `CLAUDE.md` skills table |
+| Slash command (`commands/`) | README `## Commands` table, `CLAUDE.md` slash commands table |
+
 ### Validation
 
 Before submitting, ensure both pass:
@@ -156,8 +166,9 @@ By signing off, you agree to the [Developer Certificate of Origin](https://devel
 1. Create a branch from `main` following the naming convention above
 2. Make your changes in focused, logical commits (signed off with `-s`)
 3. Run `pnpm run validate && pnpm test` locally
-4. Open a PR against `main` using the PR template
-5. Wait for CI to pass and a maintainer to review
+4. If you added, renamed, or removed a tool, skill, or command, update the surfaces in [Documentation Parity](#documentation-parity)
+5. Open a PR against `main` using the PR template
+6. Wait for CI to pass and a maintainer to review
 
 ## Review Expectations
 

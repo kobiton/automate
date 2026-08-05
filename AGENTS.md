@@ -10,7 +10,7 @@ Kobiton is a real-device mobile cloud for Android + iOS testing. This MCP plugin
 - **Apps**: list, upload, confirm upload, get parsing status, get details
 - **Sessions**: list, get, get artifacts, get user-input events, terminate
 - **Test management**: create / list / get / update / delete test cases, test runs, and test suites; `saveTestCase` converts a finished manual session into a reusable test case
-- **Setup**: `getCredential` (used by `/automate:setup`)
+- **Account**: `getCredential` (used by `/automate:setup`); `getOrgSettings` for org-level feature flags such as live remediation
 
 The MCP server runs at `https://api.kobiton.com/mcp`. Authentication is OAuth 2.1 (default) or API key (CI/headless).
 

@@ -401,7 +401,7 @@ Every step above uses only what this plugin ships: the app tools (`uploadAppToSt
 
 ## Tools
 
-29 MCP tools across 5 domains.
+30 MCP tools across 5 domains.
 
 ### Devices
 
@@ -456,6 +456,7 @@ Every step above uses only what this plugin ships: the app tools (`uploadAppToSt
 | Tool | Description |
 |------|-------------|
 | `getCredential` | Return the authenticated user's username, API key, and portal URL — backs `/automate:setup` |
+| `getOrgSettings` | Return your organization's feature flags and preferences (e.g. live remediation) — read up front by `create-test-run` and `monitor-test-run` |
 
 ## Skills
 
