@@ -163,7 +163,7 @@ The Cursor desktop editor installs the plugin from its built-in plugin browser:
 1. Open **Cursor Settings** > **Plugins** and paste `https://github.com/kobiton/automate` into the search box
 2. Click the **automate** result, then **Add to Cursor**, then **Install**
 
-To authenticate with the Kobiton MCP server: open **Tool & MCPs**, search for **kobiton**, click **Connect**, and complete the OAuth login in the browser.
+To authenticate with the Kobiton MCP server: open **Tool & MCPs**, search for **kobiton**, click **Authenticate**, and complete the OAuth login in the browser.
 
 > **Using both Cursor CLI and the Cursor IDE?** They share plugin installs: a plugin installed from the `agent` CLI shows up in the IDE, and vice versa. Install the plugin **once** in either one, installing it in both registers the skills, commands, and MCP server twice.
 
@@ -236,8 +236,8 @@ You can also trigger or inspect authentication explicitly:
 - **GitHub Copilot CLI**: type `/mcp auth kobiton` to start the OAuth flow; use `/mcp` (or `/mcp show`) to inspect server status
 - **Gemini CLI**: type `/mcp auth kobiton` to start the OAuth flow; use `/mcp` to inspect server status
 - **Codex CLI**: browser opens automatically on the first MCP tool call (e.g. *"List my Kobiton devices"*) after plugin install. Tokens are cached in the OS keychain with automatic refresh. Use `/mcp` (or `/mcp verbose`) to inspect server status
-- **Cursor CLI**: run `/mcp list`, select **kobiton**, and choose **Login** to start the OAuth flow; tokens are stored by Cursor in the OS keychain
-- **Cursor IDE**: open **Cursor Settings** > **Tool & MCPs**, search for **kobiton**, and click **Connect** to start the OAuth flow
+- **Cursor CLI**: run `/mcp list`, select **Kobiton**, and choose **Login** to start the OAuth flow; tokens are stored by Cursor in the OS keychain
+- **Cursor IDE**: open **Cursor Settings** > **Tool & MCPs**, search for **kobiton**, and click **Authenticate** to start the OAuth flow
 
 Behind the scenes, `.mcp.json` points to the Kobiton MCP server and authentication uses OAuth 2.1:
 
@@ -273,7 +273,18 @@ For CI/CD pipelines or headless environments that cannot open a browser, use API
 
 > **Note:** OAuth and API key auth cannot coexist in a single `.mcp.json` (the API key config sets an `Authorization` header that OAuth must not have). To switch, replace `.mcp.json` with the appropriate format from `.mcp.apikey-example.json`.
 >
+> **`/automate:setup` does not work under API key auth.** It fetches your credentials through an *OAuth-authenticated* MCP session to write `~/.kobiton/.credentials`. Per the [skill compatibility matrix](CLAUDE.md#skill-compatibility-matrix), three skills read that file directly and have no MCP fallback, so they are unavailable on API key auth: `run-interactive-session`, `drive-automation-session`, and `monitor-test-run`. The MCP tools, `run-automation-suite` (your script carries its own credentials), and `create-test-run` (pure MCP) are unaffected.
+>
 > **Gemini CLI:** API key auth requires editing `gemini-extension.json` instead of `.mcp.json`. Add a `headers` block under `mcpServers.kobiton` with `"Authorization": "${KOBITON_AUTH}"`.
+>
+> **Cursor (CLI and IDE):** API key auth requires editing `.cursor/mcp.json` instead of `.mcp.json` - that is the file the plugin manifest points `mcpServers` at. Cursor expands `${env:NAME}`, not the bare `${NAME}` other clients use, so start from `.cursor/mcp.apikey-example.json` rather than another client's config:
+>
+> ```bash
+> mkdir -p .cursor
+> curl -sL -o .cursor/mcp.json https://raw.githubusercontent.com/kobiton/automate/main/.cursor/mcp.apikey-example.json
+> ```
+>
+> A project-level `.cursor/mcp.json` survives plugin updates; the plugin's own copy lives in the version-pinned plugin cache and is replaced on reinstall.
 >
 > **Codex CLI:** OAuth is the default. For CI/headless environments where a browser cannot open, switch to API key auth by adding an `env_http_headers` block to the plugin's `.mcp.json`, then export `KOBITON_AUTH` in the shell that launches `codex`:
 >
