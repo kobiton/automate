@@ -231,8 +231,16 @@ describe('validateProject', () => {
       '    inputSchema:',
       '      type: object',
     ].join('\n'))
+    writeFileSync(join(tmpDir, 'README.md'), [
+      '## Tools',
+      '',
+      '5 MCP tools across 4 domains.',
+      '',
+      '| `testTool` | A test tool |',
+    ].join('\n'))
     const {errors} = validateProject(tmpDir)
     expect(errors).toContainEqual(expect.stringContaining('README.md does not mention `test`'))
+    expect(errors).not.toContainEqual(expect.stringContaining('MCP tools'))
   })
 
   it('fails when skill is missing frontmatter', () => {
