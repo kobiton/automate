@@ -273,6 +273,8 @@ For CI/CD pipelines or headless environments that cannot open a browser, use API
 
 > **Note:** OAuth and API key auth cannot coexist in a single `.mcp.json` (the API key config sets an `Authorization` header that OAuth must not have). To switch, replace `.mcp.json` with the appropriate format from `.mcp.apikey-example.json`.
 >
+> **`/automate:setup` does not work under API key auth.** It fetches your credentials through an *OAuth-authenticated* MCP session to write `~/.kobiton/.credentials`. Per the [skill compatibility matrix](CLAUDE.md#skill-compatibility-matrix), three skills read that file directly and have no MCP fallback, so they are unavailable on API key auth: `run-interactive-session`, `drive-automation-session`, and `monitor-test-run`. The MCP tools, `run-automation-suite` (your script carries its own credentials), and `create-test-run` (pure MCP) are unaffected.
+>
 > **Gemini CLI:** API key auth requires editing `gemini-extension.json` instead of `.mcp.json`. Add a `headers` block under `mcpServers.kobiton` with `"Authorization": "${KOBITON_AUTH}"`.
 >
 > **Cursor (CLI and IDE):** API key auth requires editing `.cursor/mcp.json` instead of `.mcp.json` - that is the file the plugin manifest points `mcpServers` at. Cursor expands `${env:NAME}`, not the bare `${NAME}` other clients use, so start from `.cursor/mcp.apikey-example.json` rather than another client's config:
