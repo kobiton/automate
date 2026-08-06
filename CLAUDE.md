@@ -57,7 +57,7 @@ CI runs `pnpm install --frozen-lockfile && pnpm run validate && pnpm test` on ev
 
 | File | Covers |
 |---|---|
-| `scripts/validate.test.js` | structural validation across manifests, tool YAMLs, skill frontmatter |
+| `scripts/validate.test.js` | structural validation across manifests, tool YAMLs, skill frontmatter, README tool parity |
 | `scripts/build-tool-definitions.test.js` | tool-definition YAML concatenation |
 | `scripts/sync-codex-artifacts.test.js` | `.codex/` mirror sync + `--check` parity |
 | `scripts/sync-version.test.js` | version field sync across host manifests + `CHANGELOG.md` top-entry match |
@@ -80,10 +80,10 @@ There is no local way to test that a new tool YAML matches a deployed server-sid
 | `tools/devices.yaml` | `listDevices`, `getDeviceStatus`, `reserveDevice`, `terminateReservation` |
 | `tools/sessions.yaml` | `listSessions`, `getSession`, `getSessionArtifacts`, `getUserInputEvents`, `terminateSession` |
 | `tools/apps.yaml` | `listApps`, `uploadAppToStore`, `confirmAppUpload`, `getAppParsingStatus`, `getApp` |
-| `tools/user.yaml` | `getCredential` |
+| `tools/user.yaml` | `getCredential`, `getOrgSettings` |
 | `tools/test-management.yaml` | 14 test-case / test-run / test-suite CRUD tools |
 
-`tools/devices.yaml`, `tools/sessions.yaml`, `tools/apps.yaml` set the full 4-hint annotation block (`readOnlyHint`, `destructiveHint`, `idempotentHint` where meaningful, `openWorldHint: false`). `tools/user.yaml` and `tools/test-management.yaml` currently use the older 2-hint shape (`readOnlyHint` + `destructiveHint` only) — when modifying those files, prefer adding the missing hints rather than leaving them inconsistent.
+`tools/devices.yaml`, `tools/sessions.yaml`, `tools/apps.yaml`, and `tools/user.yaml` set the full annotation block (`readOnlyHint`, `destructiveHint`, `idempotentHint` where meaningful, `openWorldHint: false`). `tools/test-management.yaml` currently uses the older 2-hint shape (`readOnlyHint` + `destructiveHint` only) — when modifying that file, prefer adding the missing hints rather than leaving them inconsistent.
 
 ### Skills
 
@@ -161,7 +161,7 @@ When modifying `scripts/install-cli.sh` (or adding any new script that hooks inv
 
 ## Tool schema conventions
 
-`scripts/validate.js` auto-discovers tool YAMLs. To add a tool: drop a YAML in `tools/` and run `pnpm run validate`. No `validate.js` edit required.
+`scripts/validate.js` auto-discovers tool YAMLs. To add a tool: drop a YAML in `tools/`, add its row to the README `## Tools` table and bump the "N MCP tools" count (validate fails otherwise), and run `pnpm run validate`. No `validate.js` edit required.
 
 **Annotation hints currently in use** — pattern by tool verb (matches the as-of-today YAML, not aspiration):
 
@@ -174,7 +174,7 @@ When modifying `scripts/install-cli.sh` (or adding any new script that hooks inv
 
 `idempotentHint` is omitted on `readOnlyHint: true` tools per MCP 2025-06-18 — the field is defined as meaningful only for non-read-only operations, so an explicit value adds noise. `terminate*` carries `idempotentHint: true` because a repeat-terminate against an already-terminated resource is a no-op (HTTP DELETE pattern).
 
-The `test-management.yaml` and `user.yaml` tools currently ship the older 2-hint subset (`readOnlyHint` + `destructiveHint` only); when touching those files, extend with `idempotentHint` and `openWorldHint: false` per the patterns above.
+The `test-management.yaml` tools currently ship the older 2-hint subset (`readOnlyHint` + `destructiveHint` only); when touching that file, extend with `idempotentHint` and `openWorldHint: false` per the patterns above.
 
 Tool response payloads must stay under 25,000 tokens — trim in the backend handler, not the schema.
 
