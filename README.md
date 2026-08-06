@@ -401,7 +401,7 @@ Every step above uses only what this plugin ships: the app tools (`uploadAppToSt
 
 ## Tools
 
-30 MCP tools across 5 domains.
+31 MCP tools across 5 domains.
 
 ### Devices
 
@@ -421,6 +421,7 @@ Every step above uses only what this plugin ships: the app tools (`uploadAppToSt
 | `getSessionArtifacts` | Get download URLs for video, logs, screenshots, reports |
 | `getUserInputEvents` | Get the touch/swipe gestures a human made on the device-only live view during a session |
 | `terminateSession` | Stop a running test session |
+| `startNativeSession` | Start an XCUITest / UIAutomator / GameDriver native automation session on a device |
 
 ### Apps
 

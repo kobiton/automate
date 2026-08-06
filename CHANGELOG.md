@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.11.0 - 2026-08-13
+
+### New tool: `startNativeSession`
+
+The Sessions domain gains `startNativeSession` — start a native automation session (XCUITest on iOS, UIAutomator on Android, or GameDriver) on a Kobiton device directly from an AI agent. Upload the app under test and the test-runner bundle with `uploadAppToStore`, then pass their store identifiers as `app` and `testRunner`. The tool returns the created session ID, the booked device UDID, and a test-report download URL. Only `userIntent` and `testFramework` are required; device targeting accepts an exact `udid` or `deviceName` / `platformVersion` matching.
+
+The README Tools section now lists all 31 tools, adding the previously undocumented `getOrgSettings` row alongside the new tool.
+
 ## 1.10.1 - 2026-08-12
 
 ### Fixed: adb-shell guidance now carries the full restricted-session policy
