@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.9.1 - 2026-08-10
+
+### Fixed: bundled CLI no longer reports a rejected file transfer as success
+
+The bundled `kobiton` binary (last built 2026-07-21) swallowed the trailing
+gRPC status on `file push`/`file pull` streams — a transfer the device side
+refused still printed `Pushed N bytes` and exited 0. Rebuilt from current CLI
+source (2026-08-07), which propagates that status: a refused transfer now
+prints the server's reason and exits non-zero. Both binary copies (`skills/`
+and the `.codex/` mirror) are updated. Still macOS x86_64 (Rosetta 2 on Apple
+Silicon), unchanged wrapper and credential flow.
+
 ## 1.9.0 - 2026-07-29
 
 ### New: per-skill compatibility matrix
