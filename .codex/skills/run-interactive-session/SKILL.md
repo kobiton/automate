@@ -21,14 +21,17 @@ version: 1.0.0
 author: Kobiton Inc.
 license: MIT
 compatibility: >-
-  macOS only. Requires the bundled Kobiton CLI binary, which is a
-  single-slice x86_64 Mach-O executable: it runs natively on Intel
-  Macs and under Rosetta 2 on Apple Silicon. On Linux and Windows,
-  use run-automation-suite or drive-automation-session (both
-  cross-platform) or the Kobiton MCP tools directly. Requires local
-  file access for the binary and ~/.kobiton/.credentials. Run
-  /automate:setup once before first use to install the CLI wrapper
-  symlink and write credentials.
+  macOS (Apple Silicon), Linux (x64), and Windows (x64, under Git
+  Bash). The Kobiton CLI is downloaded on install: the plugin pins a
+  build version (skills/run-interactive-session/CLI_VERSION) and the
+  install script fetches the matching platform build from
+  public.kobiton.download, sha256-verified and cached under
+  ~/.kobiton/cli/. Intel Macs are not supported (no macos-x64 build
+  is published) - there, use run-automation-suite or
+  drive-automation-session, or the Kobiton MCP tools directly.
+  Requires local file access for the cached binary and
+  ~/.kobiton/.credentials. Run /automate:setup once before first use
+  to install the CLI wrapper and write credentials.
 tags: [mobile, testing, interactive, webdriver, devices, kobiton]
 ---
 
@@ -42,11 +45,11 @@ Use this skill whenever the user wants to interact with a mobile device on Kobit
 
 ## Prerequisites
 
-**Runs only on macOS, and needs a local filesystem** — it executes a bundled binary and reads `~/.kobiton/.credentials`. On Linux or Windows, or anywhere those two aren't available, don't invoke this skill: route to `run-automation-suite` (user already has a test script) or `drive-automation-session` (describe the flow instead), both cross-platform. Check this *before* reserving a device, so a doomed run doesn't burn device minutes. See the Skill compatibility matrix in `CLAUDE.md`.
+**Runs on macOS (Apple Silicon), Linux (x64), and Windows (x64 under Git Bash), and needs a local filesystem** — it executes a locally cached CLI binary and reads `~/.kobiton/.credentials`. On Intel Macs or other unsupported architectures, or anywhere a local filesystem isn't available, don't invoke this skill: route to `run-automation-suite` (user already has a test script) or `drive-automation-session` (describe the flow instead), both cross-platform. Check this *before* reserving a device, so a doomed run doesn't burn device minutes. See the Skill compatibility matrix in `CLAUDE.md`.
 
 Before invoking this skill, ensure:
 
-- **Bundled Kobiton CLI** - `~/.kobiton/bin/kobiton` (a symlink to this plugin's `run.sh` wrapper) must exist and point at an executable. Claude Code and Codex CLI both recreate it automatically via a bundled SessionStart hook; on Codex, the user trusts the hook once via `/hooks` after install. `/automate:setup` re-installs the symlink on demand on any host. GitHub Copilot CLI and Gemini CLI load `/automate:setup` (Copilot via Claude-format `.md`, Gemini via bundled TOML at `commands/automate/setup.toml`) but have no SessionStart hook - run `/automate:setup` once after install. The bundled binary is **macOS-only and x86_64** (native on Intel Macs, Rosetta 2 on Apple Silicon); `run.sh` reports a missing binary or missing credentials with the right remedy, so surface its error rather than pre-flighting your own checks.
+- **Kobiton CLI wrapper** - `~/.kobiton/bin/kobiton` (a symlink to this plugin's `run.sh` wrapper on macOS/Linux, a bash exec-shim on Windows) must exist and resolve to an executable. Claude Code and Codex CLI both recreate it automatically via a bundled SessionStart hook; on Codex, the user trusts the hook once via `/hooks` after install. `/automate:setup` re-installs the wrapper on demand on any host. GitHub Copilot CLI and Gemini CLI load `/automate:setup` (Copilot via Claude-format `.md`, Gemini via bundled TOML at `commands/automate/setup.toml`) but have no SessionStart hook - run `/automate:setup` once after install. The CLI binary itself is **downloaded, not bundled**: the install script fetches the build pinned in `CLI_VERSION` (sha256-verified) into `~/.kobiton/cli/` on first run. `run.sh` reports a missing binary or missing credentials with the right remedy, so surface its error rather than pre-flighting your own checks.
 - **Credentials file** - `~/.kobiton/.credentials` must contain a valid INI-formatted profile with `KOBITON_USER`, `KOBITON_API_KEY`, and `KOBITON_PORTAL`. Created by `/automate:setup`. The active profile is `$KOBITON_PROFILE` if set, otherwise `default`.
 - **Kobiton MCP connection** - useful for `listDevices` / `getDeviceStatus` calls when picking a device. Default `api.kobiton.com/mcp`; check `.mcp.json` for the configured endpoint.
 - **Kobiton account** - credentials with device access for the target platform (Android / iOS) and remaining session quota.
@@ -57,7 +60,7 @@ If a command fails with a credentials error or missing-binary error, direct the 
 
 All CLI calls go through a single wrapper at `~/.kobiton/bin/kobiton` that automatically handles:
 
-- **Bundled binary resolution** - resolves the bundled `kobiton` binary inside the skill directory.
+- **CLI binary resolution** - resolves the pinned CLI build from the version cache at `~/.kobiton/cli/<version>/` (falling back to the newest cached build with a drift warning).
 - **Portal URL** - from `KOBITON_PORTAL` in credentials, or derived from `.mcp.json` as fallback.
 - **Credentials** - loaded from `~/.kobiton/.credentials` using AWS-style profiles (`$KOBITON_PROFILE`, default `default`).
 - **Session token** - loaded by the CLI from `~/.kobiton/.session` once a session exists.
@@ -336,7 +339,9 @@ Where `<portal-base>` is derived from the `KOBITON_PORTAL` value in the active p
 - **Session expired / auth error mid-flow**: `session ping` fails or a command returns auth error - offer to create a new session.
 - **Element not found**: suggest getting page source first (`wd get source`) to inspect the UI hierarchy, then try a different locator strategy (xpath instead of id, or vice versa).
 - **Stale element reference** after navigation: re-find the element on the new screen; element IDs do not survive page transitions.
-- **Binary not found**: the bundled `kobiton` binary is missing from the skill's `bin/` directory - tell the user to re-install the plugin. If the platform isn't macOS, recommend `run-automation-suite` or the MCP tools instead.
+- **Binary not found**: no cached CLI build exists under `~/.kobiton/cli/` - run `/automate:setup` (or re-open the session so the SessionStart hook downloads the pinned build). If the platform is unsupported (Intel Mac, non-x64), recommend `run-automation-suite` or the MCP tools instead.
+- **Checksum mismatch during install**: the download was corrupted or tampered with - the installer discards it and keeps any existing cache. Retry `/automate:setup`; if it persists, report it on the plugin repo.
+- **Version drift warning from `run.sh`**: the pinned build is not cached (usually pruned upstream) and a different cached build is being used - run `/automate:doctor` to see pinned vs installed vs latest; things generally keep working, but behavior may differ from this document.
 - **Missing credentials**: direct the user to run `/automate:doctor` first to see what's missing; if the credentials file is missing or incomplete, run `/automate:setup` to fetch and write fresh credentials.
 
 ## Examples
@@ -442,7 +447,7 @@ Assumes a session is already active (run `session ping` first; if expired, creat
 ## Resources
 
 - [Appium 2.x documentation](https://appium.io/docs/en/2.0/) - driver-specific docs (UiAutomator2 for Android, XCUITest for iOS) for the WebDriver endpoints called via `wd post` / `wd get`.
-- [`kobiton/automate` plugin source](https://github.com/kobiton/automate) - issue tracker and source for the bundled CLI wrapper (`skills/run-interactive-session/scripts/run.sh`) and platform binaries.
-- [`run-automation-suite`](../run-automation-suite/SKILL.md) - sister skill for non-interactive runs of an existing Appium script. Use it when the user wants to execute a full test suite rather than drive the device step-by-step, or when the host platform isn't supported by this skill's bundled binary.
+- [`kobiton/automate` plugin source](https://github.com/kobiton/automate) - issue tracker and source for the CLI wrapper (`skills/run-interactive-session/scripts/run.sh`), the install script, and the `CLI_VERSION` pin.
+- [`run-automation-suite`](../run-automation-suite/SKILL.md) - sister skill for non-interactive runs of an existing Appium script. Use it when the user wants to execute a full test suite rather than drive the device step-by-step, or when the host platform has no published CLI build (e.g. Intel Macs).
 - `/automate:setup` - install / refresh the CLI symlink and the credentials profile at `~/.kobiton/.credentials`.
 - `/automate:doctor` - read-only health check for CLI symlink, credentials file, active profile, and required fields.

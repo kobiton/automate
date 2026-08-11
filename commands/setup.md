@@ -10,9 +10,9 @@ allowed-tools:
 
 Bootstrap the plugin: ensure the CLI wrapper symlink is installed, then fetch the user's Kobiton credentials via the `getCredential` MCP tool and write them to `~/.kobiton/.credentials`. After writing, recommend running `/automate:doctor` to verify.
 
-## Step 0: Ensure the CLI wrapper symlink is installed
+## Step 0: Ensure the CLI wrapper is installed
 
-The `run-interactive-session` skill depends on `~/.kobiton/bin/kobiton`. Claude Code and Codex CLI both recreate this symlink automatically via a bundled SessionStart hook; on Codex, the user trusts the hook once via `/hooks` after install. This command (`/automate:setup`) re-installs the symlink on demand. GitHub Copilot CLI and Gemini CLI also load `/automate:setup` (Copilot via Claude-format `.md`, Gemini via the bundled TOML at `commands/automate/setup.toml`) — neither has a SessionStart hook, so users on those CLIs run `/automate:setup` once after install. Cursor CLI loads this same `.md` via the `commands` field in `.cursor-plugin/plugin.json`, but registers it without the plugin namespace (it appears as `/setup`, distinguishable from Cursor's built-in `/setup` by its Kobiton description) and does not run the SessionStart hook - so Cursor CLI users also run this command once after install.
+The `run-interactive-session` skill depends on `~/.kobiton/bin/kobiton`. Claude Code and Codex CLI both recreate this wrapper automatically via a bundled SessionStart hook; on Codex, the user trusts the hook once via `/hooks` after install. This command (`/automate:setup`) re-installs the wrapper on demand. GitHub Copilot CLI and Gemini CLI also load `/automate:setup` (Copilot via Claude-format `.md`, Gemini via the bundled TOML at `commands/automate/setup.toml`) — neither has a SessionStart hook, so users on those CLIs run `/automate:setup` once after install. Cursor CLI loads this same `.md` via the `commands` field in `.cursor-plugin/plugin.json`, but registers it without the plugin namespace (it appears as `/setup`, distinguishable from Cursor's built-in `/setup` by its Kobiton description) and does not run the SessionStart hook - so Cursor CLI users also run this command once after install.
 
 Run the install script bundled with this plugin. This file (`setup.md`) lives at `<plugin-root>/commands/setup.md`, so the install script is at `<plugin-root>/scripts/install-cli.sh`. Resolve `<plugin-root>` to its absolute path and run:
 
@@ -20,14 +20,14 @@ Run the install script bundled with this plugin. This file (`setup.md`) lives at
 bash <plugin-root>/scripts/install-cli.sh
 ```
 
-The script is idempotent and silent on success. After it returns, sanity-check the result:
+The script is idempotent. On first run it downloads the CLI build pinned by this plugin release from `public.kobiton.download` (sha256-verified, cached under `~/.kobiton/cli/`) — that needs network access once; every later run is a cache hit with no network I/O. It then installs the `~/.kobiton/bin/kobiton` entry point (a symlink to the plugin's wrapper on macOS/Linux, a bash exec-shim on Windows). Supported platforms: macOS on Apple Silicon, Linux x64, Windows x64 (Git Bash). After it returns, sanity-check the result:
 
 ```bash
-[ -L "$HOME/.kobiton/bin/kobiton" ] && echo "OK" || echo "MISSING"
+[ -x "$HOME/.kobiton/bin/kobiton" ] && echo "OK" || echo "MISSING"
 ```
 
-- **`OK`**: symlink in place, continue to Step 1.
-- **`MISSING`**: the install script could not create the symlink, or the bundled binary is absent (it ships for macOS only — a single x86_64 build, native on Intel and via Rosetta 2 on Apple Silicon). Surface this to the user and continue to Step 1 anyway — credentials still need to be written so other tools work; only `run-interactive-session` is affected.
+- **`OK`**: wrapper in place, continue to Step 1.
+- **`MISSING`**: the install script could not install the wrapper — unsupported platform (Intel Macs and non-x64 architectures have no published CLI build) or the first-time download failed (its stderr says which). Surface the script's message to the user and continue to Step 1 anyway — credentials still need to be written so other tools work; only `run-interactive-session` is affected.
 
 ## Step 1: Fetch credentials via MCP
 
@@ -197,6 +197,6 @@ After successful write, tell the user:
 
 If the Step 0 sanity-check reported `MISSING`, also append:
 
-> "Note: the `~/.kobiton/bin/kobiton` CLI symlink could not be installed (likely an unsupported platform). MCP tools, `run-automation-suite`, and `drive-automation-session` will still work — they read credentials from the file we just wrote. Only `run-interactive-session` requires the symlink."
+> "Note: the `~/.kobiton/bin/kobiton` CLI wrapper could not be installed (unsupported platform, or the CLI download failed — see the install script's message above). MCP tools, `run-automation-suite`, and `drive-automation-session` will still work — they read credentials from the file we just wrote. Only `run-interactive-session` requires the wrapper."
 
 Do not echo the API key in chat.

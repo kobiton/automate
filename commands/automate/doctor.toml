@@ -1,9 +1,11 @@
 description = "Read-only health checks for the Kobiton automate plugin"
 
 prompt = '''
-Run read-only health checks for the Kobiton automate plugin. Use your bash tool to run each check below. Print one ✓ (pass) or ✗ (failure) line per check. For each ✗, print an indented remediation hint on the next line prefixed with `→ `. **Never modify any files.** After all 4 checks, print `Summary: <passed>/4 checks passed.`
+Run read-only health checks for the Kobiton automate plugin. Use your bash tool to run each check below. Print one ✓ (pass) or ✗ (failure) line per check. For each ✗, print an indented remediation hint on the next line prefixed with `→ `. **Never modify any files.** After all 5 checks, print `Summary: <passed>/5 checks passed.`
 
-## Check 1: CLI wrapper symlink installed
+## Check 1: CLI wrapper installed
+
+The entry point is a symlink to the plugin's `run.sh` on macOS/Linux, or a bash exec-shim (regular file) on Windows.
 
 ```bash
 LINK="$HOME/.kobiton/bin/kobiton"
@@ -14,6 +16,8 @@ if [ -L "$LINK" ]; then
   else
     echo "FAIL:bad-target:$TARGET"
   fi
+elif [ -f "$LINK" ] && [ -x "$LINK" ] && grep -q 'run\.sh' "$LINK" 2>/dev/null; then
+  echo "PASS:shim:$(grep -o '"[^"]*run\.sh"' "$LINK" | tr -d '"')"
 elif [ -e "$LINK" ]; then
   echo "FAIL:not-a-symlink"
 else
@@ -22,8 +26,9 @@ fi
 ```
 
 - `PASS:<target>` → `✓ CLI installed (~/.kobiton/bin/kobiton → <target>)`
-- `FAIL:missing` → `✗ CLI installed (~/.kobiton/bin/kobiton not found)`, remediation: `→ Run /automate:setup to install the symlink.`
-- `FAIL:not-a-symlink` → `✗ CLI installed (~/.kobiton/bin/kobiton is not a symlink)`, same remediation
+- `PASS:shim:<target>` → `✓ CLI installed (~/.kobiton/bin/kobiton is a Windows exec shim → <target>)`
+- `FAIL:missing` → `✗ CLI installed (~/.kobiton/bin/kobiton not found)`, remediation: `→ Run /automate:setup to install the wrapper.`
+- `FAIL:not-a-symlink` → `✗ CLI installed (~/.kobiton/bin/kobiton is neither a symlink nor an exec shim)`, same remediation
 - `FAIL:bad-target:<t>` → `✗ CLI installed (symlink target missing or not executable: <t>)`, same remediation
 
 ## Check 2: Credentials file
@@ -98,18 +103,44 @@ PROFILE="$PROFILE" awk '
 - `PASS` → `✓ Required fields (KOBITON_USER, KOBITON_API_KEY, KOBITON_PORTAL)`
 - `FAIL:<missing>` → `✗ Required fields (missing:<missing>)`, remediation: `→ Run /automate:setup to refresh, or edit ~/.kobiton/.credentials.`
 
+## Check 5: CLI version (pinned vs installed vs latest)
+
+Reports version drift between the plugin's pin, the cached binary, and the newest published build — and whether the pinned build is still downloadable. HEAD-only requests; nothing is downloaded.
+
+```bash
+PIN="$(tr -d '[:space:]' < "$HOME/.gemini/extensions/kobiton-automate/skills/run-interactive-session/CLI_VERSION" 2>/dev/null)"
+INSTALLED="$("$HOME/.kobiton/bin/kobiton" --version 2>/dev/null | awk '{print $2}')"
+LATEST="$(curl -sI --connect-timeout 5 --max-time 15 "https://public.kobiton.download/kobiton-cli/latest/" 2>/dev/null | awk 'tolower($1)=="location:"{print $2}' | tr -d '\r' | sed -e 's|/$||' -e 's|.*/||')"
+PIN_ON_SERVER="unknown"
+if [ -n "$PIN" ] && [ -n "$LATEST" ]; then
+  CODE="$(curl -s -o /dev/null -I -w '%{http_code}' --connect-timeout 5 --max-time 15 "https://public.kobiton.download/kobiton-cli/$PIN/" 2>/dev/null)"
+  case "$CODE" in 200) PIN_ON_SERVER="yes";; 404) PIN_ON_SERVER="pruned";; *) PIN_ON_SERVER="unknown";; esac
+fi
+echo "pin=$PIN"; echo "installed=$INSTALLED"; echo "latest=$LATEST"; echo "pin_on_server=$PIN_ON_SERVER"
+```
+
+Interpret:
+
+- `pin` empty → `✗ CLI version (no CLI_VERSION pin found in the plugin)`, remediation: `→ Re-install the plugin; the pin file ships with it.`
+- `installed` empty → `✗ CLI version (no installed CLI to compare — see Check 1)`, remediation: `→ Run /automate:setup to download the pinned build.`
+- `latest` empty (network unreachable) → `- CLI version (skipped — download server unreachable; pinned <pin>, installed <installed>)`, do not count as pass or fail.
+- `installed == pin` → `✓ CLI version (pinned <pin> = installed; latest available <latest>)`. If `pin_on_server=pruned`, append: `→ Note: the pinned build is no longer downloadable upstream. Existing installs keep working from cache; fresh installs fall back to the newest build. A plugin update will refresh the pin.`
+- `installed != pin` → `✗ CLI version (installed <installed> ≠ pinned <pin>; latest available <latest>)`, remediation: `→ The cache serves a different build than this plugin release was validated against. Run /automate:setup to re-download the pin if pin_on_server=yes; otherwise expect a plugin update to refresh the pin.`
+
+`latest` differing from `pin` is normal — informational only, never a failure by itself.
+
 ## Summary
 
 Count:
-- `passed` = number of `✓` lines across Checks 1–4
+- `passed` = number of `✓` lines across Checks 1–5
 - Skipped checks (printed with `-`) do not count as passed or failed
 
 Print exactly:
 
 ```
-Summary: <passed>/4 checks passed.
+Summary: <passed>/5 checks passed.
 ```
 
-If `passed < 4`, append: `Fix the issues above and rerun /automate:doctor.`
-If `passed == 4`, append: `All checks passed. You're ready to use the plugin.`
+If `passed < 5`, append: `Fix the issues above and rerun /automate:doctor.`
+If `passed == 5`, append: `All checks passed. You're ready to use the plugin.`
 '''

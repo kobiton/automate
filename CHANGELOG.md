@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.10.0 - 2026-08-11
+
+### Changed: the CLI binary is downloaded on install, no longer committed to the repo
+
+`skills/run-interactive-session/bin/kobiton` (an 11.8 MB x86_64 macOS binary that required a manual re-commit on every CLI release) is gone. Instead, the plugin pins a CLI build version in `skills/run-interactive-session/CLI_VERSION`, and `scripts/install-cli.sh` — the same script the SessionStart hook and `/automate:setup` already run — downloads that build from `public.kobiton.download` on first run, verifies its published sha256, and caches it under `~/.kobiton/cli/<version>/`. Cache hits perform no network I/O, so session start stays fast; offline sessions keep working from the cache. The pin advances with plugin releases, after the skill docs are validated against that build — the docs and the binary move in lockstep, the same guarantee bundling gave, without megabytes of binary in git history.
+
+If the pinned build is no longer published (the download server prunes old versions), the installer keeps a cached build with a drift warning, or — with no cache at all — falls back to the newest published build with a loud warning that it is newer than what this release was validated against. A corrupted download (checksum mismatch) is discarded and never replaces a working cache. `run.sh` itself never touches the network: it resolves the pinned version from the cache, falls back to the newest cached build with a warning, and otherwise points at `/automate:setup`.
+
+### New: `run-interactive-session` on Linux and Windows
+
+The download model unlocks the other published CLI builds: the skill now runs on **macOS (Apple Silicon), Linux (x64), and Windows (x64 under Git Bash)**. On Windows, the installer writes a bash exec-shim at `~/.kobiton/bin/kobiton` instead of a symlink (MSYS `ln -sf` copies files, which would break the wrapper's path resolution). Apple Silicon Macs now get the native arm64 build instead of running x86_64 under Rosetta 2.
+
+**Intel Macs are no longer supported** — no macos-x64 build is published. The previous release (1.9.0 and earlier) bundled an x86_64 binary that ran natively there; Intel-Mac users should stay on 1.9.0 or use `run-automation-suite` / `drive-automation-session`, which remain fully cross-platform.
+
+### New: `/automate:doctor` reports CLI version drift
+
+A fifth check reports the plugin's pinned version, the installed binary's version, the newest published build, and whether the pinned build is still downloadable — all via HEAD-only requests, nothing downloaded. Drift between installed and pinned is flagged with the remedy; a newer build existing upstream is informational, never a failure.
+
+The compatibility matrix (`CLAUDE.md`), each affected skill's Prerequisites and `compatibility:` frontmatter, `AGENTS.md`, and README were updated together per the matrix's own update rule. No tool YAML or MCP server contract changed.
+
 ## 1.9.0 - 2026-07-29
 
 ### New: per-skill compatibility matrix
