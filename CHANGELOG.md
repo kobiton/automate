@@ -18,6 +18,13 @@ The download model unlocks the other published CLI builds: the skill now runs on
 
 A fifth check reports the plugin's pinned version, the installed binary's version, the newest published build, and whether the pinned build is still downloadable — all via HEAD-only requests, nothing downloaded. Drift between installed and pinned is flagged with the remedy; a newer build existing upstream is informational, never a failure.
 
+### Fixed: findings from live Windows (Git Bash) verification
+
+- `/automate:setup` no longer requires Python: the credentials-file probe and atomic write now use Node, which every supported host CLI already runs on. Windows commonly has no Python — the Microsoft Store `python3` stub exits without running anything, which broke setup outright.
+- `/automate:doctor` Check 2 tries GNU `stat -c` before BSD `stat -f` — on Git Bash/Linux the old order dumped a filesystem-info blob into the reported mode string (verdict was unaffected).
+- `run-interactive-session` documents the restricted device shell honestly: on the common cloud-device policy the CLI rejects on-device pipes (`Input contains a forbidden character`) and URL arguments to `am`; the skill now teaches the bare-command + local-filter pattern and a UI-driven open-a-URL recipe instead of piped commands that fail there.
+- Windows note added to setup: POSIX `0600` doesn't map onto NTFS ACLs, so the credentials file may report `644` there; doctor reports it informationally.
+
 The compatibility matrix (`CLAUDE.md`), each affected skill's Prerequisites and `compatibility:` frontmatter, `AGENTS.md`, and README were updated together per the matrix's own update rule. No tool YAML or MCP server contract changed.
 
 ## 1.9.0 - 2026-07-29

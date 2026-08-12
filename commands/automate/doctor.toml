@@ -36,7 +36,7 @@ fi
 ```bash
 F="$HOME/.kobiton/.credentials"
 if [ -f "$F" ] && [ ! -L "$F" ]; then
-  MODE=$(stat -f '%A' "$F" 2>/dev/null || stat -c '%a' "$F" 2>/dev/null)
+  MODE=$(stat -c '%a' "$F" 2>/dev/null || stat -f '%A' "$F" 2>/dev/null)
   if [ "$MODE" = "600" ]; then echo "PASS"; else echo "PASS:mode=$MODE"; fi
 elif [ -L "$F" ]; then echo "FAIL:symlink"
 elif [ -d "$F" ]; then echo "FAIL:directory"

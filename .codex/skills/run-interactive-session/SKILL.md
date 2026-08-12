@@ -233,13 +233,17 @@ This terminates the Kobiton-side session and frees the device. The local artifac
       $KOBITON_BIN device adb-shell ls -la /sdcard/Download/
       $KOBITON_BIN device adb-shell getprop ro.build.version.release
 
-- **Pipes, redirects, globs, `&&`, `$VAR`, or quotes inside the command** - wrap the entire remote command in one quoted string so it runs on the device's shell, not your local shell:
+- **Restricted shell (the common policy on cloud devices)** - the CLI validates the remote command and rejects shell metacharacters outright (`Input contains a forbidden character: '|'`), and blocks some argument shapes entirely (e.g. a URL passed to `am`). Do not pipe, chain, or redirect on the device. The pattern that works everywhere: run the bare command, redirect its output to a local artifact file, filter locally:
+
+      $KOBITON_BIN device adb-shell dumpsys window > .kobiton/sessions/<session-id>/window.txt
+      grep -m3 -E 'mCurrentFocus|mFocusedApp' .kobiton/sessions/<session-id>/window.txt
+
+- **On-device pipes only with full shell access** (an org-level setting - assume restricted until a piped command succeeds): wrap the entire remote command in one quoted string so it runs on the device's shell, not your local shell:
 
       $KOBITON_BIN device adb-shell "dumpsys window | grep mCurrentFocus"
       $KOBITON_BIN device adb-shell 'pm list packages -3 | wc -l'
-      $KOBITON_BIN device adb-shell "logcat -d -t 200 > /sdcard/log.txt"
 
-  Wrong: `$KOBITON_BIN device adb-shell dumpsys window | grep mCurrentFocus` - the `| grep` runs locally on the full dumpsys output (slow, can overflow the 25k-token MCP limit, may truncate before the line you want). Quote the whole expression.
+  If it comes back with `Input contains a forbidden character`, the device shell is restricted - fall back to the bare-command + local-filter pattern above.
 
 **Platform guard.** `adb` is Android-only. If the active session targets iOS, do **not** call `device adb-shell`. Refuse and reach for the WebDriver equivalent (`wd post execute '{"script":"mobile: ..."}'`) or a different inspection path.
 
@@ -247,7 +251,8 @@ This terminates the Kobiton-side session and frees the device. The local artifac
 |--------|---------|
 | Get OS / build property | `$KOBITON_BIN device adb-shell getprop <key>` |
 | Get screen resolution | `$KOBITON_BIN device adb-shell wm size` |
-| Get foreground app/activity | `$KOBITON_BIN device adb-shell "dumpsys window \| grep mCurrentFocus"` |
+| Get foreground app/activity | `$KOBITON_BIN device adb-shell dumpsys window > <local-file>`, then grep `mCurrentFocus` locally (on-device pipe needs full shell access) |
+| Open a URL in the browser | UI-driven (restricted shell rejects `am start ... -d <url>`): launch Chrome via `monkey -p com.android.chrome -c android.intent.category.LAUNCHER 1`, then `wd post element '{"using":"id","value":"com.android.chrome:id/url_bar"}'` → `wd post element/<id>/click '{}'` → `wd post element/<id>/value '{"text":"<url>"}'` → `input keyevent 66` |
 | List running processes | `$KOBITON_BIN device adb-shell ps -A` |
 | List user-installed packages | `$KOBITON_BIN device adb-shell pm list packages -3` |
 | Find APK path of a package | `$KOBITON_BIN device adb-shell pm path <pkg>` |
@@ -266,11 +271,11 @@ This terminates the Kobiton-side session and frees the device. The local artifac
 | Write system setting | `$KOBITON_BIN device adb-shell settings put system <key> <value>` |
 | Read file content | `$KOBITON_BIN device adb-shell cat <path>` |
 | List directory | `$KOBITON_BIN device adb-shell ls -la <path>` |
-| Current IME | `$KOBITON_BIN device adb-shell "dumpsys input_method \| grep mCurId"` |
+| Current IME | `$KOBITON_BIN device adb-shell dumpsys input_method > <local-file>`, then grep `mCurId` locally |
 
-**Big-output commands.** `dumpsys`, `logcat`, `pm list -f`, and full process dumps can blow past the 25k-token MCP limit. For these, redirect to an artifact file first, then read/grep only what you need:
+**Big-output commands.** `dumpsys`, `logcat`, `pm list -f`, and full process dumps can blow past the 25k-token MCP limit. For these, redirect to an artifact file first, then read/grep only what you need (this doubles as the restricted-shell-safe filtering pattern):
 
-    $KOBITON_BIN device adb-shell "logcat -d -t 1000" \
+    $KOBITON_BIN device adb-shell logcat -d -t 1000 \
       > .kobiton/sessions/<session-id>/logcat-$(date +%s).txt
     grep -E 'FATAL|AndroidRuntime' \
       .kobiton/sessions/<session-id>/logcat-*.txt | head -20

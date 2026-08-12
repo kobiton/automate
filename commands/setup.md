@@ -64,34 +64,33 @@ test -f ~/.kobiton/.credentials && grep -qE '^\[[[:space:]]*default[[:space:]]*\
 
 Run:
 
+Node is used (not python3) because every supported host CLI already runs on Node, while Windows commonly has no Python — the Microsoft Store `python3` stub exits with code 49 without running anything.
+
 ```bash
-PROFILE=<chosen> python3 -c '
-import os, re, sys
-name = os.environ["PROFILE"]
-path = os.path.expanduser("~/.kobiton/.credentials")
-if not os.path.exists(path):
-    print("PROFILE_FREE"); sys.exit(0)
-with open(path) as f:
-    text = f.read()
-sections = re.split(r"(?m)^\s*\[\s*([^\]]+?)\s*\]\s*$", text)
-# sections = [pre, name1, body1, name2, body2, ...]
-found = {sections[i]: sections[i+1] for i in range(1, len(sections), 2)}
-if name not in found:
-    print("PROFILE_FREE"); sys.exit(0)
-body = found[name]
-fields = {}
-for line in body.splitlines():
-    line = line.strip()
-    if not line or line.startswith("#") or "=" not in line: continue
-    k, v = line.split("=", 1)
-    fields[k.strip()] = v.strip()
-key = fields.get("KOBITON_API_KEY","")
-masked = (key[:4] + "..." + key[-4:]) if len(key) >= 8 else "(short)"
-print("PROFILE_EXISTS")
-print("KOBITON_USER=" + fields.get("KOBITON_USER",""))
-print("KOBITON_PORTAL=" + fields.get("KOBITON_PORTAL",""))
-print("KOBITON_API_KEY=" + masked)
-'
+PROFILE=<chosen> node <<'JS'
+const fs = require("fs"), os = require("os"), path = require("path");
+const name = process.env.PROFILE;
+const file = path.join(os.homedir(), ".kobiton", ".credentials");
+if (!fs.existsSync(file)) { console.log("PROFILE_FREE"); process.exit(0); }
+const parts = fs.readFileSync(file, "utf8").split(/^\s*\[\s*([^\]]+?)\s*\]\s*$/m);
+// parts = [pre, name1, body1, name2, body2, ...]
+const found = {};
+for (let i = 1; i < parts.length; i += 2) found[parts[i].trim()] = parts[i + 1];
+if (!(name in found)) { console.log("PROFILE_FREE"); process.exit(0); }
+const fields = {};
+for (const raw of found[name].split("\n")) {
+  const line = raw.trim();
+  if (!line || line.startsWith("#") || !line.includes("=")) continue;
+  const idx = line.indexOf("=");
+  fields[line.slice(0, idx).trim()] = line.slice(idx + 1).trim();
+}
+const key = fields.KOBITON_API_KEY || "";
+const masked = key.length >= 8 ? key.slice(0, 4) + "..." + key.slice(-4) : "(short)";
+console.log("PROFILE_EXISTS");
+console.log("KOBITON_USER=" + (fields.KOBITON_USER || ""));
+console.log("KOBITON_PORTAL=" + (fields.KOBITON_PORTAL || ""));
+console.log("KOBITON_API_KEY=" + masked);
+JS
 ```
 
 - **`PROFILE_FREE`**: skip to Step 4.
@@ -134,60 +133,46 @@ Never echo the full unmasked API key in chat.
 Build the new file content in memory, preserving every other profile (both content and original position), and write atomically. When overwriting an existing profile, the new block replaces the old at the same position; only a genuinely new profile is appended at the end.
 
 ```bash
-KB_PROFILE=<chosen> KB_USER=<username> KB_KEY=<apiKey> KB_PORTAL=<portal> python3 <<'PY'
-import os, re, sys
-name = os.environ["KB_PROFILE"]
-user = os.environ["KB_USER"]
-key = os.environ["KB_KEY"]
-portal = os.environ["KB_PORTAL"]
-path = os.path.expanduser("~/.kobiton/.credentials")
-os.makedirs(os.path.dirname(path), exist_ok=True)
-
-new_block = "[" + name + "]\nKOBITON_USER=" + user + "\nKOBITON_API_KEY=" + key + "\nKOBITON_PORTAL=" + portal
-
-if os.path.exists(path):
-    with open(path) as f:
-        text = f.read()
-    parts = re.split(r"(?m)^\s*\[\s*([^\]]+?)\s*\]\s*$", text)
-    head = parts[0].strip()
-    others = []
-    replaced = False
-    for i in range(1, len(parts), 2):
-        section_name = parts[i].strip()
-        body = parts[i+1].strip()
-        if section_name == name:
-            # Replace in-place at the original position
-            others.append(new_block)
-            replaced = True
-        else:
-            others.append("[" + section_name + "]\n" + body)
-    blocks = []
-    if head:
-        blocks.append(head)
-    blocks.extend(others)
-    if not replaced:
-        # Profile is new — append at the end
-        blocks.append(new_block)
-else:
-    blocks = [new_block]
-
-content = "\n\n".join(blocks) + "\n"
-
-tmp = path + ".tmp"
-old_umask = os.umask(0o077)
-try:
-    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    with os.fdopen(fd, "w") as f:
-        f.write(content)
-    os.replace(tmp, path)
-    os.chmod(path, 0o600)
-finally:
-    os.umask(old_umask)
-print("WROTE " + name)
-PY
+KB_PROFILE=<chosen> KB_USER=<username> KB_KEY=<apiKey> KB_PORTAL=<portal> node <<'JS'
+const fs = require("fs"), os = require("os"), path = require("path");
+const name = process.env.KB_PROFILE, user = process.env.KB_USER;
+const key = process.env.KB_KEY, portal = process.env.KB_PORTAL;
+const dir = path.join(os.homedir(), ".kobiton");
+fs.mkdirSync(dir, { recursive: true });
+const file = path.join(dir, ".credentials");
+const newBlock = `[${name}]\nKOBITON_USER=${user}\nKOBITON_API_KEY=${key}\nKOBITON_PORTAL=${portal}`;
+let blocks;
+if (fs.existsSync(file)) {
+  const parts = fs.readFileSync(file, "utf8").split(/^\s*\[\s*([^\]]+?)\s*\]\s*$/m);
+  const head = parts[0].trim();
+  blocks = head ? [head] : [];
+  let replaced = false;
+  for (let i = 1; i < parts.length; i += 2) {
+    const sectionName = parts[i].trim(), body = parts[i + 1].trim();
+    if (sectionName === name) {
+      // Replace in-place at the original position
+      blocks.push(newBlock);
+      replaced = true;
+    } else {
+      blocks.push(`[${sectionName}]\n${body}`);
+    }
+  }
+  // Profile is new — append at the end
+  if (!replaced) blocks.push(newBlock);
+} else {
+  blocks = [newBlock];
+}
+const tmp = file + ".tmp";
+fs.writeFileSync(tmp, blocks.join("\n\n") + "\n", { mode: 0o600 });
+fs.renameSync(tmp, file);
+try { fs.chmodSync(file, 0o600); } catch {}
+console.log("WROTE " + name);
+JS
 ```
 
 Replace `<chosen>`, `<username>`, `<apiKey>`, `<portal>` with the actual values from Steps 1–3 before running. Pass them via env vars (`KB_*` to avoid clashing with the standard `$USER` shell variable) so they're not embedded in the heredoc and don't need shell quoting.
+
+Windows note: POSIX file modes don't map onto NTFS ACLs, so the file may report `644` there regardless of the `0600` we set — `/automate:doctor` reports this informationally. The write itself (atomic temp-file + rename, profile preservation) behaves identically on all platforms.
 
 ## Step 6: Confirm to the user
 
