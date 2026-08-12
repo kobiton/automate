@@ -124,8 +124,8 @@ Interpret:
 - `pin` empty → `✗ CLI version (no CLI_VERSION pin found in the plugin)`, remediation: `→ Re-install the plugin; the pin file ships with it.`
 - `installed` empty → `✗ CLI version (no installed CLI to compare — see Check 1)`, remediation: `→ Run /automate:setup to download the pinned build.`
 - `latest` empty (network unreachable) → `- CLI version (skipped — download server unreachable; pinned <pin>, installed <installed>)`, do not count as pass or fail.
-- `installed == pin` → `✓ CLI version (pinned <pin> = installed; latest available <latest>)`. If `pin_on_server=pruned`, append: `→ Note: the pinned build is no longer downloadable upstream. Existing installs keep working from cache; fresh installs fall back to the newest build. A plugin update will refresh the pin.`
-- `installed != pin` → `✗ CLI version (installed <installed> ≠ pinned <pin>; latest available <latest>)`, remediation: `→ The cache serves a different build than this plugin release was validated against. Run /automate:setup to re-download the pin if pin_on_server=yes; otherwise expect a plugin update to refresh the pin.`
+- `installed == pin` → `✓ CLI version (pinned <pin> = installed; latest available <latest>)`. If `pin_on_server=pruned`, append: `→ Note: the pinned build is no longer downloadable upstream. Existing installs keep working from cache; fresh installs fall back to the newest build. Update the automate plugin to its latest version to refresh the pin.`
+- `installed != pin` → `✗ CLI version (installed <installed> ≠ pinned <pin>; latest available <latest>)`, remediation: `→ The cache serves a different build than this plugin release was validated against. Run /automate:setup to re-download the pin if pin_on_server=yes; otherwise update the automate plugin to its latest version - newer releases pin a validated build.`
 
 `latest` differing from `pin` is normal — informational only, never a failure by itself.
 

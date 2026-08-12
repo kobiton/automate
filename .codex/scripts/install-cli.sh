@@ -221,7 +221,7 @@ if [ -n "$PIN" ] && [ ! -x "$CACHE_ROOT/$PIN/$BIN_NAME" ]; then
         esac
         if [ -n "$LATEST" ] && download_version "$LATEST"; then
           echo "WARNING: kobiton CLI pinned version $PIN is no longer published and no cache existed." >&2
-          echo "WARNING: installed the current build ($LATEST) instead - it is NEWER than what this plugin release was validated against. Behavior may differ; report issues on the plugin repo." >&2
+          echo "WARNING: installed the current build ($LATEST) instead. Update the Kobiton automate plugin to the latest version - newer releases pin a validated build." >&2
         else
           echo "kobiton CLI: pinned version $PIN is gone and the fallback download failed. Run /automate:setup when the network is available." >&2
         fi
