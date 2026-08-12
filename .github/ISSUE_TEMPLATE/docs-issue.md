@@ -21,4 +21,3 @@ Describe what you expected the documentation to say or explain.
 ## Additional context
 
 Add any relevant screenshots, examples, product version information, or related links.
-```
