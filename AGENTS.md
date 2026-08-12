@@ -70,7 +70,7 @@ Users say the same thing many ways; route by what the phrase means, not the keyw
 - **Session end state matters**: ending an automation session cleanly (`DELETE /wd/hub/session/{id}`) records it `COMPLETE`, which `saveTestCase` expects; `terminateSession` marks it `TERMINATED` (abnormal exit). Prefer the clean path when a test case might be saved later.
 - **Live remediation depends on the org flag**: with live remediation ON, a blocked revisit execution **pauses** (`BLOCKED_WAITING`) so a human can take over the device in the portal and fix the step live — the execution then resumes within the **same** run. With the flag OFF, the blocker fails the execution and a resolution submitted in the portal applies on the **next** rerun (details in `skills/monitor-test-run/SKILL.md`).
 
-Prerequisites: Kobiton account, credentials via the setup command, supported host. The `run-interactive-session` skill's bundled CLI runs on macOS only — it is an x86_64 binary (native on Intel Macs, Rosetta 2 on Apple Silicon) — so on Linux and Windows route the user to `run-automation-suite` or `drive-automation-session` instead of dead-ending. See the Skill compatibility matrix under Known limitations for the full per-skill picture. A worked end-to-end example lives in README's Getting Started section.
+Prerequisites: Kobiton account, credentials via the setup command, supported host. The `run-interactive-session` skill's CLI is downloaded on install (a pinned, sha256-verified build cached under `~/.kobiton/cli/`) and runs on macOS (Apple Silicon), Linux (x64), and Windows (x64 under Git Bash) — on Intel Macs and other unsupported architectures route the user to `run-automation-suite` or `drive-automation-session` instead of dead-ending. See the Skill compatibility matrix under Known limitations for the full per-skill picture. A worked end-to-end example lives in README's Getting Started section.
 
 ## When the user asks to run tests on Kobiton
 
@@ -155,9 +155,11 @@ same as "can run this skill", because a chat surface with code execution still h
 - **`run-automation-suite`** needs a local filesystem plus the user's own Appium script and its language
   runtime — but **not** the credentials file: the user's script carries its own Kobiton credentials in
   its capabilities / hub URL.
-- **`run-interactive-session`** additionally requires **macOS**: its bundled `bin/kobiton` is a
-  single-slice x86_64 Mach-O — native on Intel Macs, Rosetta 2 on Apple Silicon, with no Linux or
-  Windows build. Route those users to `run-automation-suite` or `drive-automation-session`.
+- **`run-interactive-session`** additionally requires a supported platform: **macOS (Apple Silicon),
+  Linux (x64), or Windows (x64 under Git Bash)**. Its CLI binary is downloaded on install (pinned
+  version, sha256-verified, cached under `~/.kobiton/cli/`) — the first install needs network access
+  once. No Intel-Mac build is published; route those users to `run-automation-suite` or
+  `drive-automation-session`.
 
 When a capability is missing, name the **specific** missing one and the alternative — "needs the
 credentials file `/automate:setup` writes" tells the user what to do next; "needs a CLI host" does not.
@@ -178,7 +180,7 @@ Plugin install paths for every supported host (listed for reference; only Gemini
 | ChatGPT Apps SDK | Add `https://api.kobiton.com/mcp` in ChatGPT developer mode |
 | Continue / Cline | Add to `~/.continue/config.json` or equivalent (see README) |
 
-The `hooks/` directory ships a SessionStart hook that installs the `~/.kobiton/bin/kobiton` CLI symlink. Claude Code runs it automatically every session; Codex CLI runs it after a one-time trust via `/hooks`; hosts without SessionStart hook support run the setup command once instead (`/automate:setup`, or `/setup` on Cursor).
+The `hooks/` directory ships a SessionStart hook that ensures the pinned CLI build is cached (download on first run, no network on cache hits) and installs the `~/.kobiton/bin/kobiton` CLI wrapper. Claude Code runs it automatically every session; Codex CLI runs it after a one-time trust via `/hooks`; hosts without SessionStart hook support run the setup command once instead (`/automate:setup`, or `/setup` on Cursor).
 
 ## Reference
 

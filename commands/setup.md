@@ -10,9 +10,9 @@ allowed-tools:
 
 Bootstrap the plugin: ensure the CLI wrapper symlink is installed, then fetch the user's Kobiton credentials via the `getCredential` MCP tool and write them to `~/.kobiton/.credentials`. After writing, recommend running `/automate:doctor` to verify.
 
-## Step 0: Ensure the CLI wrapper symlink is installed
+## Step 0: Ensure the CLI wrapper is installed
 
-The `run-interactive-session` skill depends on `~/.kobiton/bin/kobiton`. Claude Code and Codex CLI both recreate this symlink automatically via a bundled SessionStart hook; on Codex, the user trusts the hook once via `/hooks` after install. This command (`/automate:setup`) re-installs the symlink on demand. GitHub Copilot CLI and Gemini CLI also load `/automate:setup` (Copilot via Claude-format `.md`, Gemini via the bundled TOML at `commands/automate/setup.toml`) — neither has a SessionStart hook, so users on those CLIs run `/automate:setup` once after install. Cursor CLI loads this same `.md` via the `commands` field in `.cursor-plugin/plugin.json`, but registers it without the plugin namespace (it appears as `/setup`, distinguishable from Cursor's built-in `/setup` by its Kobiton description) and does not run the SessionStart hook - so Cursor CLI users also run this command once after install.
+The `run-interactive-session` skill depends on `~/.kobiton/bin/kobiton`. Claude Code and Codex CLI both recreate this wrapper automatically via a bundled SessionStart hook; on Codex, the user trusts the hook once via `/hooks` after install. This command (`/automate:setup`) re-installs the wrapper on demand. GitHub Copilot CLI and Gemini CLI also load `/automate:setup` (Copilot via Claude-format `.md`, Gemini via the bundled TOML at `commands/automate/setup.toml`) — neither has a SessionStart hook, so users on those CLIs run `/automate:setup` once after install. Cursor CLI loads this same `.md` via the `commands` field in `.cursor-plugin/plugin.json`, but registers it without the plugin namespace (it appears as `/setup`, distinguishable from Cursor's built-in `/setup` by its Kobiton description) and does not run the SessionStart hook - so Cursor CLI users also run this command once after install.
 
 Run the install script bundled with this plugin. This file (`setup.md`) lives at `<plugin-root>/commands/setup.md`, so the install script is at `<plugin-root>/scripts/install-cli.sh`. Resolve `<plugin-root>` to its absolute path and run:
 
@@ -20,14 +20,14 @@ Run the install script bundled with this plugin. This file (`setup.md`) lives at
 bash <plugin-root>/scripts/install-cli.sh
 ```
 
-The script is idempotent and silent on success. After it returns, sanity-check the result:
+The script is idempotent. On first run it downloads the CLI build pinned by this plugin release from `public.kobiton.download` (sha256-verified, cached under `~/.kobiton/cli/`) — that needs network access once; every later run is a cache hit with no network I/O. It then installs the `~/.kobiton/bin/kobiton` entry point (a symlink to the plugin's wrapper on macOS/Linux, a bash exec-shim on Windows). Supported platforms: macOS on Apple Silicon, Linux x64, Windows x64 (Git Bash). After it returns, sanity-check the result:
 
 ```bash
-[ -L "$HOME/.kobiton/bin/kobiton" ] && echo "OK" || echo "MISSING"
+[ -x "$HOME/.kobiton/bin/kobiton" ] && echo "OK" || echo "MISSING"
 ```
 
-- **`OK`**: symlink in place, continue to Step 1.
-- **`MISSING`**: the install script could not create the symlink, or the bundled binary is absent (it ships for macOS only — a single x86_64 build, native on Intel and via Rosetta 2 on Apple Silicon). Surface this to the user and continue to Step 1 anyway — credentials still need to be written so other tools work; only `run-interactive-session` is affected.
+- **`OK`**: wrapper in place, continue to Step 1.
+- **`MISSING`**: the install script could not install the wrapper — unsupported platform (Intel Macs and non-x64 architectures have no published CLI build) or the first-time download failed (its stderr says which). Surface the script's message to the user and continue to Step 1 anyway — credentials still need to be written so other tools work; only `run-interactive-session` is affected.
 
 ## Step 1: Fetch credentials via MCP
 
@@ -64,34 +64,33 @@ test -f ~/.kobiton/.credentials && grep -qE '^\[[[:space:]]*default[[:space:]]*\
 
 Run:
 
+Node is used (not python3) because every supported host CLI already runs on Node, while Windows commonly has no Python — the Microsoft Store `python3` stub exits with code 49 without running anything.
+
 ```bash
-PROFILE=<chosen> python3 -c '
-import os, re, sys
-name = os.environ["PROFILE"]
-path = os.path.expanduser("~/.kobiton/.credentials")
-if not os.path.exists(path):
-    print("PROFILE_FREE"); sys.exit(0)
-with open(path) as f:
-    text = f.read()
-sections = re.split(r"(?m)^\s*\[\s*([^\]]+?)\s*\]\s*$", text)
-# sections = [pre, name1, body1, name2, body2, ...]
-found = {sections[i]: sections[i+1] for i in range(1, len(sections), 2)}
-if name not in found:
-    print("PROFILE_FREE"); sys.exit(0)
-body = found[name]
-fields = {}
-for line in body.splitlines():
-    line = line.strip()
-    if not line or line.startswith("#") or "=" not in line: continue
-    k, v = line.split("=", 1)
-    fields[k.strip()] = v.strip()
-key = fields.get("KOBITON_API_KEY","")
-masked = (key[:4] + "..." + key[-4:]) if len(key) >= 8 else "(short)"
-print("PROFILE_EXISTS")
-print("KOBITON_USER=" + fields.get("KOBITON_USER",""))
-print("KOBITON_PORTAL=" + fields.get("KOBITON_PORTAL",""))
-print("KOBITON_API_KEY=" + masked)
-'
+PROFILE=<chosen> node <<'JS'
+const fs = require("fs"), os = require("os"), path = require("path");
+const name = process.env.PROFILE;
+const file = path.join(os.homedir(), ".kobiton", ".credentials");
+if (!fs.existsSync(file)) { console.log("PROFILE_FREE"); process.exit(0); }
+const parts = fs.readFileSync(file, "utf8").split(/^\s*\[\s*([^\]]+?)\s*\]\s*$/m);
+// parts = [pre, name1, body1, name2, body2, ...]
+const found = {};
+for (let i = 1; i < parts.length; i += 2) found[parts[i].trim()] = parts[i + 1];
+if (!(name in found)) { console.log("PROFILE_FREE"); process.exit(0); }
+const fields = {};
+for (const raw of found[name].split("\n")) {
+  const line = raw.trim();
+  if (!line || line.startsWith("#") || !line.includes("=")) continue;
+  const idx = line.indexOf("=");
+  fields[line.slice(0, idx).trim()] = line.slice(idx + 1).trim();
+}
+const key = fields.KOBITON_API_KEY || "";
+const masked = key.length >= 8 ? key.slice(0, 4) + "..." + key.slice(-4) : "(short)";
+console.log("PROFILE_EXISTS");
+console.log("KOBITON_USER=" + (fields.KOBITON_USER || ""));
+console.log("KOBITON_PORTAL=" + (fields.KOBITON_PORTAL || ""));
+console.log("KOBITON_API_KEY=" + masked);
+JS
 ```
 
 - **`PROFILE_FREE`**: skip to Step 4.
@@ -134,60 +133,46 @@ Never echo the full unmasked API key in chat.
 Build the new file content in memory, preserving every other profile (both content and original position), and write atomically. When overwriting an existing profile, the new block replaces the old at the same position; only a genuinely new profile is appended at the end.
 
 ```bash
-KB_PROFILE=<chosen> KB_USER=<username> KB_KEY=<apiKey> KB_PORTAL=<portal> python3 <<'PY'
-import os, re, sys
-name = os.environ["KB_PROFILE"]
-user = os.environ["KB_USER"]
-key = os.environ["KB_KEY"]
-portal = os.environ["KB_PORTAL"]
-path = os.path.expanduser("~/.kobiton/.credentials")
-os.makedirs(os.path.dirname(path), exist_ok=True)
-
-new_block = "[" + name + "]\nKOBITON_USER=" + user + "\nKOBITON_API_KEY=" + key + "\nKOBITON_PORTAL=" + portal
-
-if os.path.exists(path):
-    with open(path) as f:
-        text = f.read()
-    parts = re.split(r"(?m)^\s*\[\s*([^\]]+?)\s*\]\s*$", text)
-    head = parts[0].strip()
-    others = []
-    replaced = False
-    for i in range(1, len(parts), 2):
-        section_name = parts[i].strip()
-        body = parts[i+1].strip()
-        if section_name == name:
-            # Replace in-place at the original position
-            others.append(new_block)
-            replaced = True
-        else:
-            others.append("[" + section_name + "]\n" + body)
-    blocks = []
-    if head:
-        blocks.append(head)
-    blocks.extend(others)
-    if not replaced:
-        # Profile is new — append at the end
-        blocks.append(new_block)
-else:
-    blocks = [new_block]
-
-content = "\n\n".join(blocks) + "\n"
-
-tmp = path + ".tmp"
-old_umask = os.umask(0o077)
-try:
-    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    with os.fdopen(fd, "w") as f:
-        f.write(content)
-    os.replace(tmp, path)
-    os.chmod(path, 0o600)
-finally:
-    os.umask(old_umask)
-print("WROTE " + name)
-PY
+KB_PROFILE=<chosen> KB_USER=<username> KB_KEY=<apiKey> KB_PORTAL=<portal> node <<'JS'
+const fs = require("fs"), os = require("os"), path = require("path");
+const name = process.env.KB_PROFILE, user = process.env.KB_USER;
+const key = process.env.KB_KEY, portal = process.env.KB_PORTAL;
+const dir = path.join(os.homedir(), ".kobiton");
+fs.mkdirSync(dir, { recursive: true });
+const file = path.join(dir, ".credentials");
+const newBlock = `[${name}]\nKOBITON_USER=${user}\nKOBITON_API_KEY=${key}\nKOBITON_PORTAL=${portal}`;
+let blocks;
+if (fs.existsSync(file)) {
+  const parts = fs.readFileSync(file, "utf8").split(/^\s*\[\s*([^\]]+?)\s*\]\s*$/m);
+  const head = parts[0].trim();
+  blocks = head ? [head] : [];
+  let replaced = false;
+  for (let i = 1; i < parts.length; i += 2) {
+    const sectionName = parts[i].trim(), body = parts[i + 1].trim();
+    if (sectionName === name) {
+      // Replace in-place at the original position
+      blocks.push(newBlock);
+      replaced = true;
+    } else {
+      blocks.push(`[${sectionName}]\n${body}`);
+    }
+  }
+  // Profile is new — append at the end
+  if (!replaced) blocks.push(newBlock);
+} else {
+  blocks = [newBlock];
+}
+const tmp = file + ".tmp";
+fs.writeFileSync(tmp, blocks.join("\n\n") + "\n", { mode: 0o600 });
+fs.renameSync(tmp, file);
+try { fs.chmodSync(file, 0o600); } catch {}
+console.log("WROTE " + name);
+JS
 ```
 
 Replace `<chosen>`, `<username>`, `<apiKey>`, `<portal>` with the actual values from Steps 1–3 before running. Pass them via env vars (`KB_*` to avoid clashing with the standard `$USER` shell variable) so they're not embedded in the heredoc and don't need shell quoting.
+
+Windows note: POSIX file modes don't map onto NTFS ACLs, so the file may report `644` there regardless of the `0600` we set — `/automate:doctor` reports this informationally. The write itself (atomic temp-file + rename, profile preservation) behaves identically on all platforms.
 
 ## Step 6: Confirm to the user
 
@@ -197,6 +182,6 @@ After successful write, tell the user:
 
 If the Step 0 sanity-check reported `MISSING`, also append:
 
-> "Note: the `~/.kobiton/bin/kobiton` CLI symlink could not be installed (likely an unsupported platform). MCP tools, `run-automation-suite`, and `drive-automation-session` will still work — they read credentials from the file we just wrote. Only `run-interactive-session` requires the symlink."
+> "Note: the `~/.kobiton/bin/kobiton` CLI wrapper could not be installed (unsupported platform, or the CLI download failed — see the install script's message above). MCP tools, `run-automation-suite`, and `drive-automation-session` will still work — they read credentials from the file we just wrote. Only `run-interactive-session` requires the wrapper."
 
 Do not echo the API key in chat.

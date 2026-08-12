@@ -8,7 +8,7 @@ allowed-tools:
 
 # Kobiton Automate Doctor
 
-Run each check below in sequence. Print one line per check using `✓` (pass) or `✗` (failure). Never short-circuit — run all checks even if some fail. After the last check, print a summary line: `Summary: <passed>/4 checks passed.`
+Run each check below in sequence. Print one line per check using `✓` (pass) or `✗` (failure). Never short-circuit — run all checks even if some fail. After the last check, print a summary line: `Summary: <passed>/5 checks passed.`
 
 For each `✗`, also print an indented remediation hint on the following line (prefixed with `→ `).
 
@@ -16,7 +16,7 @@ This command must NOT modify any files. The `~/.kobiton/bin/kobiton` symlink is 
 
 ## Check 1: CLI installed
 
-Verifies the wrapper symlink is present and that its target file exists and is executable.
+Verifies the wrapper entry point is present: a symlink to the plugin's `run.sh` on macOS/Linux, or a bash exec-shim (regular file) on Windows, where symlinks aren't reliable under Git Bash.
 
 ```bash
 LINK="$HOME/.kobiton/bin/kobiton"
@@ -27,6 +27,8 @@ if [ -L "$LINK" ]; then
   else
     echo "FAIL:bad-target:$TARGET"
   fi
+elif [ -f "$LINK" ] && [ -x "$LINK" ] && grep -q 'run\.sh' "$LINK" 2>/dev/null; then
+  echo "PASS:shim:$(grep -o '"[^"]*run\.sh"' "$LINK" | tr -d '"')"
 elif [ -e "$LINK" ]; then
   echo "FAIL:not-a-symlink"
 else
@@ -35,8 +37,9 @@ fi
 ```
 
 - `PASS:<target>` → print `✓ CLI installed (~/.kobiton/bin/kobiton → <target>)`
-- `FAIL:missing` → print `✗ CLI installed (~/.kobiton/bin/kobiton not found)` and `    → Run /automate:setup to install the symlink. On Claude Code and Codex CLI, restarting the session re-creates it via the bundled SessionStart hook (Codex requires trusting the hook once via /hooks). If the hook was denied or you need to install without an active session, fall back to: bash "$(find ~/.codex -name install-cli.sh -path '*automate*' 2>/dev/null | head -1)".`
-- `FAIL:not-a-symlink` → print `✗ CLI installed (~/.kobiton/bin/kobiton is not a symlink)` and the same hint.
+- `PASS:shim:<target>` → print `✓ CLI installed (~/.kobiton/bin/kobiton is a Windows exec shim → <target>)`
+- `FAIL:missing` → print `✗ CLI installed (~/.kobiton/bin/kobiton not found)` and `    → Run /automate:setup to install the wrapper. On Claude Code and Codex CLI, restarting the session re-creates it via the bundled SessionStart hook (Codex requires trusting the hook once via /hooks). If the hook was denied or you need to install without an active session, fall back to: bash "$(find ~/.codex -name install-cli.sh -path '*automate*' 2>/dev/null | head -1)".`
+- `FAIL:not-a-symlink` → print `✗ CLI installed (~/.kobiton/bin/kobiton is neither a symlink nor an exec shim)` and the same hint.
 - `FAIL:bad-target:<t>` → print `✗ CLI installed (symlink target missing or not executable: <t>)` and the same hint.
 
 ## Check 2: Credentials file
@@ -44,7 +47,9 @@ fi
 ```bash
 F="$HOME/.kobiton/.credentials"
 if [ -f "$F" ] && [ ! -L "$F" ]; then
-  MODE=$(stat -f '%A' "$F" 2>/dev/null || stat -c '%a' "$F" 2>/dev/null)
+  # GNU stat first (-c), BSD stat as fallback (-f is "filesystem status" on
+  # GNU and would dump a multi-line blob to stdout before failing over).
+  MODE=$(stat -c '%a' "$F" 2>/dev/null || stat -f '%A' "$F" 2>/dev/null)
   if [ "$MODE" = "600" ]; then echo "PASS"; else echo "PASS:mode=$MODE"; fi
 elif [ -L "$F" ]; then echo "FAIL:symlink"
 elif [ -d "$F" ]; then echo "FAIL:directory"
@@ -111,17 +116,48 @@ PROFILE="$PROFILE" awk '
 - `PASS` → print `✓ Required fields (KOBITON_USER, KOBITON_API_KEY, KOBITON_PORTAL)`
 - `FAIL:<missing>` → print `✗ Required fields (missing:<missing>)` and `    → Run /automate:setup to refresh, or edit ~/.kobiton/.credentials to add the missing field(s).`
 
+## Check 5: CLI version (pinned vs installed vs latest)
+
+Reports version drift between the plugin's pin, the cached binary, and the newest published build — and whether the pinned build is still downloadable. All requests are HEAD-only; nothing is downloaded.
+
+This file (`doctor.md`) lives at `<plugin-root>/commands/doctor.md`, so the pin file is at `<plugin-root>/skills/run-interactive-session/CLI_VERSION`. Resolve `<plugin-root>` to its absolute path first, then run:
+
+```bash
+PIN="$(tr -d '[:space:]' < "<plugin-root>/skills/run-interactive-session/CLI_VERSION" 2>/dev/null)"
+INSTALLED="$("$HOME/.kobiton/bin/kobiton" --version 2>/dev/null | awk '{print $2}')"
+LATEST="$(curl -sI --connect-timeout 5 --max-time 15 "https://public.kobiton.download/kobiton-cli/latest/" 2>/dev/null | awk 'tolower($1)=="location:"{print $2}' | tr -d '\r' | sed -e 's|/$||' -e 's|.*/||')"
+PIN_ON_SERVER="unknown"
+if [ -n "$PIN" ] && [ -n "$LATEST" ]; then
+  CODE="$(curl -s -o /dev/null -I -w '%{http_code}' --connect-timeout 5 --max-time 15 "https://public.kobiton.download/kobiton-cli/$PIN/" 2>/dev/null)"
+  case "$CODE" in 200) PIN_ON_SERVER="yes";; 404) PIN_ON_SERVER="pruned";; *) PIN_ON_SERVER="unknown";; esac
+fi
+echo "pin=$PIN"
+echo "installed=$INSTALLED"
+echo "latest=$LATEST"
+echo "pin_on_server=$PIN_ON_SERVER"
+```
+
+Interpret:
+
+- `pin` empty → print `✗ CLI version (no CLI_VERSION pin found in the plugin)` and `    → Re-install the plugin; the pin file ships with it.`
+- `installed` empty (wrapper missing or binary not cached) → print `✗ CLI version (no installed CLI to compare — see Check 1)` and `    → Run /automate:setup to download the pinned build.`
+- `latest` empty (network unreachable) → print `- CLI version (skipped — download server unreachable; pinned <pin>, installed <installed>)` and do not count as pass or fail.
+- `installed == pin` → print `✓ CLI version (pinned <pin> = installed; latest available <latest>)`. If `pin_on_server=pruned`, append on the next line: `    → Note: the pinned build is no longer downloadable upstream (retention pruning). Existing installs keep working from cache; fresh installs will fall back to the newest build. Update the automate plugin to its latest version to refresh the pin.`
+- `installed != pin` → print `✗ CLI version (installed <installed> ≠ pinned <pin>; latest available <latest>)` and `    → The cache is serving a different build than this plugin release was validated against (fallback after upstream pruning, or a stale cache). Run /automate:setup to re-download the pin if it is still published (pin_on_server=yes); otherwise update the automate plugin to its latest version - newer releases pin a validated build.`
+
+`latest` differing from `pin` is normal (the download server tracks newer builds continuously; pins advance with plugin releases) — mention it only as the informational value in the pass/fail line, never as a failure by itself.
+
 ## Summary
 
 Count:
-- `passed` = number of `✓` lines printed across Checks 1–4.
+- `passed` = number of `✓` lines printed across Checks 1–5.
 - Skipped checks (printed with `-`) do not count as passed or failed.
 
 Print exactly:
 
 ```
-Summary: <passed>/4 checks passed.
+Summary: <passed>/5 checks passed.
 ```
 
-If `passed < 4`, append: `Fix the issues above and rerun /automate:doctor.`
-If `passed == 4`, append: `All checks passed. You're ready to use the plugin.`
+If `passed < 5`, append: `Fix the issues above and rerun /automate:doctor.`
+If `passed == 5`, append: `All checks passed. You're ready to use the plugin.`

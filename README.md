@@ -223,7 +223,7 @@ Every Claude surface that supports MCP can call the Kobiton [tools](#tools). The
 | **Claude Cowork** (macOS / Windows) |           ✅ Yes            |        ⚠️ Manual upload ²        | Add `https://api.kobiton.com/mcp` as a connector under **Connectors** |
 | **claude.ai web · Claude Desktop · Claude mobile** |           ✅ Yes            |        ⚠️ Manual upload ²        | Add `https://api.kobiton.com/mcp` as a Custom Connector at [claude.ai](https://claude.ai); for mobile, configure it on the web first and it syncs to the app |
 
-¹ `run-interactive-session` also requires the bundled `kobiton` CLI binary (macOS only; x86_64 — native on Intel, Rosetta 2 on Apple Silicon) - see the [platform support note](#skills).
+¹ `run-interactive-session` also requires the downloaded `kobiton` CLI binary (macOS on Apple Silicon, Linux x64, or Windows x64 under Git Bash; Intel Macs unsupported) - see the [platform support note](#skills).
 ² This plugin is not listed in the [Claude directory](https://support.claude.com/en/articles/14328846-browse-skills-connectors-and-plugins-in-one-directory) yet, so these surfaces can't install it as a plugin. As a workaround, zip a skill folder from this repo (e.g. `skills/run-automation-suite/`) and upload it as a [custom skill](https://support.claude.com/en/articles/12512198-how-to-create-custom-skills).
 
 ## Login
@@ -312,14 +312,14 @@ To verify everything is wired correctly, run the diagnostic:
 /automate:doctor
 ```
 
-`/automate:doctor` is read-only. It checks the CLI installation (symlink + target), the credentials file, the active profile, and required fields, and prints actionable remediation hints for any failures.
+`/automate:doctor` is read-only. It checks the CLI installation (wrapper + target), the credentials file, the active profile, required fields, and CLI version drift (the plugin's pinned version vs the installed binary vs the newest published build), and prints actionable remediation hints for any failures.
 
 > **On Cursor (CLI and IDE)** the plugin's commands carry no `automate:` prefix. Run `/setup` and `/doctor` instead, picking the entry with the Kobiton description next to it to tell it apart from Cursor's built-in command of the same name.
 
-**CLI symlink install behavior across CLIs:** The `run-interactive-session` skill depends on a `~/.kobiton/bin/kobiton` symlink.
+**CLI install behavior across CLIs:** The `run-interactive-session` skill depends on a `~/.kobiton/bin/kobiton` wrapper (a symlink on macOS/Linux, an exec shim on Windows). The same install script also downloads the plugin's pinned CLI build into `~/.kobiton/cli/` the first time it runs (sha256-verified; cache hits skip the network entirely).
 
-- **Claude Code, Codex CLI**: recreated automatically by a bundled SessionStart hook on every session start. On Codex CLI, the first session prompts you to trust the hook once via `/hooks`; subsequent sessions run it silently. Running `/automate:setup` also recreates the symlink on demand.
-- **GitHub Copilot CLI, Gemini CLI, Cursor CLI**: no SessionStart hook runs, so create the symlink manually by running the setup command once after install: `/automate:setup` on Copilot and Gemini, `/setup` (the one with the Kobiton description) on Cursor (Copilot reads Claude-format Markdown commands; Gemini reads bundled TOML at `commands/automate/setup.toml`). Re-run it if the symlink goes missing.
+- **Claude Code, Codex CLI**: run automatically by a bundled SessionStart hook on every session start. On Codex CLI, the first session prompts you to trust the hook once via `/hooks`; subsequent sessions run it silently. Running `/automate:setup` also re-runs the installer on demand.
+- **GitHub Copilot CLI, Gemini CLI, Cursor CLI**: no SessionStart hook runs, so run the setup command once after install: `/automate:setup` on Copilot and Gemini, `/setup` (the one with the Kobiton description) on Cursor (Copilot reads Claude-format Markdown commands; Gemini reads bundled TOML at `commands/automate/setup.toml`). Re-run it if the wrapper goes missing.
 
 Manual fallback - if the SessionStart hook was denied on Codex, or you need to install without an active session:
 
@@ -376,7 +376,7 @@ Before your first session, you need:
 - **A supported host CLI** — Claude Code, GitHub Copilot CLI, Gemini CLI, Codex CLI, or Cursor (see [Installation](#installation)).
 - **Credentials configured** — run `/automate:setup` once after install.
 - **Your app build** (`.apk` / `.ipa`), if you're testing your own app rather than a system app or website.
-- **Platform note:** the `run-interactive-session` skill's bundled CLI runs on **macOS only** — it's an x86_64 binary, so it runs natively on Intel Macs and under Rosetta 2 on Apple Silicon. On Linux and Windows, use `run-automation-suite` or `drive-automation-session` instead — no dead end.
+- **Platform note:** the `run-interactive-session` skill's CLI runs on **macOS (Apple Silicon), Linux (x64), and Windows (x64 under Git Bash)**. The binary is downloaded on install — a version pinned by the plugin release, sha256-verified, cached under `~/.kobiton/cli/` — so the first install needs network access once. Intel Macs are not supported (no macos-x64 build is published); there, use `run-automation-suite` or `drive-automation-session` instead — no dead end.
 
 **One worked example, end to end** — paste these to your assistant one at a time:
 
@@ -468,7 +468,7 @@ Every step above uses only what this plugin ships: the app tools (`uploadAppToSt
 | **create-test-run** | Creates a test run from a test case or suite — fills sensible defaults from the `createTestRun` schema when details are omitted, confirms a summary, then offers to monitor it and hands off to `monitor-test-run`. |
 | **monitor-test-run** | Watches a running test run and narrates it: reads the live-remediation flag up front, surfaces the live-remediation URL the moment an execution is blocked (optionally auto-opening the window), and post-mortems so a `BLOCKER_ENCOUNTERED` execution is never reported as passed. Quiet between real state changes. |
 
-> **Platform support note:** all MCP tools and the `run-automation-suite` skill work on every platform the host CLI supports. The `run-interactive-session` skill ships a CLI binary for **macOS only** — a single-slice x86_64 executable, so it runs natively on Intel Macs and under Rosetta 2 on Apple Silicon. On Linux and Windows, use `run-automation-suite` or the MCP tools directly. For the full per-skill picture — which skills need a persistent local filesystem, which need the `~/.kobiton/.credentials` file that `/automate:setup` writes, and which run on an MCP connection alone — see the Skill compatibility matrix in [`CLAUDE.md`](CLAUDE.md#skill-compatibility-matrix).
+> **Platform support note:** all MCP tools and the `run-automation-suite` skill work on every platform the host CLI supports. The `run-interactive-session` skill downloads its CLI binary on install (a version pinned by the plugin release, sha256-verified, cached under `~/.kobiton/cli/`) and runs on **macOS (Apple Silicon), Linux (x64), and Windows (x64 under Git Bash)**. Intel Macs are not supported — no macos-x64 build is published; there, use `run-automation-suite` or the MCP tools directly. For the full per-skill picture — which skills need a persistent local filesystem, which need the `~/.kobiton/.credentials` file that `/automate:setup` writes, and which run on an MCP connection alone — see the Skill compatibility matrix in [`CLAUDE.md`](CLAUDE.md#skill-compatibility-matrix).
 
 ## Commands
 
@@ -787,7 +787,7 @@ Cursor CLI caches plugin state per session, and older builds didn't load plugin-
 <details>
 <summary><strong><code>~/.kobiton/bin/kobiton</code> CLI wrapper missing (interactive testing fails)</strong></summary>
 
-Cursor CLI does not run the plugin's SessionStart hook, so the CLI wrapper isn't created automatically like on Claude Code or Codex. Run `/setup` (the plugin's command with the Kobiton description, not Cursor's built-in) once after install; re-run it if the symlink goes missing.
+Cursor CLI does not run the plugin's SessionStart hook, so the CLI wrapper isn't created automatically like on Claude Code or Codex. Run `/setup` (the plugin's command with the Kobiton description, not Cursor's built-in) once after install; re-run it if the wrapper goes missing.
 </details>
 
 ### Still Stuck?
