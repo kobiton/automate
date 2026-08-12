@@ -16,6 +16,7 @@ allowed-tools: >-
   Bash(mkdir:*), Bash(date:*), Bash(base64:*), Bash(echo:*),
   Bash(cat:*), Bash(grep:*), Bash(head:*), Bash(tail:*),
   Bash(jq:*), Bash(xmllint:*),
+  Bash(timeout:*), Bash(perl:*),
   Bash(open:*), Bash(xdg-open:*)
 version: 1.0.0
 author: Kobiton Inc.
@@ -247,12 +248,19 @@ This terminates the Kobiton-side session and frees the device. The local artifac
 
 **Platform guard.** `adb` is Android-only. If the active session targets iOS, do **not** call `device adb-shell`. Refuse and reach for the WebDriver equivalent (`wd post execute '{"script":"mobile: ..."}'`) or a different inspection path.
 
+**Device logs on iOS.** `logcat` is Android-only; the cross-platform log path is `$KOBITON_BIN device log`, which **streams until killed** — always bound it and expect the bound's exit code, which means success here, not failure:
+
+    timeout 45 $KOBITON_BIN device log > .kobiton/sessions/<session-id>/device-log.txt   # exit 124 = bound fired (coreutils)
+    # stock macOS has no `timeout` - use the perl-alarm equivalent (exit 142 = SIGALRM, same meaning):
+    perl -e 'alarm shift; exec @ARGV' 45 ~/.kobiton/bin/kobiton device log > .kobiton/sessions/<session-id>/device-log.txt
+
 | Intent | Command |
 |--------|---------|
 | Get OS / build property | `$KOBITON_BIN device adb-shell getprop <key>` |
 | Get screen resolution | `$KOBITON_BIN device adb-shell wm size` |
 | Get foreground app/activity | `$KOBITON_BIN device adb-shell dumpsys window > <local-file>`, then grep `mCurrentFocus` locally (on-device pipe needs full shell access) |
-| Open a URL in the browser | UI-driven (restricted shell rejects `am start ... -d <url>`): launch Chrome via `monkey -p com.android.chrome -c android.intent.category.LAUNCHER 1`, then `wd post element '{"using":"id","value":"com.android.chrome:id/url_bar"}'` → `wd post element/<id>/click '{}'` → `wd post element/<id>/value '{"text":"<url>"}'` → `input keyevent 66` |
+| Open a URL (Android Chrome) | UI-driven (restricted shell rejects `am start ... -d <url>`): launch Chrome via `monkey -p com.android.chrome -c android.intent.category.LAUNCHER 1`, then `wd post element '{"using":"id","value":"com.android.chrome:id/url_bar"}'` → `wd post element/<id>/click '{}'` → `wd post element/<id>/value '{"text":"<url>"}'` → `input keyevent 66` |
+| Open a URL (iOS Safari) | `wd post execute '{"script":"mobile: launchApp","args":[{"bundleId":"com.apple.mobilesafari"}]}'` → `wd post element '{"using":"accessibility id","value":"TabBarItemTitle"}'` → `wd post element/<id>/click '{}'` → `wd post element/<id>/value '{"text":"<url>\n"}'` — the trailing `\n` submits (iOS has no keyevent); `click` requires a body, `'{}'` works |
 | List running processes | `$KOBITON_BIN device adb-shell ps -A` |
 | List user-installed packages | `$KOBITON_BIN device adb-shell pm list packages -3` |
 | Find APK path of a package | `$KOBITON_BIN device adb-shell pm path <pkg>` |
@@ -266,7 +274,7 @@ This terminates the Kobiton-side session and frees the device. The local artifac
 | Type text into focused field | `$KOBITON_BIN device adb-shell input text "<text>"` |
 | Tap at coordinates | `$KOBITON_BIN device adb-shell input tap <x> <y>` |
 | Swipe (ms = duration) | `$KOBITON_BIN device adb-shell input swipe <x1> <y1> <x2> <y2> <ms>` |
-| Read recent logs (bounded) | `$KOBITON_BIN device adb-shell "logcat -d -t 500"` |
+| Read recent logs (Android only) | `$KOBITON_BIN device adb-shell logcat -d -t 500 > <local-file>` — on iOS use `device log` (see "Device logs on iOS" above) |
 | Read system setting | `$KOBITON_BIN device adb-shell settings get system <key>` |
 | Write system setting | `$KOBITON_BIN device adb-shell settings put system <key> <value>` |
 | Read file content | `$KOBITON_BIN device adb-shell cat <path>` |
@@ -282,12 +290,14 @@ This terminates the Kobiton-side session and frees the device. The local artifac
 
 Never paste full dumpsys/logcat output to chat - surface a summary + the file path.
 
-**Long-running commands.** Streaming commands like `logcat` (no `-d`), `tcpdump`, or `top` (no `-n 1`) run forever. Either bound them (`-d -t N`, `-c N`, `-n 1`) or launch with `run_in_background: true` and kill explicitly.
+**Long-running commands.** Streaming commands like `logcat` (no `-d`), `device log`, `tcpdump`, or `top` (no `-n 1`) run forever. Either bound them (`-d -t N`, `-c N`, `-n 1`, or the `timeout`/perl-alarm wrapper for `device log`) or launch with `run_in_background: true` and kill explicitly.
 
 **adb-shell vs WebDriver overlap.** Both can press keys, type, and tap. Tie-breakers:
 
 - If the target is a known element ID -> WebDriver (`wd post element/<id>/click`, `.../value`).
 - If the target is a hardware key, a blind coordinate tap, or a system-level action -> `adb shell input` / `am` / `pm`.
+
+**Web content visibility differs by platform.** iOS exposes web page content to the automation hierarchy — `wd get source` on a Safari page includes the page's text, links, and buttons, so in-page elements (cookie dialogs, page buttons) are findable and clickable with native locators. Android's UiAutomator does **not** see inside a WebView: the same dialog that is clickable on iOS is invisible on Android — fall back to coordinate taps or handle it outside the WebView. Locator tip for iOS web content: when an `accessibility id` lookup misses (or an XPath by `@label` does), check `wd get source` for the element's actual `XCUIElementType` — web controls often surface as `Link` or `StaticText` rather than `Button`, and the type in your XPath must match.
 - For inspection (foreground app, processes, build props, settings) -> adb shell only; there is no WebDriver equivalent.
 
 Default: prefer adb-shell for system-level work, WebDriver for UI element-level work.
@@ -340,6 +350,7 @@ Where `<portal-base>` is derived from the `KOBITON_PORTAL` value in the active p
 ## Error Handling
 
 - **Unexpected argument / unknown flag**: run `$KOBITON_BIN <command> --help` to discover the correct syntax, then retry with the right arguments. Never guess flags.
+- **`wd` errors exit 0**: WebDriver failures (e.g. no such element) return exit code 0 with a JSON error body - check the response JSON, not `$?`. A bounded `device log` exiting 124 (`timeout`) or 142 (perl-alarm) is the bound firing, not a failure.
 - **Session create failed**: device may be offline, already reserved, or the UDID is wrong - verify availability with the `listDevices` MCP tool before retrying.
 - **Session expired / auth error mid-flow**: `session ping` fails or a command returns auth error - offer to create a new session.
 - **Element not found**: suggest getting page source first (`wd get source`) to inspect the UI hierarchy, then try a different locator strategy (xpath instead of id, or vice versa).
