@@ -225,26 +225,62 @@ This terminates the Kobiton-side session and frees the device. The local artifac
 
 ### adb-shell commands (Android only)
 
-`device adb-shell` forwards everything after it to `adb shell <...>` on the device. Two failure modes account for most AI-agent mistakes - read these before composing a command.
+`device adb-shell` forwards everything after it to `adb shell <...>` on the device. Three failure modes account for most AI-agent mistakes - read these before composing a command.
+
+**Restricted sessions (public cloud and trial devices).** On Kobiton public cloud devices and for trial users, every invocation is checked against a deny-by-default whitelist before it reaches the device. Dedicated devices (private cloud / on-premise) are unrestricted; everything in this block applies only to restricted sessions. The interactive shell is unavailable on restricted sessions - every invocation must name a command.
+
+Rejected on restricted sessions:
+
+- Any command not in the whitelist below, and command lines longer than 1024 characters.
+- Control characters, and these shell metacharacters anywhere in the input: `` & ; | $ ` ( ) > < \ " ' * ? ~ { } # ! `` - so no pipes, redirection, command or variable substitution, backgrounding, globbing, or **quoting**. Arguments may not contain whitespace.
+
+Whitelisted commands, by category:
+
+| Category | Commands |
+|----------|----------|
+| Device information | `getprop`, `dumpsys`, `df`, `free` |
+| Diagnostics | `logcat`, `ps`, `top`, `netstat`, `printenv`, `uptime`, `id`, `whoami`, `date` (flags only) |
+| Applications | `pm`, `am`, `monkey` (`pm install` may name an APK inside the allowed directories below) |
+| Text tools | `grep`, `egrep`, `fgrep`, `head`, `tail`, `wc`, `sort`, `uniq`, `nl`, `cut` - they read files, not stdin (pipes are rejected), and pattern arguments are limited to letters, digits, dot, underscore, hyphen |
+| File inspection | `ls`, `cat`, `stat`, `du`, `md5sum`, `sha1sum` |
+| Screen and input | `screencap`, `input` |
+| Settings | `settings` - one key only, see below |
+
+File-path arguments must stay inside `/sdcard/Download/`, `/sdcard/Documents/`, or `/data/local/tmp/`, plus the individually allowed read-only file `/proc/version`; paths containing `..` are rejected. To list a directory outside that allowlist, use `$KOBITON_BIN file list <path>` instead of `adb-shell ls`. The same directories bound `file push` / `file pull`.
+
+Settings: only `settings get secure enabled_accessibility_services` and `settings put secure enabled_accessibility_services <value>` are permitted. Every other settings namespace, key, and subcommand (including `list` and `delete`) is rejected.
+
+A rejected invocation prints one of these messages on stdout and - gotcha - **exits 0**, so check the first line of output rather than `$?`:
+
+- `Input contains a forbidden character: '<c>'.`
+- `Command is not on the whitelist: '<cmd>'.`
+- `Argument is not permitted for '<cmd>': '<arg>'.`
+- `Only get/put of secure enabled_accessibility_services is permitted for 'settings'.` (the settings rule has its own message)
+
+The whitelist evolves with CLI releases; `$KOBITON_BIN device adb-shell --help` carries the full current policy - trust it over this snapshot.
 
 **Quoting rules.** The local shell parses pipes, redirects, globs, and variable expansion *before* the wrapper sees them. Anything you wrap in quotes survives to the device's shell; anything outside is interpreted on your laptop.
 
-- **Plain command, no shell metacharacters** - pass args separately:
+- **Plain command, no shell metacharacters** - pass args separately (works on restricted and unrestricted sessions alike; `/sdcard/Download/` is inside the restricted path allowlist):
 
       $KOBITON_BIN device adb-shell ls -la /sdcard/Download/
       $KOBITON_BIN device adb-shell getprop ro.build.version.release
 
-- **Restricted shell (the common policy on cloud devices)** - the CLI validates the remote command and rejects shell metacharacters outright (`Input contains a forbidden character: '|'`), and blocks some argument shapes entirely (e.g. a URL passed to `am`). Do not pipe, chain, or redirect on the device. The pattern that works everywhere: run the bare command, redirect its output to a local artifact file, filter locally:
-
-      $KOBITON_BIN device adb-shell dumpsys window > .kobiton/sessions/<session-id>/window.txt
-      grep -m3 -E 'mCurrentFocus|mFocusedApp' .kobiton/sessions/<session-id>/window.txt
-
-- **On-device pipes only with full shell access** (an org-level setting - assume restricted until a piped command succeeds): wrap the entire remote command in one quoted string so it runs on the device's shell, not your local shell:
+- **Pipes, redirects, globs, `&&`, `$VAR`, or quotes inside the command** - **unrestricted (dedicated) devices only**: wrap the entire remote command in one quoted string so it runs on the device's shell, not your local shell:
 
       $KOBITON_BIN device adb-shell "dumpsys window | grep mCurrentFocus"
       $KOBITON_BIN device adb-shell 'pm list packages -3 | wc -l'
+      $KOBITON_BIN device adb-shell "logcat -d -t 200 > /sdcard/log.txt"
 
-  If it comes back with `Input contains a forbidden character`, the device shell is restricted - fall back to the bare-command + local-filter pattern above.
+  On a **restricted session** this form is rejected outright - the quotes and the metacharacters inside them are all forbidden characters, so there is no on-device composition form at all. Compose locally instead (next bullet).
+
+- **Restricted sessions: compose locally.** Run the bare whitelisted command, bound its output, redirect *locally* into the session artifact directory, then filter the file locally:
+
+      $KOBITON_BIN device adb-shell dumpsys window \
+        > .kobiton/sessions/<session-id>/window-$(date +%s).txt
+      grep mCurrentFocus .kobiton/sessions/<session-id>/window-*.txt
+
+  On unrestricted devices prefer the quoted on-device form - filtering locally on the full output is slower and can overflow the 25k-token MCP limit if it isn't routed through an artifact file. On restricted sessions the local route is the only one: always bound the command (`-d -t N`, `-n 1`) and go through an artifact file, never paste raw output to chat.
 
 **Platform guard.** `adb` is Android-only. If the active session targets iOS, do **not** call `device adb-shell`. Refuse and reach for the WebDriver equivalent (`wd post execute '{"script":"mobile: ..."}'`) or a different inspection path.
 
@@ -254,34 +290,38 @@ This terminates the Kobiton-side session and frees the device. The local artifac
     # stock macOS has no `timeout` - use the perl-alarm equivalent (exit 142 = SIGALRM, same meaning):
     perl -e 'alarm shift; exec @ARGV' 45 ~/.kobiton/bin/kobiton device log > .kobiton/sessions/<session-id>/device-log.txt
 
-| Intent | Command |
-|--------|---------|
-| Get OS / build property | `$KOBITON_BIN device adb-shell getprop <key>` |
-| Get screen resolution | `$KOBITON_BIN device adb-shell wm size` |
-| Get foreground app/activity | `$KOBITON_BIN device adb-shell dumpsys window > <local-file>`, then grep `mCurrentFocus` locally (on-device pipe needs full shell access) |
-| Open a URL (Android Chrome) | UI-driven (restricted shell rejects `am start ... -d <url>`): launch Chrome via `monkey -p com.android.chrome -c android.intent.category.LAUNCHER 1`, then `wd post element '{"using":"id","value":"com.android.chrome:id/url_bar"}'` → `wd post element/<id>/click '{}'` → `wd post element/<id>/value '{"text":"<url>"}'` → `input keyevent 66` |
-| Open a URL (iOS Safari) | `wd post execute '{"script":"mobile: launchApp","args":[{"bundleId":"com.apple.mobilesafari"}]}'` → `wd post element '{"using":"accessibility id","value":"TabBarItemTitle"}'` → `wd post element/<id>/click '{}'` → `wd post element/<id>/value '{"text":"<url>\n"}'` — the trailing `\n` submits (iOS has no keyevent); `click` requires a body, `'{}'` works |
-| List running processes | `$KOBITON_BIN device adb-shell ps -A` |
-| List user-installed packages | `$KOBITON_BIN device adb-shell pm list packages -3` |
-| Find APK path of a package | `$KOBITON_BIN device adb-shell pm path <pkg>` |
-| Launch app by package | `$KOBITON_BIN device adb-shell monkey -p <pkg> -c android.intent.category.LAUNCHER 1` |
-| Force-stop app | `$KOBITON_BIN device adb-shell am force-stop <pkg>` |
-| Clear app data | `$KOBITON_BIN device adb-shell pm clear <pkg>` |
-| Battery level + charging state | `$KOBITON_BIN device adb-shell dumpsys battery` |
-| Memory snapshot for a package | `$KOBITON_BIN device adb-shell dumpsys meminfo <pkg>` |
-| Storage free on /sdcard | `$KOBITON_BIN device adb-shell df -h /sdcard` |
-| Press hardware key (home=3, back=4, power=26) | `$KOBITON_BIN device adb-shell input keyevent <code>` |
-| Type text into focused field | `$KOBITON_BIN device adb-shell input text "<text>"` |
-| Tap at coordinates | `$KOBITON_BIN device adb-shell input tap <x> <y>` |
-| Swipe (ms = duration) | `$KOBITON_BIN device adb-shell input swipe <x1> <y1> <x2> <y2> <ms>` |
-| Read recent logs (Android only) | `$KOBITON_BIN device adb-shell logcat -d -t 500 > <local-file>` — on iOS use `device log` (see "Device logs on iOS" above) |
-| Read system setting | `$KOBITON_BIN device adb-shell settings get system <key>` |
-| Write system setting | `$KOBITON_BIN device adb-shell settings put system <key> <value>` |
-| Read file content | `$KOBITON_BIN device adb-shell cat <path>` |
-| List directory | `$KOBITON_BIN device adb-shell ls -la <path>` |
-| Current IME | `$KOBITON_BIN device adb-shell dumpsys input_method > <local-file>`, then grep `mCurId` locally |
+The **Restricted** column says what changes on a restricted session; `ok` means the command runs as written.
 
-**Big-output commands.** `dumpsys`, `logcat`, `pm list -f`, and full process dumps can blow past the 25k-token MCP limit. For these, redirect to an artifact file first, then read/grep only what you need (this doubles as the restricted-shell-safe filtering pattern):
+| Intent | Command | Restricted |
+|--------|---------|------------|
+| Get OS / build property | `$KOBITON_BIN device adb-shell getprop <key>` | ok |
+| Get screen resolution | `$KOBITON_BIN device adb-shell wm size` | rejected (`wm` not whitelisted) - use `$KOBITON_BIN wd get window/rect` instead |
+| Get foreground app/activity | `$KOBITON_BIN device adb-shell "dumpsys window \| grep mCurrentFocus"` | quoted pipe rejected - run bare `dumpsys window`, filter locally |
+| Open a URL (Android Chrome) | UI-driven: launch Chrome via `monkey -p com.android.chrome -c android.intent.category.LAUNCHER 1`, then `wd post element '{"using":"id","value":"com.android.chrome:id/url_bar"}'` → `wd post element/<id>/click '{}'` → `wd post element/<id>/value '{"text":"<url>"}'` → `input keyevent 66` | this recipe IS the restricted path - a URL argument to `am start` is rejected (`Argument is not permitted for 'am'`); on unrestricted devices `am start -a android.intent.action.VIEW -d <url>` also works |
+| Open a URL (iOS Safari) | `wd post execute '{"script":"mobile: launchApp","args":[{"bundleId":"com.apple.mobilesafari"}]}'` → `wd post element '{"using":"accessibility id","value":"TabBarItemTitle"}'` → `wd post element/<id>/click '{}'` → `wd post element/<id>/value '{"text":"<url>\n"}'` — the trailing `\n` submits (iOS has no keyevent); `click` requires a body, `'{}'` works | n/a - WebDriver path, not adb-shell |
+| List running processes | `$KOBITON_BIN device adb-shell ps -A` | ok |
+| List user-installed packages | `$KOBITON_BIN device adb-shell pm list packages -3` | ok |
+| Find APK path of a package | `$KOBITON_BIN device adb-shell pm path <pkg>` | ok |
+| Launch app by package | `$KOBITON_BIN device adb-shell monkey -p <pkg> -c android.intent.category.LAUNCHER 1` | ok |
+| Force-stop app | `$KOBITON_BIN device adb-shell am force-stop <pkg>` | ok |
+| Clear app data | `$KOBITON_BIN device adb-shell pm clear <pkg>` | ok |
+| Battery level + charging state | `$KOBITON_BIN device adb-shell dumpsys battery` | ok |
+| Memory snapshot for a package | `$KOBITON_BIN device adb-shell dumpsys meminfo <pkg>` | ok |
+| Storage free on /sdcard | `$KOBITON_BIN device adb-shell df -h /sdcard` | ok |
+| Press hardware key (home=3, back=4, power=26) | `$KOBITON_BIN device adb-shell input keyevent <code>` | ok |
+| Type text into focused field | `$KOBITON_BIN device adb-shell input text "<text>"` | quotes/whitespace rejected - a single token works (`%s` encodes a space); for real text entry prefer `wd post element/<id>/value` |
+| Tap at coordinates | `$KOBITON_BIN device adb-shell input tap <x> <y>` | ok |
+| Swipe (ms = duration) | `$KOBITON_BIN device adb-shell input swipe <x1> <y1> <x2> <y2> <ms>` | ok |
+| Read recent logs (Android only) | `$KOBITON_BIN device adb-shell logcat -d -t 500 > <local-file>` — on iOS use `device log` (see "Device logs on iOS" above) | ok (no quotes needed - the args carry no metacharacters; the redirect is local) |
+| Screenshot via shell | `$KOBITON_BIN device adb-shell screencap -p /sdcard/Download/shot.png` | ok - retrieve with `file pull` (or use `device screen` directly) |
+| Read system setting | `$KOBITON_BIN device adb-shell settings get system <key>` | rejected - only the `secure enabled_accessibility_services` key is readable/writable |
+| Write system setting | `$KOBITON_BIN device adb-shell settings put system <key> <value>` | rejected - same single-key rule |
+| Read/write enabled accessibility services | `$KOBITON_BIN device adb-shell settings get secure enabled_accessibility_services` / `... put secure enabled_accessibility_services <value>` | ok - the one permitted settings key (`<value>` is colon-separated components, or `null` to clear) |
+| Read file content | `$KOBITON_BIN device adb-shell cat <path>` | path allowlist applies (allowed dirs + `/proc/version`) |
+| List directory | `$KOBITON_BIN device adb-shell ls -la <path>` | path allowlist applies - outside it, use `$KOBITON_BIN file list <path>` |
+| Current IME | `$KOBITON_BIN device adb-shell "dumpsys input_method \| grep mCurId"` | quoted pipe rejected - run bare `dumpsys input_method`, filter locally |
+
+**Big-output commands.** `dumpsys`, `logcat`, `pm list -f`, and full process dumps can blow past the 25k-token MCP limit. For these, redirect to an artifact file first, then read/grep only what you need (the redirect is your *local* shell's, so this exact pattern also works on restricted sessions - it is the same local-composition idiom from the quoting rules):
 
     $KOBITON_BIN device adb-shell logcat -d -t 1000 \
       > .kobiton/sessions/<session-id>/logcat-$(date +%s).txt
@@ -309,7 +349,7 @@ These commands require an active session. Run `$KOBITON_BIN <command> --help` to
 | Domain | Command | What it does |
 |--------|---------|-------------|
 | Device | `$KOBITON_BIN device screen` | Capture device screen as jpg |
-| Device | `$KOBITON_BIN device forward <local> <remote>` | Forward local port to device |
+| Device | `$KOBITON_BIN device forward <local> <remote>` | Forward local port to device. Runs in the foreground until interrupted and holds the local port for the lifetime of the forward - launch with `run_in_background: true` and kill explicitly, like the long-running adb-shell commands above |
 | Device | `$KOBITON_BIN device ps` | List processes on device |
 | File | `$KOBITON_BIN file list <path>` | List files on device |
 | File | `$KOBITON_BIN file push <local> <remote>` | Push file to device |
