@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.10.1 - 2026-08-12
+
+### Fixed: adb-shell guidance now carries the full restricted-session policy
+
+1.10.0 introduced basic restricted-shell guidance (bare-command + local-filter, the forbidden-character rejection). This release replaces it with the complete policy for restricted sessions (public cloud and trial devices): the deny-by-default command whitelist by category, the full forbidden-character set (pipes **and quotes** — there is no on-device composition form at all), the file-path allowlist, the single permitted `settings` key (`secure enabled_accessibility_services`), the four rejection message shapes — incl. the settings-specific message, verified live on restricted devices — with the exit-0 gotcha (rejections print on stdout and exit 0, so scripts must string-match the first line rather than `$?`), and a pointer to `kobiton device adb-shell --help` as the always-current authority.
+
+The quoted on-device form is scoped to dedicated (unrestricted) devices; the command table gains a **Restricted** column covering every row — including `ls`/`cat` path limits, the `input text` single-token limit, `wm size` → `wd get window/rect`, a new `screencap` row, and the accessibility-services settings key. `device forward` is documented as a foreground command that holds the local port until killed, and `references/response-shapes.md` and `AGENTS.md` carry the same facts so no host is left with the old guidance.
+
+The whitelist entries describe the current deviceConnect sanitizer; on environments running an older deviceConnect a few expanded entries (`cat /proc/version`, `screencap`, `input`, the settings key) may still be rejected — the `--help` pointer is the always-current authority.
+
+No binary change ships with this release: the CLI is downloaded per the 1.10.0 pin model, and the pinned build already carries the file-transfer status fix this branch originally bundled.
+
 ## 1.10.0 - 2026-08-11
 
 ### Changed: the CLI binary is downloaded on install, no longer committed to the repo

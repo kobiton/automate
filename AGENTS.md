@@ -95,6 +95,8 @@ For exploratory testing or repro work (not running a pre-written script):
 
 Detailed step-by-step instructions live in `skills/run-interactive-session/SKILL.md`. Response shapes for the WebDriver layer are documented at `skills/run-interactive-session/references/response-shapes.md`.
 
+Note for `adb-shell` work: on public cloud and trial devices the shell is **restricted** — a deny-by-default command whitelist, a forbidden-character set that includes pipes and quotes (so no on-device composition; run the bare command and filter locally), a file-path allowlist, and a single permitted `settings` key. Rejections print on stdout at exit 0. The SKILL's "Restricted sessions" block carries the policy; `kobiton device adb-shell --help` carries the current authoritative version. Dedicated (private cloud / on-premise) devices are unrestricted.
+
 ## When the user asks to drive a device from a natural-language intent
 
 **Pick this skill** for agent-driven flows the user describes in plain language ("open YouTube and play the first world cup video", "log in then enable Bluetooth, then go home") — it auto-pilots from observation to action without a human in the loop on each step, and the result is a saveable test case. It complements (does NOT replace) `run-interactive-session`: that one is for human-driven exploration via the CLI session type; this one uses the automation session type via direct Appium HTTP. (Tool names below are the Kobiton MCP tools' bare names — the host resolves the registered prefix.)
