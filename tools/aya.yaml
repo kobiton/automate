@@ -29,3 +29,55 @@ tools:
             logging.
       required:
         - userIntent
+
+  - name: promptApp
+    title: Prompt About an App
+    description: >
+      Ask a question in natural language about mobile apps and get an answer back.
+      One tool covers the whole surface: which apps are available to you, details
+      about a specific app, exploring an app to learn its screens and flows, how a
+      running exploration is progressing, and questions about an explored app's
+      behaviour - including the selector for a specific button or field, which is
+      what you want when writing an automation script. There is no action or mode
+      to choose: phrase the request naturally ("which apps can I ask about?",
+      "explore my Shop app", "is the explore finished?", "how does checkout work in
+      Acme Shopper?", "what is the selector for the Add to cart button?") and it is
+      routed for you. Pass conversationId from a previous result to keep context;
+      omit it to start fresh. If the answer comes back with conversationStarted
+      true, the previous conversation was not found and this is a new one, so
+      earlier context is gone. If it comes back with proposedAction, an action needs
+      a person to approve it - show the user the approval link rather than trying to
+      continue on your own. Only apps already in the system can be explored or
+      described.
+    annotations:
+      readOnlyHint: false
+      destructiveHint: false
+      openWorldHint: false
+    inputSchema:
+      type: object
+      properties:
+        question:
+          type: string
+          description: >-
+            The request in plain language. Anything from "list my apps" to a
+            specific question about one app's flows or element selectors.
+        conversationId:
+          type: string
+          description: >-
+            Optional. The conversationId from a previous promptApp result, to
+            continue that conversation. Omit it on a first question. Pass it back
+            exactly as received - do not construct or reuse one you have not been
+            given.
+        bundleId:
+          type: string
+          description: >-
+            Optional hint naming the app's bundle id when you already know it. Not
+            required - the app is usually resolved from the question itself.
+        userIntent:
+          type: string
+          description: >-
+            A brief summary of what the user is trying to accomplish with this
+            tool call, refined from their original prompt. Used for audit logging.
+      required:
+        - question
+        - userIntent
