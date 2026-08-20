@@ -3,15 +3,15 @@ description = "Bootstrap Kobiton credentials and CLI wrapper for the automate pl
 prompt = '''
 You are bootstrapping the Kobiton automate plugin for a Gemini CLI user.
 
-## Step 0 (already done): Install CLI wrapper symlink
+## Step 0 (already done): Install CLI wrapper
 
-The bundled installer just ran:
+The bundled installer just ran (on first run it downloads the plugin's pinned CLI build from public.kobiton.download — sha256-verified, cached under `~/.kobiton/cli/`; later runs are cache hits with no network I/O):
 
 !{bash $HOME/.gemini/extensions/kobiton-automate/scripts/install-cli.sh 2>&1 && echo "INSTALL_OK" || echo "INSTALL_FAIL"}
 
 Parse the output above:
-- "INSTALL_OK": symlink in place at `~/.kobiton/bin/kobiton`, continue to Step 1.
-- "INSTALL_FAIL" or other error: the installer couldn't locate a binary for this platform (only macOS arm64 and Linux x64 ship a binary). Surface the error to the user, then continue anyway — credentials still need to be written so the MCP tools work; only `run-interactive-session` is affected.
+- "INSTALL_OK": wrapper in place at `~/.kobiton/bin/kobiton`, continue to Step 1.
+- "INSTALL_FAIL" or other error: the installer couldn't install the wrapper — unsupported platform (supported: macOS on Apple Silicon, Linux x64, Windows x64 under Git Bash; Intel Macs have no published CLI build) or the first-time download failed (the error text says which). Surface the error to the user, then continue anyway — credentials still need to be written so the MCP tools work; only `run-interactive-session` is affected.
 
 ## Step 1: Fetch credentials via the `kobiton` MCP server
 
@@ -38,37 +38,36 @@ Ask: "Proceed? This will overwrite the [default] profile if it exists." If they 
 
 ## Step 3: Write the file atomically
 
-Use your bash tool. The script preserves any other profiles already in the file; the new `[default]` block replaces an existing `[default]` at the same position, or is appended at the end if none exists. File mode is set to 0600.
+Use your bash tool. The script preserves any other profiles already in the file; the new `[default]` block replaces an existing `[default]` at the same position, or is appended at the end if none exists. File mode is set to 0600 (on Windows, POSIX modes don't map to NTFS ACLs, so 644 may be reported — informational). Node is used because every supported host runs on Node, while Windows commonly has no Python.
 
 ```bash
-KB_USER='<username>' KB_KEY='<apiKey>' KB_PORTAL='<portal>' python3 <<'PY'
-import os, re
-path = os.path.expanduser("~/.kobiton/.credentials")
-os.makedirs(os.path.dirname(path), exist_ok=True)
-block = f"[default]\nKOBITON_USER={os.environ['KB_USER']}\nKOBITON_API_KEY={os.environ['KB_KEY']}\nKOBITON_PORTAL={os.environ['KB_PORTAL']}"
-if os.path.exists(path):
-    with open(path) as f: text = f.read()
-    parts = re.split(r"(?m)^\s*\[\s*([^\]]+?)\s*\]\s*$", text)
-    head, blocks, replaced = parts[0].strip(), [], False
-    if head: blocks.append(head)
-    for i in range(1, len(parts), 2):
-        n, body = parts[i].strip(), parts[i+1].strip()
-        if n == "default":
-            blocks.append(block); replaced = True
-        else:
-            blocks.append(f"[{n}]\n{body}")
-    if not replaced: blocks.append(block)
-else:
-    blocks = [block]
-old = os.umask(0o077)
-try:
-    fd = os.open(path + ".tmp", os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    with os.fdopen(fd, "w") as f: f.write("\n\n".join(blocks) + "\n")
-    os.replace(path + ".tmp", path); os.chmod(path, 0o600)
-finally:
-    os.umask(old)
-print("WROTE default")
-PY
+KB_USER='<username>' KB_KEY='<apiKey>' KB_PORTAL='<portal>' node <<'JS'
+const fs = require("fs"), os = require("os"), path = require("path");
+const dir = path.join(os.homedir(), ".kobiton");
+fs.mkdirSync(dir, { recursive: true });
+const file = path.join(dir, ".credentials");
+const block = `[default]\nKOBITON_USER=${process.env.KB_USER}\nKOBITON_API_KEY=${process.env.KB_KEY}\nKOBITON_PORTAL=${process.env.KB_PORTAL}`;
+let blocks;
+if (fs.existsSync(file)) {
+  const parts = fs.readFileSync(file, "utf8").split(/^\s*\[\s*([^\]]+?)\s*\]\s*$/m);
+  const head = parts[0].trim();
+  blocks = head ? [head] : [];
+  let replaced = false;
+  for (let i = 1; i < parts.length; i += 2) {
+    const n = parts[i].trim(), body = parts[i + 1].trim();
+    if (n === "default") { blocks.push(block); replaced = true; }
+    else blocks.push(`[${n}]\n${body}`);
+  }
+  if (!replaced) blocks.push(block);
+} else {
+  blocks = [block];
+}
+const tmp = file + ".tmp";
+fs.writeFileSync(tmp, blocks.join("\n\n") + "\n", { mode: 0o600 });
+fs.renameSync(tmp, file);
+try { fs.chmodSync(file, 0o600); } catch {}
+console.log("WROTE default");
+JS
 ```
 
 Substitute `<username>`, `<apiKey>`, `<portal>` with the actual values from Step 1 before running. Pass them via env vars (`KB_*` to avoid clashing with the standard `$USER`).
@@ -77,7 +76,7 @@ Substitute `<username>`, `<apiKey>`, `<portal>` with the actual values from Step
 
 After the write succeeds, tell the user: `Profile [default] written to ~/.kobiton/.credentials. Run /automate:doctor to verify.`
 
-If Step 0 reported `INSTALL_FAIL`, also append: `Note: the ~/.kobiton/bin/kobiton CLI symlink could not be installed (likely an unsupported platform). MCP tools and run-automation-suite still work; only run-interactive-session requires the symlink.`
+If Step 0 reported `INSTALL_FAIL`, also append: `Note: the ~/.kobiton/bin/kobiton CLI wrapper could not be installed (unsupported platform, or the CLI download failed — see the installer's message above). MCP tools and run-automation-suite still work; only run-interactive-session requires the wrapper.`
 
 ## Note on advanced cases
 

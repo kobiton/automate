@@ -1,6 +1,6 @@
 # Kobiton MCP Tools — Examples
 
-A guide to every tool available in the Kobiton MCP server, organized by domain. Each tool includes a description and natural-language prompt examples you can use directly in Claude Code.
+Worked examples for the most common Kobiton MCP tools, organized by domain. Each tool includes a description and natural-language prompt examples you can use directly in Claude Code. For the complete tool inventory, see the [README Tools section](../README.md#tools).
 
 ---
 

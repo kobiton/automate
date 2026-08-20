@@ -163,7 +163,7 @@ The Cursor desktop editor installs the plugin from its built-in plugin browser:
 1. Open **Cursor Settings** > **Plugins** and paste `https://github.com/kobiton/automate` into the search box
 2. Click the **automate** result, then **Add to Cursor**, then **Install**
 
-To authenticate with the Kobiton MCP server: open **Tool & MCPs**, search for **kobiton**, click **Connect**, and complete the OAuth login in the browser.
+To authenticate with the Kobiton MCP server: open **Tool & MCPs**, search for **kobiton**, click **Authenticate**, and complete the OAuth login in the browser.
 
 > **Using both Cursor CLI and the Cursor IDE?** They share plugin installs: a plugin installed from the `agent` CLI shows up in the IDE, and vice versa. Install the plugin **once** in either one, installing it in both registers the skills, commands, and MCP server twice.
 
@@ -223,7 +223,7 @@ Every Claude surface that supports MCP can call the Kobiton [tools](#tools). The
 | **Claude Cowork** (macOS / Windows) |           ✅ Yes            |        ⚠️ Manual upload ²        | Add `https://api.kobiton.com/mcp` as a connector under **Connectors** |
 | **claude.ai web · Claude Desktop · Claude mobile** |           ✅ Yes            |        ⚠️ Manual upload ²        | Add `https://api.kobiton.com/mcp` as a Custom Connector at [claude.ai](https://claude.ai); for mobile, configure it on the web first and it syncs to the app |
 
-¹ `run-interactive-session` also requires the bundled `kobiton` CLI binary (macOS Apple Silicon only) - see the [platform support note](#skills).
+¹ `run-interactive-session` also requires the downloaded `kobiton` CLI binary (macOS on Apple Silicon, Linux x64, or Windows x64 under Git Bash; Intel Macs unsupported) - see the [platform support note](#skills).
 ² This plugin is not listed in the [Claude directory](https://support.claude.com/en/articles/14328846-browse-skills-connectors-and-plugins-in-one-directory) yet, so these surfaces can't install it as a plugin. As a workaround, zip a skill folder from this repo (e.g. `skills/run-automation-suite/`) and upload it as a [custom skill](https://support.claude.com/en/articles/12512198-how-to-create-custom-skills).
 
 ## Login
@@ -236,8 +236,8 @@ You can also trigger or inspect authentication explicitly:
 - **GitHub Copilot CLI**: type `/mcp auth kobiton` to start the OAuth flow; use `/mcp` (or `/mcp show`) to inspect server status
 - **Gemini CLI**: type `/mcp auth kobiton` to start the OAuth flow; use `/mcp` to inspect server status
 - **Codex CLI**: browser opens automatically on the first MCP tool call (e.g. *"List my Kobiton devices"*) after plugin install. Tokens are cached in the OS keychain with automatic refresh. Use `/mcp` (or `/mcp verbose`) to inspect server status
-- **Cursor CLI**: run `/mcp list`, select **kobiton**, and choose **Login** to start the OAuth flow; tokens are stored by Cursor in the OS keychain
-- **Cursor IDE**: open **Cursor Settings** > **Tool & MCPs**, search for **kobiton**, and click **Connect** to start the OAuth flow
+- **Cursor CLI**: run `/mcp list`, select **Kobiton**, and choose **Login** to start the OAuth flow; tokens are stored by Cursor in the OS keychain
+- **Cursor IDE**: open **Cursor Settings** > **Tool & MCPs**, search for **kobiton**, and click **Authenticate** to start the OAuth flow
 
 Behind the scenes, `.mcp.json` points to the Kobiton MCP server and authentication uses OAuth 2.1:
 
@@ -273,7 +273,18 @@ For CI/CD pipelines or headless environments that cannot open a browser, use API
 
 > **Note:** OAuth and API key auth cannot coexist in a single `.mcp.json` (the API key config sets an `Authorization` header that OAuth must not have). To switch, replace `.mcp.json` with the appropriate format from `.mcp.apikey-example.json`.
 >
+> **`/automate:setup` does not work under API key auth.** It fetches your credentials through an *OAuth-authenticated* MCP session to write `~/.kobiton/.credentials`. Per the [skill compatibility matrix](CLAUDE.md#skill-compatibility-matrix), three skills read that file directly and have no MCP fallback, so they are unavailable on API key auth: `run-interactive-session`, `drive-automation-session`, and `monitor-test-run`. The MCP tools, `run-automation-suite` (your script carries its own credentials), and `create-test-run` (pure MCP) are unaffected.
+>
 > **Gemini CLI:** API key auth requires editing `gemini-extension.json` instead of `.mcp.json`. Add a `headers` block under `mcpServers.kobiton` with `"Authorization": "${KOBITON_AUTH}"`.
+>
+> **Cursor (CLI and IDE):** API key auth requires editing `.cursor/mcp.json` instead of `.mcp.json` - that is the file the plugin manifest points `mcpServers` at. Cursor expands `${env:NAME}`, not the bare `${NAME}` other clients use, so start from `.cursor/mcp.apikey-example.json` rather than another client's config:
+>
+> ```bash
+> mkdir -p .cursor
+> curl -sL -o .cursor/mcp.json https://raw.githubusercontent.com/kobiton/automate/main/.cursor/mcp.apikey-example.json
+> ```
+>
+> A project-level `.cursor/mcp.json` survives plugin updates; the plugin's own copy lives in the version-pinned plugin cache and is replaced on reinstall.
 >
 > **Codex CLI:** OAuth is the default. For CI/headless environments where a browser cannot open, switch to API key auth by adding an `env_http_headers` block to the plugin's `.mcp.json`, then export `KOBITON_AUTH` in the shell that launches `codex`:
 >
@@ -301,14 +312,14 @@ To verify everything is wired correctly, run the diagnostic:
 /automate:doctor
 ```
 
-`/automate:doctor` is read-only. It checks the CLI installation (symlink + target), the credentials file, the active profile, and required fields, and prints actionable remediation hints for any failures.
+`/automate:doctor` is read-only. It checks the CLI installation (wrapper + target), the credentials file, the active profile, required fields, and CLI version drift (the plugin's pinned version vs the installed binary vs the newest published build), and prints actionable remediation hints for any failures.
 
 > **On Cursor (CLI and IDE)** the plugin's commands carry no `automate:` prefix. Run `/setup` and `/doctor` instead, picking the entry with the Kobiton description next to it to tell it apart from Cursor's built-in command of the same name.
 
-**CLI symlink install behavior across CLIs:** The `run-interactive-session` skill depends on a `~/.kobiton/bin/kobiton` symlink.
+**CLI install behavior across CLIs:** The `run-interactive-session` skill depends on a `~/.kobiton/bin/kobiton` wrapper (a symlink on macOS/Linux, an exec shim on Windows). The same install script also downloads the plugin's pinned CLI build into `~/.kobiton/cli/` the first time it runs (sha256-verified; cache hits skip the network entirely).
 
-- **Claude Code, Codex CLI**: recreated automatically by a bundled SessionStart hook on every session start. On Codex CLI, the first session prompts you to trust the hook once via `/hooks`; subsequent sessions run it silently. Running `/automate:setup` also recreates the symlink on demand.
-- **GitHub Copilot CLI, Gemini CLI, Cursor CLI**: no SessionStart hook runs, so create the symlink manually by running the setup command once after install: `/automate:setup` on Copilot and Gemini, `/setup` (the one with the Kobiton description) on Cursor (Copilot reads Claude-format Markdown commands; Gemini reads bundled TOML at `commands/automate/setup.toml`). Re-run it if the symlink goes missing.
+- **Claude Code, Codex CLI**: run automatically by a bundled SessionStart hook on every session start. On Codex CLI, the first session prompts you to trust the hook once via `/hooks`; subsequent sessions run it silently. Running `/automate:setup` also re-runs the installer on demand.
+- **GitHub Copilot CLI, Gemini CLI, Cursor CLI**: no SessionStart hook runs, so run the setup command once after install: `/automate:setup` on Copilot and Gemini, `/setup` (the one with the Kobiton description) on Cursor (Copilot reads Claude-format Markdown commands; Gemini reads bundled TOML at `commands/automate/setup.toml`). Re-run it if the wrapper goes missing.
 
 Manual fallback - if the SessionStart hook was denied on Codex, or you need to install without an active session:
 
@@ -365,7 +376,7 @@ Before your first session, you need:
 - **A supported host CLI** — Claude Code, GitHub Copilot CLI, Gemini CLI, Codex CLI, or Cursor (see [Installation](#installation)).
 - **Credentials configured** — run `/automate:setup` once after install.
 - **Your app build** (`.apk` / `.ipa`), if you're testing your own app rather than a system app or website.
-- **Platform note:** the `run-interactive-session` skill's bundled CLI runs on **macOS Apple Silicon only**. On any other platform, use `run-automation-suite` or `drive-automation-session` instead — no dead end.
+- **Platform note:** the `run-interactive-session` skill's CLI runs on **macOS (Apple Silicon), Linux (x64), and Windows (x64 under Git Bash)**. The binary is downloaded on install — a version pinned by the plugin release, sha256-verified, cached under `~/.kobiton/cli/` — so the first install needs network access once. Intel Macs are not supported (no macos-x64 build is published); there, use `run-automation-suite` or `drive-automation-session` instead — no dead end.
 
 **One worked example, end to end** — paste these to your assistant one at a time:
 
@@ -390,7 +401,7 @@ Every step above uses only what this plugin ships: the app tools (`uploadAppToSt
 
 ## Tools
 
-29 MCP tools across 5 domains.
+33 MCP tools across 6 domains.
 
 ### Devices
 
@@ -410,6 +421,7 @@ Every step above uses only what this plugin ships: the app tools (`uploadAppToSt
 | `getSessionArtifacts` | Get download URLs for video, logs, screenshots, reports |
 | `getUserInputEvents` | Get the touch/swipe gestures a human made on the device-only live view during a session |
 | `terminateSession` | Stop a running test session |
+| `startNativeSession` | Start an XCUITest / UIAutomator / GameDriver native automation session on a device |
 
 ### Apps
 
@@ -445,6 +457,14 @@ Every step above uses only what this plugin ships: the app tools (`uploadAppToSt
 | Tool | Description |
 |------|-------------|
 | `getCredential` | Return the authenticated user's username, API key, and portal URL — backs `/automate:setup` |
+| `getOrgSettings` | Return your organization's feature flags and preferences (e.g. live remediation) — read up front by `create-test-run` and `monitor-test-run` |
+
+### App insights
+
+| Tool | Description |
+|------|-------------|
+| `promptApp` | Ask a natural-language question about an app — which apps are available, an app's screens and flows, element selectors for an automation script, or to explore an app. One tool, no action parameter: the request is routed for you |
+| `getAyaIdentityAssertion` | Return a short-lived signed assertion proving the caller's Kobiton identity, so a partner service can establish a session for the same user without a browser sign-in |
 
 ## Skills
 
@@ -456,7 +476,7 @@ Every step above uses only what this plugin ships: the app tools (`uploadAppToSt
 | **create-test-run** | Creates a test run from a test case or suite — fills sensible defaults from the `createTestRun` schema when details are omitted, confirms a summary, then offers to monitor it and hands off to `monitor-test-run`. |
 | **monitor-test-run** | Watches a running test run and narrates it: reads the live-remediation flag up front, surfaces the live-remediation URL the moment an execution is blocked (optionally auto-opening the window), and post-mortems so a `BLOCKER_ENCOUNTERED` execution is never reported as passed. Quiet between real state changes. |
 
-> **Platform support note:** all MCP tools and the `run-automation-suite` skill work on every platform the host CLI supports. The `run-interactive-session` skill ships a CLI binary for **macOS Apple Silicon** only. On other platforms, use `run-automation-suite` or the MCP tools directly.
+> **Platform support note:** all MCP tools and the `run-automation-suite` skill work on every platform the host CLI supports. The `run-interactive-session` skill downloads its CLI binary on install (a version pinned by the plugin release, sha256-verified, cached under `~/.kobiton/cli/`) and runs on **macOS (Apple Silicon), Linux (x64), and Windows (x64 under Git Bash)**. Intel Macs are not supported — no macos-x64 build is published; there, use `run-automation-suite` or the MCP tools directly. For the full per-skill picture — which skills need a persistent local filesystem, which need the `~/.kobiton/.credentials` file that `/automate:setup` writes, and which run on an MCP connection alone — see the Skill compatibility matrix in [`CLAUDE.md`](CLAUDE.md#skill-compatibility-matrix).
 
 ## Commands
 
@@ -775,7 +795,7 @@ Cursor CLI caches plugin state per session, and older builds didn't load plugin-
 <details>
 <summary><strong><code>~/.kobiton/bin/kobiton</code> CLI wrapper missing (interactive testing fails)</strong></summary>
 
-Cursor CLI does not run the plugin's SessionStart hook, so the CLI wrapper isn't created automatically like on Claude Code or Codex. Run `/setup` (the plugin's command with the Kobiton description, not Cursor's built-in) once after install; re-run it if the symlink goes missing.
+Cursor CLI does not run the plugin's SessionStart hook, so the CLI wrapper isn't created automatically like on Claude Code or Codex. Run `/setup` (the plugin's command with the Kobiton description, not Cursor's built-in) once after install; re-run it if the wrapper goes missing.
 </details>
 
 ### Still Stuck?

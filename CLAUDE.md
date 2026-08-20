@@ -30,7 +30,7 @@ Clean Appium session end (`DELETE /wd/hub/session/{id}`) records `COMPLETE` (wha
 Live remediation is flag-dependent: flag ON → a blocked execution pauses (`BLOCKED_WAITING`), the human fixes it live, and the **same** run resumes; flag OFF → the execution fails and a portal-submitted resolution applies on the **next** rerun.
 
 Prerequisites: a Kobiton account, credentials via `/automate:setup`, and a supported host.
-`run-interactive-session`'s bundled CLI is macOS-Apple-Silicon-only — on other platforms route to `run-automation-suite` or `drive-automation-session`.
+`run-interactive-session`'s CLI is downloaded on install (pinned version, sha256-verified) and runs on macOS (Apple Silicon), Linux (x64), and Windows (x64 under Git Bash) — on Intel Macs and other unsupported architectures route to `run-automation-suite` or `drive-automation-session`.
 README's [Getting Started](README.md#getting-started) carries the full narrated path and a copy-pasteable worked example.
 
 ## Commands
@@ -57,7 +57,7 @@ CI runs `pnpm install --frozen-lockfile && pnpm run validate && pnpm test` on ev
 
 | File | Covers |
 |---|---|
-| `scripts/validate.test.js` | structural validation across manifests, tool YAMLs, skill frontmatter |
+| `scripts/validate.test.js` | structural validation across manifests, tool YAMLs, skill frontmatter, README tool parity |
 | `scripts/build-tool-definitions.test.js` | tool-definition YAML concatenation |
 | `scripts/sync-codex-artifacts.test.js` | `.codex/` mirror sync + `--check` parity |
 | `scripts/sync-version.test.js` | version field sync across host manifests + `CHANGELOG.md` top-entry match |
@@ -80,11 +80,11 @@ There is no local way to test that a new tool YAML matches a deployed server-sid
 | `tools/devices.yaml` | `listDevices`, `getDeviceStatus`, `reserveDevice`, `terminateReservation` |
 | `tools/sessions.yaml` | `listSessions`, `getSession`, `getSessionArtifacts`, `getUserInputEvents`, `terminateSession` |
 | `tools/apps.yaml` | `listApps`, `uploadAppToStore`, `confirmAppUpload`, `getAppParsingStatus`, `getApp` |
-| `tools/user.yaml` | `getCredential` |
+| `tools/user.yaml` | `getCredential`, `getOrgSettings` |
 | `tools/test-management.yaml` | 14 test-case / test-run / test-suite CRUD tools |
 | `tools/aya.yaml` | `getAyaIdentityAssertion` |
 
-`tools/devices.yaml`, `tools/sessions.yaml`, `tools/apps.yaml` set the full 4-hint annotation block (`readOnlyHint`, `destructiveHint`, `idempotentHint` where meaningful, `openWorldHint: false`). `tools/user.yaml` and `tools/test-management.yaml` currently use the older 2-hint shape (`readOnlyHint` + `destructiveHint` only) — when modifying those files, prefer adding the missing hints rather than leaving them inconsistent.
+`tools/devices.yaml`, `tools/sessions.yaml`, `tools/apps.yaml`, and `tools/user.yaml` set the full annotation block (`readOnlyHint`, `destructiveHint`, `idempotentHint` where meaningful, `openWorldHint: false`). `tools/test-management.yaml` currently uses the older 2-hint shape (`readOnlyHint` + `destructiveHint` only) — when modifying that file, prefer adding the missing hints rather than leaving them inconsistent.
 
 ### Skills
 
@@ -93,7 +93,7 @@ There is no local way to test that a new tool YAML matches a deployed server-sid
 | Skill | Runtime | Notes |
 |---|---|---|
 | `run-automation-suite` | `scripts/render-capabilities.js` parses Appium test scripts and reconciles capabilities against the selected device | refs: `references/capabilities.md`, `references/templates/appium.ejs` |
-| `run-interactive-session` | `scripts/run.sh` wraps the bundled `skills/run-interactive-session/bin/kobiton` CLI for natural-language WebDriver / device / file commands | binary ships for **macOS Apple Silicon only**; other platforms can use `run-automation-suite` instead |
+| `run-interactive-session` | `scripts/run.sh` wraps the kobiton CLI (downloaded by `scripts/install-cli.sh` per the `CLI_VERSION` pin, cached at `~/.kobiton/cli/<version>/`) for natural-language WebDriver / device / file commands | binary is **downloaded, not bundled**; runs on macOS arm64, Linux x64, Windows x64 (Git Bash). Intel Macs unsupported — use `run-automation-suite` instead |
 | `drive-automation-session` | `scripts/appium.js` (`node:https`-only Appium HTTP client) drives an automation-type session from a natural-language intent; `scripts/strip-webview-dom.js` shrinks webview source | refs: `references/endpoint-reference.md`, `references/loop-discipline.md`, `references/capabilities.md` |
 | `create-test-run` | Conversational glue over the `createTestRun` MCP tool (no local runtime): fills defaults from the createTestRun schema, confirms a summary, creates the run, then offers monitoring in one prompt and delegates to `monitor-test-run` | uses `Skill` to delegate; no `scripts/` |
 | `monitor-test-run` | `scripts/poll-test-run.js` (`node:https`-only; reads `~/.kobiton/.credentials`) polls run state over REST and emits only on change; host streams it (Claude Code: `Monitor` tool). Surfaces blockers + the live-remediation URL; auto-opens the window via the shared chromeless launcher when opted in | refs: the bundled poller; reuses `run-automation-suite`'s `chromeless-launcher.*` |
@@ -124,6 +124,22 @@ The plugin ships configs for five AI CLI hosts. Source-of-truth is the root file
 
 `AGENTS.md` is the cross-tool brief read by every non-Claude-Code host. When extending a skill's workflow or known-limitations list, mirror substantive changes into `AGENTS.md` so non-Claude hosts stay current. `AGENTS.md` currently covers `run-automation-suite`, `run-interactive-session`, `drive-automation-session`, `create-test-run`, and `monitor-test-run`. Note `create-test-run`/`monitor-test-run` reference Claude Code's `Monitor` tool for streaming the poller; non-Claude hosts must substitute their own streamed-shell / watch / loop affordance (see the `monitor-test-run` SKILL.md host table).
 
+### Skill compatibility matrix
+
+The table above answers *where config lives*. This one answers *whether a given skill can run here at all* — what each skill needs from its host. Every cell is checkable against the skill's `allowed-tools` frontmatter **plus what its bundled scripts actually do** — both halves are needed: `allowed-tools` grants a superset, so a declared tool isn't proof the skill uses it (`create-test-run` declares `Read` but bundles no files and reads none, which is why its file-access cell is "no"). **This matrix is the single source of truth** — `AGENTS.md` carries a prose summary that links here rather than a second copy, and each skill states its own requirements at the top of its `## Prerequisites`. If a skill's host support changes, update this table, that skill's Prerequisites, and its `compatibility:` frontmatter together.
+
+Columns are keyed on **capabilities**, not on product names. "Has a filesystem" is not the same as "can run this skill": a chat surface with code execution has a filesystem and Node, yet still can't run the credential-dependent skills, because nothing there can execute `/automate:setup` to write `~/.kobiton/.credentials`. Check the capability, not the brand.
+
+| Skill | Needs a persistent local FS | Needs `~/.kobiton/.credentials` (written by `/automate:setup`) | Local binary / OS constraint | Needs a streamed-watch affordance | Pure MCP — runs with none of the above |
+|---|---|---|---|---|---|
+| `create-test-run` | no | no — auth comes from the host's MCP connection | no | no — delegates the watch | **yes.** The only such skill. Caveat: opting into monitoring hands off to `monitor-test-run`, which needs the three columns to its left — so where those are unavailable, create the run and report its id instead of offering to watch |
+| `monitor-test-run` | **yes** — runs the bundled `scripts/poll-test-run.js` | **yes** — the poller reads it directly and has no MCP fallback | Node 18+ | **preferred, not required** — Claude Code's `Monitor`, or another host's streamed shell / watch / loop; a host with none degrades to a foreground loop rather than refusing (see the host table in the skill) | no |
+| `drive-automation-session` | **yes** — the observe-decide-act loop passes state through `iter-N.*.json` turn files | **yes** — `scripts/appium.js` reads it directly and never calls MCP `getCredential` | Node 18+; otherwise cross-platform (`node:https` only, no native binary) | no | no |
+| `run-automation-suite` | **yes** — reads the user's own Appium script directory and runs it | **no** — the skill never reads that file; the user's script carries its own Kobiton credentials in its capabilities / hub URL | Node 18+, Appium 2.x, plus the script's own language runtime (npm / python / java / dotnet / ruby) | no | no |
+| `run-interactive-session` | **yes** — executes the downloaded CLI binary cached under `~/.kobiton/cli/` | **yes** — `run.sh` loads it before invoking the binary | **macOS (Apple Silicon), Linux (x64), Windows (x64 under Git Bash).** The CLI is downloaded by `install-cli.sh` per the `CLI_VERSION` pin (sha256-verified; first run needs network once). **Intel Macs unsupported** (no macos-x64 build published) — route to `run-automation-suite` or `drive-automation-session` | no | no |
+
+**In one line:** `create-test-run` is the plugin's only pure-MCP skill, so it is the only one that works when the host provides nothing but an authenticated MCP connection — a chat surface, or the MCP-only entries at the bottom of `AGENTS.md`'s Cross-host install table. Every other skill needs a persistent local filesystem *and*, in most cases, a credentials file that only `/automate:setup` writes; those requirements are what a CLI host (Claude Code, Codex CLI, Gemini CLI, Copilot CLI, Cursor) supplies. When a capability is missing, name the specific missing one and the alternative — "needs the credentials file `/automate:setup` writes" tells the user what to do; "needs a CLI host" does not.
+
 ## Slash commands
 
 Two commands ship in two file formats so each host can read its preferred one. Markdown is the format Claude Code historically reads (and what Copilot CLI and Cursor read today); TOML is Gemini CLI's native format. Codex CLI uses its SessionStart hook instead of slash commands. Cursor reads the Markdown commands but registers them **without the `automate` namespace** — they surface as `/setup` and `/doctor` (disambiguate from Cursor's built-ins by the Kobiton description).
@@ -133,20 +149,20 @@ Two commands ship in two file formats so each host can read its preferred one. M
 | `/automate:setup` | `commands/setup.md` | `commands/automate/setup.toml` |
 | `/automate:doctor` | `commands/doctor.md` | `commands/automate/doctor.toml` |
 
-- `/automate:setup` — bootstraps `~/.kobiton/.credentials` from the authenticated MCP session by calling the `getCredential` tool. Also re-installs the `~/.kobiton/bin/kobiton` symlink the `run-interactive-session` skill depends on (Codex CLI installs it automatically via SessionStart; other CLIs run setup once).
-- `/automate:doctor` — read-only health check: CLI install, credentials file, active profile, required fields.
+- `/automate:setup` — bootstraps `~/.kobiton/.credentials` from the authenticated MCP session by calling the `getCredential` tool. Also re-runs `install-cli.sh`, which downloads the pinned CLI build on first run and installs the `~/.kobiton/bin/kobiton` wrapper the `run-interactive-session` skill depends on (Codex CLI installs it automatically via SessionStart; other CLIs run setup once).
+- `/automate:doctor` — read-only health check: CLI install, credentials file, active profile, required fields, CLI version drift (pinned vs installed vs latest published).
 
 Gemini CLI derives `/automate:setup` from the directory path `commands/automate/setup.toml`. Claude Code and Copilot CLI read `commands/setup.md` with the plugin name (`automate`) supplying the namespace. When changing one command's behavior, change both file formats so cross-host parity holds.
 
 ## Hooks
 
-`hooks/hooks.json` ships a single `SessionStart` command hook that runs `bash ${CLAUDE_PLUGIN_ROOT}/scripts/install-cli.sh` to install the `~/.kobiton/bin/kobiton` symlink. The Codex mirror at `.codex/hooks/hooks.json` carries the same hook, and `.cursor/hooks/hooks.json` carries a `sessionStart` equivalent (`${CURSOR_PLUGIN_ROOT}` interpolation). On Codex, the user trusts the hook once via `/hooks`; subsequent sessions run it silently. On Claude Code it runs every session. Cursor ships the hook but does not currently execute SessionStart hooks for plugins — Cursor users run `/setup` once instead.
+`hooks/hooks.json` ships a single `SessionStart` command hook that runs `bash ${CLAUDE_PLUGIN_ROOT}/scripts/install-cli.sh` to ensure the pinned CLI build is cached (download on first run, no network on cache hits) and install the `~/.kobiton/bin/kobiton` wrapper. The Codex mirror at `.codex/hooks/hooks.json` carries the same hook, and `.cursor/hooks/hooks.json` carries a `sessionStart` equivalent (`${CURSOR_PLUGIN_ROOT}` interpolation). On Codex, the user trusts the hook once via `/hooks`; subsequent sessions run it silently. On Claude Code it runs every session. Cursor ships the hook but does not currently execute SessionStart hooks for plugins — Cursor users run `/setup` once instead.
 
 When modifying `scripts/install-cli.sh` (or adding any new script that hooks invoke), run `pnpm run build:codex` to refresh the `.codex/scripts/` mirror — the `--check` mode in `pnpm run validate` will otherwise fail CI. Hook scripts should be idempotent.
 
 ## Tool schema conventions
 
-`scripts/validate.js` auto-discovers tool YAMLs. To add a tool: drop a YAML in `tools/` and run `pnpm run validate`. No `validate.js` edit required.
+`scripts/validate.js` auto-discovers tool YAMLs. To add a tool: drop a YAML in `tools/`, add its row to the README `## Tools` table and bump the "N MCP tools" count (validate fails otherwise), and run `pnpm run validate`. No `validate.js` edit required.
 
 **Annotation hints currently in use** — pattern by tool verb (matches the as-of-today YAML, not aspiration):
 
@@ -159,7 +175,7 @@ When modifying `scripts/install-cli.sh` (or adding any new script that hooks inv
 
 `idempotentHint` is omitted on `readOnlyHint: true` tools per MCP 2025-06-18 — the field is defined as meaningful only for non-read-only operations, so an explicit value adds noise. `terminate*` carries `idempotentHint: true` because a repeat-terminate against an already-terminated resource is a no-op (HTTP DELETE pattern).
 
-The `test-management.yaml` and `user.yaml` tools currently ship the older 2-hint subset (`readOnlyHint` + `destructiveHint` only); when touching those files, extend with `idempotentHint` and `openWorldHint: false` per the patterns above.
+The `test-management.yaml` tools currently ship the older 2-hint subset (`readOnlyHint` + `destructiveHint` only); when touching that file, extend with `idempotentHint` and `openWorldHint: false` per the patterns above.
 
 Tool response payloads must stay under 25,000 tokens — trim in the backend handler, not the schema.
 
