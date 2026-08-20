@@ -174,3 +174,127 @@ tools:
       required:
         - userIntent
         - sessionId
+  - name: startNativeSession
+    title: Start Native Session
+    description: >
+      Start a native automation session on a Kobiton device using a native test
+      framework — XCUITest (iOS), UIAutomator (Android), or GameDriver. Upload
+      the app under test and the test-runner bundle to Kobiton Store first
+      (uploadAppToStore) and pass their kobiton-store identifiers as `app` and
+      `testRunner`. Returns the created session ID plus the booked device UDID
+      and a test-report download URL. This starts a real, billable device
+      session — prefer listDevices first to confirm a matching device is
+      available.
+    annotations:
+      readOnlyHint: false
+      destructiveHint: false
+      idempotentHint: false
+      openWorldHint: false
+    inputSchema:
+      type: object
+      properties:
+        userIntent:
+          type: string
+          description: >-
+            A brief summary of what the user is trying to accomplish with this
+            tool call, refined from their original prompt. Used for audit
+            logging.
+        testFramework:
+          type: string
+          enum:
+            - XCUITEST
+            - UIAUTOMATOR
+            - GAMEDRIVER
+          description: >-
+            Native test framework to run. Exact upper-case values required.
+            XCUITEST is iOS-only; UIAUTOMATOR is Android-only.
+        sessionName:
+          type: string
+          description: Optional name for the session
+        sessionDescription:
+          type: string
+          description: Optional description for the session
+        deviceName:
+          type: string
+          description: >-
+            Device name to match (e.g. "Galaxy S21"). Ignored when `udid` is
+            given.
+        udid:
+          type: string
+          description: >-
+            Exact device UDID to run on. Takes precedence over deviceName /
+            platformVersion matching.
+        platformVersion:
+          type: string
+          description: OS version to match (e.g. "14", "17.4")
+        deviceGroup:
+          type: string
+          enum:
+            - KOBITON
+            - ORGANIZATION
+            - ANY
+          description: >-
+            Which device pool to book from. KOBITON = Kobiton public cloud
+            devices, ORGANIZATION = your organization's own private devices,
+            ANY = search both pools. Defaults to ANY when omitted.
+        groupId:
+          type: integer
+          description: Team ID to run the session under
+        app:
+          type: string
+          description: >-
+            App under test, as a kobiton-store:<appId> identifier returned by
+            uploadAppToStore. Required for XCUITEST and UIAUTOMATOR — the
+            server rejects the call when omitted.
+        testRunner:
+          type: string
+          description: >-
+            Test runner bundle (XCUITest test-runner .ipa, UIAutomator test
+            .apk, or GameDriver runner), as a kobiton-store:<appId> identifier.
+            Required for XCUITEST and UIAUTOMATOR — the server rejects the
+            call when omitted.
+        noReset:
+          type: boolean
+          description: >-
+            Keep app data between runs (do not reset the app). Mutually
+            exclusive with fullReset — set at most one of the two.
+        fullReset:
+          type: boolean
+          description: >-
+            Uninstall and reinstall the app before the run. Mutually exclusive
+            with noReset — set at most one of the two.
+        sessionTimeout:
+          type: integer
+          description: Maximum session duration in minutes (default 60)
+        testTimeout:
+          type: integer
+          description: Maximum test execution time in minutes
+        deviceTags:
+          type: array
+          description: Only book devices carrying all of these device tags
+          items:
+            type: string
+        deviceWaitTimeout:
+          type: integer
+          description: >-
+            How long (in seconds, 1-86400) to wait for a matching device to
+            become available before failing. Only honored for queued
+            executions.
+        runCommand:
+          type: string
+          description: >-
+            GameDriver only — command line used to launch the runner. Ignored
+            for XCUITEST and UIAUTOMATOR.
+        args:
+          type: array
+          description: Extra arguments passed to the test runner
+          items:
+            type: string
+        env:
+          type: object
+          description: Environment variables to set for the test runner process
+          additionalProperties:
+            type: string
+      required:
+        - userIntent
+        - testFramework
