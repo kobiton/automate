@@ -117,6 +117,7 @@ export function validateProject(rootDir) {
   }
 
   // Validate tool YAML files (auto-discovered from tools/)
+  const toolNames = []
   const toolsDir = join(rootDir, 'tools')
   if (!existsSync(toolsDir)) {
     fail('tools/ directory does not exist')
@@ -140,6 +141,9 @@ export function validateProject(rootDir) {
           if (!tool.name) {
             fail(`tools/${file} has tool without "name"`)
           }
+          else {
+            toolNames.push(tool.name)
+          }
           if (!tool.description) {
             fail(`tools/${file} tool "${tool.name}" missing "description"`)
           }
@@ -152,6 +156,29 @@ export function validateProject(rootDir) {
       catch (e) {
         fail(`tools/${file} is not valid YAML: ${e.message}`)
       }
+    }
+  }
+
+  // Validate README documents every tool (see CONTRIBUTING § Documentation Parity)
+  const readmePath = join(rootDir, 'README.md')
+  if (!existsSync(readmePath)) {
+    fail('README.md does not exist')
+  }
+  else if (toolNames.length > 0) {
+    const readme = readFileSync(readmePath, 'utf8')
+
+    const missing = toolNames.filter((name) => !readme.includes(`\`${name}\``))
+    for (const name of missing) {
+      fail(`README.md does not mention \`${name}\` — add it to the Tools table (see CONTRIBUTING § Documentation Parity)`)
+    }
+
+    const countMatch = readme.match(/(\d+) MCP tools/)
+    if (countMatch && Number(countMatch[1]) !== toolNames.length) {
+      fail(`README.md says "${countMatch[0]}" but tools/*.yaml define ${toolNames.length}`)
+    }
+
+    if (missing.length === 0 && (!countMatch || Number(countMatch[1]) === toolNames.length)) {
+      pass(`README.md documents all ${toolNames.length} tools`)
     }
   }
 

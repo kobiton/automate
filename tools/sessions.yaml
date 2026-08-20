@@ -232,10 +232,11 @@ tools:
           enum:
             - KOBITON
             - ORGANIZATION
-            - CLOUD
+            - ANY
           description: >-
-            Which device pool to book from. KOBITON = Kobiton cloud devices,
-            ORGANIZATION = your organization's own devices.
+            Which device pool to book from. KOBITON = Kobiton public cloud
+            devices, ORGANIZATION = your organization's own private devices,
+            ANY = search both pools. Defaults to ANY when omitted.
         groupId:
           type: integer
           description: Team ID to run the session under
@@ -243,18 +244,25 @@ tools:
           type: string
           description: >-
             App under test, as a kobiton-store:<appId> identifier returned by
-            uploadAppToStore
+            uploadAppToStore. Required for XCUITEST and UIAUTOMATOR — the
+            server rejects the call when omitted.
         testRunner:
           type: string
           description: >-
             Test runner bundle (XCUITest test-runner .ipa, UIAutomator test
-            .apk, or GameDriver runner), as a kobiton-store:<appId> identifier
+            .apk, or GameDriver runner), as a kobiton-store:<appId> identifier.
+            Required for XCUITEST and UIAUTOMATOR — the server rejects the
+            call when omitted.
         noReset:
           type: boolean
-          description: Keep app data between runs (do not reset the app)
+          description: >-
+            Keep app data between runs (do not reset the app). Mutually
+            exclusive with fullReset — set at most one of the two.
         fullReset:
           type: boolean
-          description: Uninstall and reinstall the app before the run
+          description: >-
+            Uninstall and reinstall the app before the run. Mutually exclusive
+            with noReset — set at most one of the two.
         sessionTimeout:
           type: integer
           description: Maximum session duration in minutes (default 60)
@@ -274,7 +282,9 @@ tools:
             executions.
         runCommand:
           type: string
-          description: GameDriver only — command line used to launch the runner
+          description: >-
+            GameDriver only — command line used to launch the runner. Ignored
+            for XCUITEST and UIAUTOMATOR.
         args:
           type: array
           description: Extra arguments passed to the test runner

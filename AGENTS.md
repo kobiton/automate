@@ -10,7 +10,7 @@ Kobiton is a real-device mobile cloud for Android + iOS testing. This MCP plugin
 - **Apps**: list, upload, confirm upload, get parsing status, get details
 - **Sessions**: list, get, get artifacts, get user-input events, terminate
 - **Test management**: create / list / get / update / delete test cases, test runs, and test suites; `saveTestCase` converts a finished manual session into a reusable test case
-- **Setup**: `getCredential` (used by `/automate:setup`)
+- **Account**: `getCredential` (used by `/automate:setup`); `getOrgSettings` for org-level feature flags such as live remediation
 
 The MCP server runs at `https://api.kobiton.com/mcp`. Authentication is OAuth 2.1 (default) or API key (CI/headless).
 
@@ -70,7 +70,7 @@ Users say the same thing many ways; route by what the phrase means, not the keyw
 - **Session end state matters**: ending an automation session cleanly (`DELETE /wd/hub/session/{id}`) records it `COMPLETE`, which `saveTestCase` expects; `terminateSession` marks it `TERMINATED` (abnormal exit). Prefer the clean path when a test case might be saved later.
 - **Live remediation depends on the org flag**: with live remediation ON, a blocked revisit execution **pauses** (`BLOCKED_WAITING`) so a human can take over the device in the portal and fix the step live — the execution then resumes within the **same** run. With the flag OFF, the blocker fails the execution and a resolution submitted in the portal applies on the **next** rerun (details in `skills/monitor-test-run/SKILL.md`).
 
-Prerequisites: Kobiton account, credentials via the setup command, supported host. The `run-interactive-session` skill's bundled CLI runs on macOS Apple Silicon only — on other platforms route the user to `run-automation-suite` or `drive-automation-session` instead of dead-ending. A worked end-to-end example lives in README's Getting Started section.
+Prerequisites: Kobiton account, credentials via the setup command, supported host. The `run-interactive-session` skill's CLI is downloaded on install (a pinned, sha256-verified build cached under `~/.kobiton/cli/`) and runs on macOS (Apple Silicon), Linux (x64), and Windows (x64 under Git Bash) — on Intel Macs and other unsupported architectures route the user to `run-automation-suite` or `drive-automation-session` instead of dead-ending. See the Skill compatibility matrix under Known limitations for the full per-skill picture. A worked end-to-end example lives in README's Getting Started section.
 
 ## When the user asks to run tests on Kobiton
 
@@ -94,6 +94,8 @@ For exploratory testing or repro work (not running a pre-written script):
 4. **End the session**: `terminateSession` when the user is done.
 
 Detailed step-by-step instructions live in `skills/run-interactive-session/SKILL.md`. Response shapes for the WebDriver layer are documented at `skills/run-interactive-session/references/response-shapes.md`.
+
+Note for `adb-shell` work: on public cloud and trial devices the shell is **restricted** — a deny-by-default command whitelist, a forbidden-character set that includes pipes and quotes (so no on-device composition; run the bare command and filter locally), a file-path allowlist, and a single permitted `settings` key. Rejections print on stdout at exit 0. The SKILL's "Restricted sessions" block carries the policy; `kobiton device adb-shell --help` carries the current authoritative version. Dedicated (private cloud / on-premise) devices are unrestricted.
 
 ## When the user asks to drive a device from a natural-language intent
 
@@ -134,6 +136,38 @@ Several behaviors of the current Kobiton MCP server have known gaps that agents 
 - **W3C `/se/log` silently breaks legacy `driver.getLogs()`**: Kobiton's Appium endpoint is W3C-strict. Warn the user if their test script uses the legacy log API.
 - **`terminateSession` ~5min device cooldown**: after termination the device enters cleanup; `reserveDevice` on the same device may return `device_unavailable` for ~5min.
 
+### Which skills run where
+
+Not every skill runs everywhere — check before invoking one, so you don't start a workflow the
+environment can't finish. Judge by **capability, not by product name**: "has a filesystem" is not the
+same as "can run this skill", because a chat surface with code execution still has no way to run
+`/automate:setup` and write `~/.kobiton/.credentials`.
+
+- **`create-test-run`** needs only an authenticated MCP connection — no local filesystem, no
+  credentials file, no binary. It is the only such skill, so it is the only one usable where the host
+  supplies nothing else (a chat surface, or the MCP-only entries at the bottom of the Cross-host
+  install table below). Its monitoring hand-off does need a local poller, so where that's unavailable,
+  create the run and report its id rather than offering to watch it.
+- **`drive-automation-session`** and **`monitor-test-run`** each need a persistent local filesystem
+  **and** `~/.kobiton/.credentials` — their bundled scripts read that file directly and never call MCP
+  `getCredential`, so an authenticated MCP connection alone is not enough.
+- **`monitor-test-run`** also wants a way to stream a background command's output (Claude Code's
+  `Monitor`, or the host's own streamed shell / watch / loop). This one is preferred, not required — a
+  host with none falls back to a foreground loop rather than refusing; see that skill's Step 2 host table.
+- **`run-automation-suite`** needs a local filesystem plus the user's own Appium script and its language
+  runtime — but **not** the credentials file: the user's script carries its own Kobiton credentials in
+  its capabilities / hub URL.
+- **`run-interactive-session`** additionally requires a supported platform: **macOS (Apple Silicon),
+  Linux (x64), or Windows (x64 under Git Bash)**. Its CLI binary is downloaded on install (pinned
+  version, sha256-verified, cached under `~/.kobiton/cli/`) — the first install needs network access
+  once. No Intel-Mac build is published; route those users to `run-automation-suite` or
+  `drive-automation-session`.
+
+When a capability is missing, name the **specific** missing one and the alternative — "needs the
+credentials file `/automate:setup` writes" tells the user what to do next; "needs a CLI host" does not.
+Each skill's own `## Prerequisites` states its requirements; the full per-skill matrix lives in
+[`CLAUDE.md`](CLAUDE.md#skill-compatibility-matrix) — kept in one place so the two can't drift apart.
+
 ## Cross-host install
 
 Plugin install paths for every supported host (listed for reference; only Gemini / Copilot / Cursor consume this `AGENTS.md` as agent context):
@@ -148,7 +182,7 @@ Plugin install paths for every supported host (listed for reference; only Gemini
 | ChatGPT Apps SDK | Add `https://api.kobiton.com/mcp` in ChatGPT developer mode |
 | Continue / Cline | Add to `~/.continue/config.json` or equivalent (see README) |
 
-The `hooks/` directory ships a SessionStart hook that installs the `~/.kobiton/bin/kobiton` CLI symlink. Claude Code runs it automatically every session; Codex CLI runs it after a one-time trust via `/hooks`; hosts without SessionStart hook support run the setup command once instead (`/automate:setup`, or `/setup` on Cursor).
+The `hooks/` directory ships a SessionStart hook that ensures the pinned CLI build is cached (download on first run, no network on cache hits) and installs the `~/.kobiton/bin/kobiton` CLI wrapper. Claude Code runs it automatically every session; Codex CLI runs it after a one-time trust via `/hooks`; hosts without SessionStart hook support run the setup command once instead (`/automate:setup`, or `/setup` on Cursor).
 
 ## Reference
 
