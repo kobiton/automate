@@ -5,7 +5,12 @@ tools:
     description: >
       List available devices filtered by platform, availability status, or
       device group. Returns device name, UDID, platform, OS version, and
-      availability.
+      availability. Devices with is_cloud: true (the cloud_devices list, and
+      flagged rows in favorite_devices) have restricted shell-command access
+      in CLI sessions; is_cloud: false devices are unrestricted. When no
+      device matches, the response includes applied_filters echoing the
+      interpreted filter values, so an empty device list can be told apart
+      from a filter that matched nothing.
     annotations:
       readOnlyHint: true
       destructiveHint: false
@@ -39,7 +44,12 @@ tools:
           default: PRIVATE
         deviceName:
           type: string
-          description: Search by device name (partial match, e.g. "Pixel" matches "Pixel 4", "Pixel 6")
+          description: >-
+            Filter by device name, matched case-insensitively against the full
+            name. Use `*` wildcards for partial matching: "*galaxy*" matches
+            "Galaxy S22+" and "Galaxy Tab S8"; "Galaxy*" matches names starting
+            with "Galaxy". A bare value without wildcards only matches the
+            exact full name.
         udid:
           type: string
           description: Filter by exact device UDID
