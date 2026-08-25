@@ -43,12 +43,12 @@ tools:
       "explore my Shop app", "is the explore finished?", "how does checkout work in
       Acme Shopper?", "what is the selector for the Add to cart button?") and it is
       routed for you. Pass conversationId from a previous result to keep context;
-      omit it to start fresh. If the answer comes back with conversationStarted
-      true, the previous conversation was not found and this is a new one, so
-      earlier context is gone. If it comes back with proposedAction, an action needs
-      a person to approve it - show the user the approval link rather than trying to
-      continue on your own. Only apps already in the system can be explored or
-      described.
+      omit it to start fresh. conversationStarted true means a new conversation
+      began - expected on a first question, but if you DID pass a conversationId
+      it means that one was not found and earlier context is gone. If it comes
+      back with proposedAction, an action needs a person to approve it - show the
+      user the approval link rather than trying to continue on your own. Only
+      apps already in the system can be explored or described.
     annotations:
       readOnlyHint: false
       destructiveHint: false
