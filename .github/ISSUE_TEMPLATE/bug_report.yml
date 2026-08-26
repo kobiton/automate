@@ -1,0 +1,111 @@
+name: Bug Report
+description: Report a problem with the Kobiton Automate plugin (MCP tools, skills, CLI wrapper, slash commands)
+title: "[Bug] "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Most plugin issues turn out to be version-specific, so the version and host
+        fields below are required — run `/automate:doctor` (`/doctor` on Cursor) in your AI host and copy the
+        values from its output. Please **redact tokens, API keys, and session JWTs** before pasting anything.
+  - type: input
+    id: plugin-version
+    attributes:
+      label: Plugin version
+      description: From `/automate:doctor`, or the top entry of CHANGELOG.md in the installed plugin.
+      placeholder: "e.g. 1.12.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: host
+    attributes:
+      label: AI host
+      description: The tool the plugin is installed in.
+      options:
+        - Claude Code
+        - Codex CLI
+        - Cursor (IDE or CLI)
+        - Gemini CLI
+        - GitHub Copilot CLI
+        - Other (describe in Additional context)
+    validations:
+      required: true
+  - type: input
+    id: host-version
+    attributes:
+      label: AI host version
+      description: e.g. output of `claude --version`, `codex --version`, `cursor --version`, `gemini --version`, `copilot --version`.
+      placeholder: "e.g. 2.1.34"
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system and architecture
+      placeholder: "e.g. macOS 15.6 (Apple Silicon), Ubuntu 24.04 x64, Windows 11 x64 (Git Bash)"
+    validations:
+      required: true
+  - type: input
+    id: cli-version
+    attributes:
+      label: Kobiton CLI version (if the run-interactive-session skill or the `kobiton` CLI is involved)
+      description: Output of `~/.kobiton/bin/kobiton --version`; `/automate:doctor` also prints pinned vs installed.
+      placeholder: "e.g. 2608.191335.0+master.1e8f487"
+    validations:
+      required: false
+  - type: input
+    id: surface
+    attributes:
+      label: Tool, skill, or command involved
+      description: The MCP tool name, skill, or slash command that triggered the issue.
+      placeholder: "e.g. listDevices, run-interactive-session, /automate:setup"
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: What you asked the agent to do or which command you ran, with arguments.
+      placeholder: |
+        1. Ask the agent to "..."
+        2. It invokes `...` with `...`
+        3. See error
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What happened instead. Include the exact error message or tool output (redact secrets).
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: "`/automate:doctor` output and logs (optional)"
+      description: Paste the doctor output and any relevant log excerpt (redact API keys, tokens, and session JWTs first). Rendered as a code block — no backticks needed.
+      render: shell
+    validations:
+      required: false
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Pre-flight
+      options:
+        - label: I am on the latest plugin release (or have noted the version above deliberately)
+        - label: The Kobiton MCP server shows as connected in my host (e.g. `/mcp` in Claude Code)
+        - label: I have redacted API keys, tokens, and session JWTs from everything pasted above
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Screenshots, links, or anything else that helps.
+    validations:
+      required: false

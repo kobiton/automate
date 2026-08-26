@@ -359,7 +359,7 @@ Say it your way — your assistant routes by meaning, not keyword: "rerun / revi
 | Term | Meaning |
 |------|---------|
 | Session | One connection to a device — everything you did (commands, video, logs) is recorded under a session id. |
-| Session type | How the session is driven: `AUTOMATION` (script or agent via Appium), `CLI` (the bundled CLI wrapper), `MANUAL` (you, in the portal live view). Interacting in the live view while an automation session runs makes it `MIXED`. |
+| Session type | How the session was driven, as the `type` field of `getSession` / `listSessions`: `AUTO` (script or agent via Appium), `UIAUTOMATOR` / `XCUITEST` (native instrumentation — `startNativeSession` or the CLI's `test run`), `CLI` (the bundled CLI wrapper), `MANUAL` (you, in the portal live view), `MIXED` (you interacted in the live view while an automation session ran); rarer: `SCRIPTLESS`, `GAMEDRIVER`. |
 | Test case | A saved, replayable sequence of steps, created by saving a completed session (`saveTestCase`). Automation sessions are saveable; CLI sessions are not. |
 | Revisit | What a test run does: re-executes a test case's saved steps on each selected device — one "revisit execution" per device. |
 | Test run | An execution of a test case or test suite across one or more devices, with per-device results. |
@@ -442,7 +442,7 @@ Every step above uses only what this plugin ships: the app tools (`uploadAppToSt
 | `getTestCase` | Get test case details including its steps |
 | `updateTestCase` | Update a test case's metadata and steps |
 | `deleteTestCase` | Delete a test case |
-| `createTestRun` | Create a test run from a test suite or selected test cases |
+| `createTestRun` | Create a test run from a test suite or selected test cases (re-executes *recorded* steps — not the CLI's `kobiton test run`, which runs your own UIAutomator/XCUITest bundle; see `run-interactive-session`) |
 | `listTestRuns` | List test runs with team, keyword, and platform filters |
 | `getTestRun` | Get test run details including its sessions |
 | `terminateTestRun` | Stop a running test run |

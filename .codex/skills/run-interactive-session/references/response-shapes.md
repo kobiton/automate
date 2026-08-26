@@ -19,9 +19,11 @@ Most WebDriver endpoints return a JSON envelope `{"value": <result>}`. A few com
 
 | Command | Response on stdout | How to read |
 |---|---|---|
-| `session create` | Text on stdout with key/value lines, including `kobitonSessionId: <id>` | `grep` or string-match the `kobitonSessionId:` line |
-| `session ping` | Exit code 0 = alive, non-zero = expired | Trust exit status; don't parse stdout |
-| `session end` | Text confirmation | No parsing needed |
+| `session create --hide` | One line: `Session <id> created for device <udid>.`; the session token is **not** printed (it is still saved to `~/.kobiton/.session`) | `grep -oE 'Session [0-9]+ created'` and take the number. Without `--hide` a second line `Session token <jwt>` appears - always pass the flag, and never echo that line if you see it |
+| `session ping` | `Session <id> pinged.`; exit code 0 = alive, non-zero = expired | Trust exit status; don't parse stdout |
+| `session list` | Comma-separated table: header `ID, State, Type, Device, Platform, Created, Ended`, one session per row (`Ended` is `active` for running sessions), then a footer `Page N (M items), T total`; default 20 rows per page, `--all` returns every page in the window | Read directly or `grep` for an id / device name; narrow with `--state`, `--type`, `--platform`, `--keyword`, `--from` / `--to` rather than parsing a large dump. The `Type` column carries the same values as `getSession` (`CLI`, `AUTO`, `MANUAL`, `UIAUTOMATOR`, ...) |
+| `session show` | Key/value lines: session name, `Created:`, `Device <udid>: <platform> <version>`, `Status:` | Read directly |
+| `session end` | `Session <id> ended.` | No parsing needed |
 
 ## Device / file / app / test
 
@@ -29,11 +31,11 @@ Most WebDriver endpoints return a JSON envelope `{"value": <result>}`. A few com
 |---|---|---|
 | `device adb-shell <cmd>` | Raw stdout from the on-device shell. Shape depends on `<cmd>` - KV pairs (`dumpsys battery`), single line (`getprop`), multi-line table (`pm list`, `ps`), or free text (`logcat`) | (a) For single-value extractions, `grep` or `awk` the line. (b) For multi-line output, save to artifact then parse. (c) **Gotcha:** exit code 0 does NOT mean the inner command succeeded - adb returns 0 as long as it could deliver the command; check stderr or look for error strings in stdout. (d) On restricted sessions (public cloud / trial devices) a **whitelist rejection also lands on stdout at exit 0** - string-match the first line against `Input contains a forbidden character:`, `Command is not on the whitelist:`, `Argument is not permitted for`, and `Only get/put of secure enabled_accessibility_services is permitted` before trusting empty or short output (see the SKILL's Restricted sessions block). |
 | `device screen` | JPEG image bytes - check `--help` for output flag (e.g., `--out`) | Redirect or use the documented output flag |
-| `device forward` | `Listening on <addr>.` then blocks - the command runs in the foreground for the lifetime of the forward and holds the local port | A non-returning invocation is normal, not a hang; launch with `run_in_background: true` and kill explicitly to release the port |
+| `device forward [--mode mux\|demux]` | `Listening on <addr>.` then blocks - the command runs in the foreground for the lifetime of the forward and holds the local port. Output shape is the same for both modes | A non-returning invocation is normal, not a hang; launch with `run_in_background: true` and kill explicitly to release the port. Transient network failures are retried for up to 5 minutes - during a retry the process is silent, so give it that long before concluding it is stuck |
 | `device ps`, `file list` | Plain text on stdout | Read directly |
 | `file push`, `file pull` | Text confirmation; non-zero exit on failure | Surface failures by exit code |
 | `app run <app-id>` | Text confirmation; the app launches on the device | Continue interacting after launch |
-| `test run` | Streaming test-runner output | Run with `run_in_background: true`; parse the final summary block |
+| `test run --app … --runner … <uiautomator\|xcuitest>` | Progress lines while the device is booked and the bundles install; with `--follow` a final summary block with the pass/fail result; with `--stream` the raw test-runner log as it is emitted (no session report afterwards) | Run with `run_in_background: true`; parse the final summary block (`--follow`) or grep the streamed log. Fetch the report URL afterwards with the `getSessionArtifacts` MCP tool. Unrelated to the `createTestRun` MCP tool, which replays a recorded test case |
 
 ## See also
 
