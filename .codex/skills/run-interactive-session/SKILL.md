@@ -64,7 +64,7 @@ All CLI calls go through a single wrapper at `~/.kobiton/bin/kobiton` that autom
 - **CLI binary resolution** - resolves the pinned CLI build from the version cache at `~/.kobiton/cli/<version>/` (falling back to the newest cached build with a drift warning).
 - **Portal URL** - from `KOBITON_PORTAL` in credentials, or derived from `.mcp.json` as fallback.
 - **Credentials** - loaded from `~/.kobiton/.credentials` using AWS-style profiles (`$KOBITON_PROFILE`, default `default`).
-- **Session token** - loaded by the CLI from `~/.kobiton/.session` once a session exists.
+- **Session token** - loaded by the CLI from `~/.kobiton/.session` once a session exists. Always create sessions with `session create --hide` so the token is saved but never printed into the transcript.
 
 Every command is self-contained - no env vars to manage between calls:
 
@@ -80,22 +80,24 @@ Global flags must come **before** the subcommand:
 
     $KOBITON_BIN [global-flags] <subcommand> [subcommand-flags]
 
-Example: `$KOBITON_BIN -u <udid> session create` (NOT `$KOBITON_BIN session -u <udid> create`).
+Example: `$KOBITON_BIN -u <udid> session create --hide` (NOT `$KOBITON_BIN session -u <udid> create --hide`).
 
 ### Help-first discovery
 
 The CLI has built-in help at every level. **Always check `--help` before running a command you haven't used before or when unsure about arguments:**
 
     $KOBITON_BIN --help                    # list all top-level commands
-    $KOBITON_BIN session --help            # session create, ping, end
-    $KOBITON_BIN session create --help     # show create flags and usage
+    $KOBITON_BIN session --help            # session create, ping, end, list, list-active, show
+    $KOBITON_BIN session create --help     # show create flags and usage (--hide, --timeout)
+    $KOBITON_BIN session list --help       # page through past sessions with filters
     $KOBITON_BIN wd --help                 # webdriver post/get commands
     $KOBITON_BIN device --help             # list, adb-shell, forward, ps, screen
     $KOBITON_BIN device adb-shell --help   # run adb shell commands on device
+    $KOBITON_BIN device forward --help     # port forwarding, --mode mux|demux
     $KOBITON_BIN file --help               # list, push, pull files on device
     $KOBITON_BIN file push --help          # push local file to device
-    $KOBITON_BIN test --help               # test run with built-in framework
-    $KOBITON_BIN test run --help           # show test run flags and usage
+    $KOBITON_BIN test --help               # test run: native instrumentation (uiautomator / xcuitest)
+    $KOBITON_BIN test run --help           # show test run flags and usage (--app, --runner, <framework>)
     $KOBITON_BIN app --help                # app management commands
     $KOBITON_BIN app run --help            # show app run flags and usage
 
@@ -127,15 +129,17 @@ Capture both the **UDID** (used for session creation) and the device **id** (the
 
 If there is no active session yet, create one:
 
-    $KOBITON_BIN -u <udid> session create
+    $KOBITON_BIN -u <udid> session create --hide
 
-The output contains a line like `kobitonSessionId: 12345`. Capture it:
+The output is a single line like `Session 12345 created for device <udid>.`. Capture it:
 
-1. Parse the session ID from the output.
+1. Parse the session ID from the output (`grep -oE 'Session [0-9]+ created' | grep -oE '[0-9]+'`).
 2. Create the artifacts directory: `mkdir -p .kobiton/sessions/<session-id>`.
 3. Store the session ID for use in screenshot and page source commands.
 
-The JWT is saved automatically to `~/.kobiton/.session`. All subsequent commands use it - no flags needed.
+The JWT is saved automatically to `~/.kobiton/.session`. All subsequent commands use it - no flags needed. `--hide` keeps the token out of stdout (and therefore out of the agent transcript); without it the CLI prints the bearer token, which is valid for the session's lifetime. Never omit `--hide`, and never paste a token line into chat if one appears.
+
+`--hide` (like `session list` and `device forward --mode`) needs CLI build `2608.191335.0` or newer - the build this plugin pins. The wrapper enforces it: `session create` without `--hide` gets the flag added, and if the resolved build is older (the `pinned CLI version ... is not cached` warning tells you so) the wrapper refuses to create the session instead of printing the token. If you see that refusal, run `/automate:setup` to download the pinned build - do **not** retry with different flags.
 
 If a session may already exist (e.g., the user is continuing earlier work), check first:
 
@@ -349,13 +353,29 @@ These commands require an active session. Run `$KOBITON_BIN <command> --help` to
 | Domain | Command | What it does |
 |--------|---------|-------------|
 | Device | `$KOBITON_BIN device screen` | Capture device screen as jpg |
-| Device | `$KOBITON_BIN device forward <local> <remote>` | Forward local port to device. Runs in the foreground until interrupted and holds the local port for the lifetime of the forward - launch with `run_in_background: true` and kill explicitly, like the long-running adb-shell commands above |
+| Device | `$KOBITON_BIN device forward <local> <remote> [--mode mux\|demux]` | Forward a local port to a service on the device; addresses are `tcp:<port>`. Runs in the foreground until interrupted and holds the local port for the lifetime of the forward - launch with `run_in_background: true` and kill explicitly, like the long-running adb-shell commands above. `--mode mux` (default) multiplexes every accepted connection over one shared gRPC channel; `--mode demux` gives each connection its own channel (1:1) - try it when a protocol misbehaves over the shared channel. **Transient network failures are retried for up to 5 minutes** - a forward that seems to hang for a few minutes is retrying, not dead; wait it out or kill and relaunch |
 | Device | `$KOBITON_BIN device ps` | List processes on device |
 | File | `$KOBITON_BIN file list <path>` | List files on device |
 | File | `$KOBITON_BIN file push <local> <remote>` | Push file to device |
 | File | `$KOBITON_BIN file pull <remote> <local>` | Pull file from device |
 | App | `$KOBITON_BIN app run <app-id>` | Launch an app |
-| Test | `$KOBITON_BIN test run` | Execute a test session |
+| Session | `$KOBITON_BIN session list [--from <date> --to <date> --state <STATE> --type <TYPE> --platform <P> --keyword <k> --page <n> --size <n> --all]` | Page through sessions created in a time window (default: last 30 days, 20 per page). Filters: `--state` (START, COMPLETE, PASSED, FAILED, TIMEOUT, ERROR, TERMINATED), `--type` (AUTO, MANUAL, CLI, MIXED, ...), `--platform` (Android, iOS), `--keyword` (device name / platform version). `--all` retrieves every page. Companion commands: `session list-active` (currently running), `session show` (one session's details) |
+| Test | `$KOBITON_BIN test run --app <APP> --runner <TEST_RUNNER> <uiautomator\|xcuitest>` | Run a **native instrumentation** test on a device: `--app` and `--runner` accept a URL or a Kobiton store app id; the positional framework is `uiautomator` (Android) or `xcuitest` (iOS - also pass `--plan <TEST_PLAN>` or one or more `--test <TEST>`). Target with `-u <udid>` or `-d <device-name>` (wildcards; optionally `-v <platform-version>`, `-g <device-group>`). `--follow` waits for completion and prints the result; `--stream` streams test logs live (no session test report with this option). `-o <seconds>` caps the session (default 1800). See "Instrumentation runs" below. **Not** the `createTestRun` MCP tool - that re-executes a *recorded* test case's steps; this executes your own compiled test bundle |
+
+### Instrumentation runs (`test run`)
+
+"Test run" names two unrelated features on this platform. The **CLI's `test run`** executes a native instrumentation bundle you built (UIAutomator/Espresso on Android, XCUITest on iOS) against a device and streams the runner's output. The **`createTestRun` MCP tool** (and the `create-test-run` skill) re-executes the *recorded steps* of a saved test case on one or more devices. If the user has an APK/IPA plus a test-runner bundle, this command is the path; if they have a saved test case, route to `create-test-run`.
+
+`test run` books its own device - it does **not** need a `session create` first. Upload the app under test and the runner with the `uploadAppToStore` MCP tool (then `confirmAppUpload`) and pass the returned store ids, or pass URLs directly:
+
+    # Android: app + androidTest runner from the Kobiton store, run to completion
+    $KOBITON_BIN test run --app 12345 --runner 12346 -d "Pixel 8*" uiautomator --follow
+
+    # iOS: app + XCUITest runner, restricted to two tests, streaming logs
+    $KOBITON_BIN test run --app https://example.com/app.ipa --runner https://example.com/runner.zip \
+      -u <udid> xcuitest --test LoginTests/testValidLogin --test LoginTests/testLockout --stream
+
+Launch with `run_in_background: true` and tail the output; with `--follow` the final summary block carries the pass/fail result, and the session's report is available through `getSessionArtifacts` (`test_report_url`) afterwards. The resulting session appears in `listSessions` / `getSession` with `type` `UIAUTOMATOR` or `XCUITEST`. Run `$KOBITON_BIN test run --help` for the full flag list (`--reset`, `--env KEY VALUE`, `--session-name`, ...).
 
 ## Output
 
@@ -368,8 +388,8 @@ The common parsing patterns:
 - **Most WebDriver responses** are JSON envelopes `{"value": <result>}`. Null/empty `.value` means success; a non-null `.value` is the result (string, rect object, script return).
 - **Find element** (`wd post element`) hides the element ID under `.value`, but the exact path varies (`.value.ELEMENT`, `.value["element-6066-11e4-a52e-4f735466cecf"]`, or a bare string). Use a tolerant extractor like `jq -r '.value.ELEMENT // .value["element-6066-11e4-a52e-4f735466cecf"] // .value'`.
 - **Screenshot and page source** (`wd get screenshot`, `wd get source`) are special-cased — the CLI unwraps the WebDriver JSON envelope and emits raw base64 PNG / raw XML on stdout. Pipe straight into a file.
-- **Session commands** mix text + exit code. `session create` prints a `kobitonSessionId: <id>` line; `session ping` signals liveness through exit code (0 = alive).
-- **`device` / `file` / `app` / `test`** emit plain text and signal failure through exit code. Long-running ones (`test run`, future streaming commands) should be launched with `run_in_background: true` and tailed.
+- **Session commands** mix text + exit code. `session create --hide` prints `Session <id> created for device <udid>.` (and, without `--hide`, an extra `Session token <jwt>` line - which is why the flag is mandatory); `session ping` prints `Session <id> pinged.` and signals liveness through exit code (0 = alive); `session list` prints a comma-separated table (`ID, State, Type, Device, Platform, Created, Ended`) followed by a footer - `Page N (M items), T total` when paged, `N of T sessions, P pages.` when `--all` spans several pages - or the single line `No sessions found.` when nothing matches.
+- **`device` / `file` / `app` / `test`** emit plain text and signal failure through exit code. Long-running ones (`test run`, `device forward`) should be launched with `run_in_background: true` and tailed.
 
 For the full per-command table (response on stdout, exact parsing recipe per command), see [`references/response-shapes.md`](references/response-shapes.md). Consult it when the response shape isn't obvious from these summary rules.
 
@@ -379,7 +399,7 @@ After (and during) a session, the workspace and home directory contain:
 
 - **`.kobiton/sessions/<session-id>/screenshot-<unix-ts>.png`** - every screenshot captured during the session, named by Unix timestamp so they sort chronologically.
 - **`.kobiton/sessions/<session-id>/source-<unix-ts>.xml`** - every page-source dump captured during the session.
-- **`~/.kobiton/.session`** - the JWT for the most recently created session. The CLI uses this implicitly; treat it as opaque. It's overwritten by the next `session create`.
+- **`~/.kobiton/.session`** - the JWT for the most recently created session, written by `session create` whether or not `--hide` is passed. The CLI uses this implicitly; treat it as opaque and never read it into chat. It's overwritten by the next `session create`.
 
 The Kobiton portal also hosts a live session view at:
 
@@ -389,7 +409,8 @@ Where `<portal-base>` is derived from the `KOBITON_PORTAL` value in the active p
 
 ## Error Handling
 
-- **Unexpected argument / unknown flag**: run `$KOBITON_BIN <command> --help` to discover the correct syntax, then retry with the right arguments. Never guess flags.
+- **Unexpected argument / unknown flag**: run `$KOBITON_BIN <command> --help` to discover the correct syntax, then retry with the right arguments. Never guess flags. Exception: never drop `--hide` from `session create` - if it is rejected, the cached build is too old (see below).
+- **`Refusing to run 'session create' ... does not support --hide`** from the wrapper: the pinned build is not cached and the fallback build predates `--hide`, so creating a session would print the bearer token. Run `/automate:setup` (or re-open the session so the SessionStart hook downloads the pinned build), then retry the same command.
 - **`wd` errors exit 0**: WebDriver failures (e.g. no such element) return exit code 0 with a JSON error body - check the response JSON, not `$?`. A bounded `device log` exiting 124 (`timeout`) or 142 (perl-alarm) is the bound firing, not a failure.
 - **Session create failed**: device may be offline, already reserved, or the UDID is wrong - verify availability with the `listDevices` MCP tool before retrying.
 - **Session expired / auth error mid-flow**: `session ping` fails or a command returns auth error - offer to create a new session.
@@ -411,9 +432,9 @@ The skill walks through:
 1. Query MCP `listDevices` filtered to Android Pixel and pick the first AVAILABLE one - say UDID `9B211FFAZ0017F`, device id `4218`.
 2. Create the session:
 
-       ~/.kobiton/bin/kobiton -u 9B211FFAZ0017F session create
+       ~/.kobiton/bin/kobiton -u 9B211FFAZ0017F session create --hide
 
-   Output includes `kobitonSessionId: 12345`. Capture it.
+   Output is `Session 12345 created for device 9B211FFAZ0017F.` (and no token line, thanks to `--hide`). Capture the ID.
 
 3. Prepare the workspace:
 

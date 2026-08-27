@@ -23,7 +23,7 @@ Never silently pick `run-interactive-session` for a "test X" goal: CLI sessions 
 
 **Intent synonyms**: "rerun / run again / revisit / replay a **test case**" → `create-test-run`; "rerun a **session**" → `saveTestCase` first, then `create-test-run` (sessions aren't rerun directly); "replay / review the **recording**" → `getSessionArtifacts` / session portal page, not a new run; "watch / follow / track" → `monitor-test-run`.
 
-**Session model** (the UX facts routing relies on): every session has a type — `AUTOMATION` (script/agent Appium), `CLI` (bundled CLI wrapper), `MANUAL` (human in the portal live view); a human interacting in the live view during an automation session makes it `MIXED`.
+**Session model** (the UX facts routing relies on): every session has a `type` as returned by `getSession` / `listSessions` — `AUTO` (script/agent Appium), `UIAUTOMATOR` / `XCUITEST` (native instrumentation: `startNativeSession`, CLI `test run`), `CLI` (bundled CLI wrapper), `MANUAL` (human in the portal live view), `MIXED` (human interacted in the live view during an automation session); rarer: `SCRIPTLESS`, `GAMEDRIVER`. There is no `AUTOMATION` value. `automation_type` (`NORMAL` | `REVISIT`) distinguishes a direct run from a test-run revisit.
 Test cases are session-based (`saveTestCase` on a completed session; requires `kobiton:scriptlessCapture` + allowlisted endpoints — see `skills/drive-automation-session/references/endpoint-reference.md`).
 A test run **revisits** a case's steps per device (`getTestRun.revisit_executions[]`).
 Clean Appium session end (`DELETE /wd/hub/session/{id}`) records `COMPLETE` (what `saveTestCase` expects); `terminateSession` records `TERMINATED`.

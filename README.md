@@ -185,7 +185,7 @@ Works for both the Cursor IDE and the `agent` CLI. You won't get the bundled ski
 
 Kobiton's MCP server is built on the open [Model Context Protocol](https://modelcontextprotocol.io), so **any MCP-compatible client can connect to it**. Same endpoint (`https://api.kobiton.com/mcp`), same browser-based OAuth login as the clients above.
 
-> **Good to know:** End-to-end tested only on Claude Code, Copilot CLI, Gemini CLI, Codex CLI, Cursor CLI, and the Cursor IDE; entries below are configs we expect to work but have not yet validated. Please [open an issue](https://github.com/kobiton/automate/issues/new?template=bug_report.md) if any do not work for your setup. We're happy to help.
+> **Good to know:** End-to-end tested only on Claude Code, Copilot CLI, Gemini CLI, Codex CLI, Cursor CLI, and the Cursor IDE; entries below are configs we expect to work but have not yet validated. Please [open an issue](https://github.com/kobiton/automate/issues/new?template=bug_report.yml) if any do not work for your setup. We're happy to help.
 
 #### ChatGPT (Apps SDK)
 
@@ -359,7 +359,7 @@ Say it your way — your assistant routes by meaning, not keyword: "rerun / revi
 | Term | Meaning |
 |------|---------|
 | Session | One connection to a device — everything you did (commands, video, logs) is recorded under a session id. |
-| Session type | How the session is driven: `AUTOMATION` (script or agent via Appium), `CLI` (the bundled CLI wrapper), `MANUAL` (you, in the portal live view). Interacting in the live view while an automation session runs makes it `MIXED`. |
+| Session type | How the session was driven, as the `type` field of `getSession` / `listSessions`: `AUTO` (script or agent via Appium), `UIAUTOMATOR` / `XCUITEST` (native instrumentation — `startNativeSession` or the CLI's `test run`), `CLI` (the bundled CLI wrapper), `MANUAL` (you, in the portal live view), `MIXED` (you interacted in the live view while an automation session ran); rarer: `SCRIPTLESS`, `GAMEDRIVER`. |
 | Test case | A saved, replayable sequence of steps, created by saving a completed session (`saveTestCase`). Automation sessions are saveable; CLI sessions are not. |
 | Revisit | What a test run does: re-executes a test case's saved steps on each selected device — one "revisit execution" per device. |
 | Test run | An execution of a test case or test suite across one or more devices, with per-device results. |
@@ -442,7 +442,7 @@ Every step above uses only what this plugin ships: the app tools (`uploadAppToSt
 | `getTestCase` | Get test case details including its steps |
 | `updateTestCase` | Update a test case's metadata and steps |
 | `deleteTestCase` | Delete a test case |
-| `createTestRun` | Create a test run from a test suite or selected test cases |
+| `createTestRun` | Create a test run from a test suite or selected test cases (re-executes *recorded* steps — not the CLI's `kobiton test run`, which runs your own UIAutomator/XCUITest bundle; see `run-interactive-session`) |
 | `listTestRuns` | List test runs with team, keyword, and platform filters |
 | `getTestRun` | Get test run details including its sessions |
 | `terminateTestRun` | Stop a running test run |
@@ -793,7 +793,7 @@ Cursor CLI does not run the plugin's SessionStart hook, so the CLI wrapper isn't
 
 ### Still Stuck?
 
-For additional help, open an issue at [github.com/kobiton/automate/issues](https://github.com/kobiton/automate/issues/new?template=bug_report.md) or ask in [#general-discussion](https://discord.com/channels/1486036652685267055/1488189710248710327) on Discord. Feel free to share [feature requests](https://github.com/kobiton/automate/issues/new?template=feature_request.md). We welcome product feedback and will consider it as we continue to improve the platform.
+For additional help, open an issue at [github.com/kobiton/automate/issues](https://github.com/kobiton/automate/issues/new?template=bug_report.yml) or ask in [#general-discussion](https://discord.com/channels/1486036652685267055/1488189710248710327) on Discord. Feel free to share [feature requests](https://github.com/kobiton/automate/issues/new?template=feature_request.md). We welcome product feedback and will consider it as we continue to improve the platform.
 
 ## Privacy & Data
 

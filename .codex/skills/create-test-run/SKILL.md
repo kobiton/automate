@@ -11,7 +11,8 @@ description: >-
   when the user asks to "create / kick off / start / run a test run", "run test
   case X on N devices", or similar. Wraps the createTestRun MCP tool (and
   getOrgSettings / listDevices for defaults); delegates the watch to
-  monitor-test-run.
+  monitor-test-run. Not for running a compiled UIAutomator/XCUITest bundle -
+  that is the CLI's `test run` command in run-interactive-session.
 allowed-tools: >-
   Read, Skill
 version: 1.0.0
