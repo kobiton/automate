@@ -183,5 +183,30 @@ if [ -z "${KOBITON_AI_TOOL_NAME:-}" ]; then
   fi
 fi
 
-# --- 6. Run the CLI (JWT at ~/.kobiton/.session is loaded by CLI itself) ---
+# --- 6. Enforce --hide on `session create` -----------------------------------
+# Without --hide the CLI prints the session bearer token to stdout, and that
+# lands in the agent transcript. The skill docs mandate the flag, but the
+# guarantee must not depend on the agent remembering it (or dropping it while
+# recovering from an error), nor on which build step 1 resolved: --hide needs
+# build 2608.191335.0+, and the fallback path above can hand back an older
+# cached build. So: add --hide when absent, and refuse outright when the
+# resolved build does not know the flag - failing closed beats leaking.
+IS_CREATE=""
+prev=""
+for a in "$@"; do
+  if [ "$prev" = "session" ] && [ "$a" = "create" ]; then IS_CREATE=1; break; fi
+  case "$a" in -*) ;; *) prev="$a" ;; esac
+done
+if [ -n "$IS_CREATE" ]; then
+  HAS_HIDE=""
+  for a in "$@"; do [ "$a" = "--hide" ] && HAS_HIDE=1; done
+  if ! "$BINARY" session create --help 2>/dev/null | grep -q -- '--hide'; then
+    echo "Error: refusing to run 'session create' - the resolved CLI build ($(basename "$(dirname "$BINARY")")) does not support --hide, so it would print the session bearer token." >&2
+    echo "Run /automate:setup (or re-open the session so the SessionStart hook downloads the pinned build), then retry." >&2
+    exit 1
+  fi
+  [ -z "$HAS_HIDE" ] && set -- "$@" --hide
+fi
+
+# --- 7. Run the CLI (JWT at ~/.kobiton/.session is loaded by CLI itself) ---
 exec "$BINARY" "$@"

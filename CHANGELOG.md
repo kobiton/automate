@@ -18,6 +18,8 @@ Closing the remaining gaps from issue #121 in `run-interactive-session`:
 
 Every `session create` example and the session-token notes now use `--hide`, which keeps the session JWT out of stdout — and therefore out of the agent transcript — while still saving it to `~/.kobiton/.session` for later commands. The pinned CLI (`skills/run-interactive-session/CLI_VERSION`) moves from `2608.70138.0+master.b0c2bc7` to `2608.191335.0+master.1e8f487`, the first published build that carries `--hide`, `session list`, and the `device forward --mode` option; a fresh install downloads it automatically.
 
+The wrapper (`run.sh`) now enforces the flag rather than trusting the docs: `session create` without `--hide` gets it added, and when the resolved build is an older cached one that does not know the flag (offline upgrade, pruned pin), the wrapper refuses to create the session and points at `/automate:setup` instead of printing the token. `AGENTS.md` carries the `--hide` rule and the new command shapes for hosts that read it instead of the skill. `session list`'s two footers (`Page N (M items), T total` paged, `N of T sessions, P pages.` for multi-page `--all`) and its `No sessions found.` empty sentinel are documented in the response-shapes reference, and the README's bug-report links point at the new form.
+
 ### Changed: structured bug-report form
 
 `.github/ISSUE_TEMPLATE/bug_report.md` is replaced by a GitHub issue form (`bug_report.yml`) that requires the details every triage starts with — plugin version, AI host and version, OS/architecture, the tool or skill involved, reproduction steps, expected and actual behavior — with optional fields for the Kobiton CLI version and `/automate:doctor` output.

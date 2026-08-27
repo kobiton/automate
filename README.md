@@ -185,7 +185,7 @@ Works for both the Cursor IDE and the `agent` CLI. You won't get the bundled ski
 
 Kobiton's MCP server is built on the open [Model Context Protocol](https://modelcontextprotocol.io), so **any MCP-compatible client can connect to it**. Same endpoint (`https://api.kobiton.com/mcp`), same browser-based OAuth login as the clients above.
 
-> **Good to know:** End-to-end tested only on Claude Code, Copilot CLI, Gemini CLI, Codex CLI, Cursor CLI, and the Cursor IDE; entries below are configs we expect to work but have not yet validated. Please [open an issue](https://github.com/kobiton/automate/issues/new?template=bug_report.md) if any do not work for your setup. We're happy to help.
+> **Good to know:** End-to-end tested only on Claude Code, Copilot CLI, Gemini CLI, Codex CLI, Cursor CLI, and the Cursor IDE; entries below are configs we expect to work but have not yet validated. Please [open an issue](https://github.com/kobiton/automate/issues/new?template=bug_report.yml) if any do not work for your setup. We're happy to help.
 
 #### ChatGPT (Apps SDK)
 
@@ -793,7 +793,7 @@ Cursor CLI does not run the plugin's SessionStart hook, so the CLI wrapper isn't
 
 ### Still Stuck?
 
-For additional help, open an issue at [github.com/kobiton/automate/issues](https://github.com/kobiton/automate/issues/new?template=bug_report.md) or ask in [#general-discussion](https://discord.com/channels/1486036652685267055/1488189710248710327) on Discord. Feel free to share [feature requests](https://github.com/kobiton/automate/issues/new?template=feature_request.md). We welcome product feedback and will consider it as we continue to improve the platform.
+For additional help, open an issue at [github.com/kobiton/automate/issues](https://github.com/kobiton/automate/issues/new?template=bug_report.yml) or ask in [#general-discussion](https://discord.com/channels/1486036652685267055/1488189710248710327) on Discord. Feel free to share [feature requests](https://github.com/kobiton/automate/issues/new?template=feature_request.md). We welcome product feedback and will consider it as we continue to improve the platform.
 
 ## Privacy & Data
 

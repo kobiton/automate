@@ -89,8 +89,8 @@ Detailed step-by-step instructions live in `skills/run-automation-suite/SKILL.md
 For exploratory testing or repro work (not running a pre-written script):
 
 1. **Pick a device**: same `listDevices` flow as above; the user is interactively in the loop.
-2. **Create or resume a session**: `reserveDevice` then start an interactive session; resume an existing one by session ID if the user has one.
-3. **Interact**: relay WebDriver commands through the plugin; capture artifacts on demand.
+2. **Create or resume a session**: `reserveDevice` then start an interactive session with `kobiton -u <udid> session create --hide` - `--hide` keeps the session bearer token out of stdout and the transcript (the CLI still saves it to `~/.kobiton/.session`); output is `Session <id> created for device <udid>.`. Resume an existing one by session ID if the user has one; `kobiton session list [--state START]` shows recent sessions (`No sessions found.` when none match).
+3. **Interact**: relay WebDriver commands through the plugin; capture artifacts on demand. Beyond WebDriver: `device forward <local> <remote> [--mode mux|demux]` (addresses `tcp:<port>`; transient network failures are retried for up to 5 minutes, so a forward that looks stuck for a few minutes is retrying), and `test run --app <APP> --runner <TEST_RUNNER> <uiautomator|xcuitest>` for native instrumentation bundles - unrelated to the `createTestRun` tool, which replays a recorded test case.
 4. **End the session**: `terminateSession` when the user is done.
 
 Detailed step-by-step instructions live in `skills/run-interactive-session/SKILL.md`. Response shapes for the WebDriver layer are documented at `skills/run-interactive-session/references/response-shapes.md`.

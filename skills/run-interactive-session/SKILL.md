@@ -139,6 +139,8 @@ The output is a single line like `Session 12345 created for device <udid>.`. Cap
 
 The JWT is saved automatically to `~/.kobiton/.session`. All subsequent commands use it - no flags needed. `--hide` keeps the token out of stdout (and therefore out of the agent transcript); without it the CLI prints the bearer token, which is valid for the session's lifetime. Never omit `--hide`, and never paste a token line into chat if one appears.
 
+`--hide` (like `session list` and `device forward --mode`) needs CLI build `2608.191335.0` or newer - the build this plugin pins. The wrapper enforces it: `session create` without `--hide` gets the flag added, and if the resolved build is older (the `pinned CLI version ... is not cached` warning tells you so) the wrapper refuses to create the session instead of printing the token. If you see that refusal, run `/automate:setup` to download the pinned build - do **not** retry with different flags.
+
 If a session may already exist (e.g., the user is continuing earlier work), check first:
 
     $KOBITON_BIN session ping
@@ -386,7 +388,7 @@ The common parsing patterns:
 - **Most WebDriver responses** are JSON envelopes `{"value": <result>}`. Null/empty `.value` means success; a non-null `.value` is the result (string, rect object, script return).
 - **Find element** (`wd post element`) hides the element ID under `.value`, but the exact path varies (`.value.ELEMENT`, `.value["element-6066-11e4-a52e-4f735466cecf"]`, or a bare string). Use a tolerant extractor like `jq -r '.value.ELEMENT // .value["element-6066-11e4-a52e-4f735466cecf"] // .value'`.
 - **Screenshot and page source** (`wd get screenshot`, `wd get source`) are special-cased — the CLI unwraps the WebDriver JSON envelope and emits raw base64 PNG / raw XML on stdout. Pipe straight into a file.
-- **Session commands** mix text + exit code. `session create --hide` prints `Session <id> created for device <udid>.` (and, without `--hide`, an extra `Session token <jwt>` line - which is why the flag is mandatory); `session ping` prints `Session <id> pinged.` and signals liveness through exit code (0 = alive); `session list` prints a comma-separated table (`ID, State, Type, Device, Platform, Created, Ended`) followed by a `Page N (M items), T total` footer.
+- **Session commands** mix text + exit code. `session create --hide` prints `Session <id> created for device <udid>.` (and, without `--hide`, an extra `Session token <jwt>` line - which is why the flag is mandatory); `session ping` prints `Session <id> pinged.` and signals liveness through exit code (0 = alive); `session list` prints a comma-separated table (`ID, State, Type, Device, Platform, Created, Ended`) followed by a footer - `Page N (M items), T total` when paged, `N of T sessions, P pages.` when `--all` spans several pages - or the single line `No sessions found.` when nothing matches.
 - **`device` / `file` / `app` / `test`** emit plain text and signal failure through exit code. Long-running ones (`test run`, `device forward`) should be launched with `run_in_background: true` and tailed.
 
 For the full per-command table (response on stdout, exact parsing recipe per command), see [`references/response-shapes.md`](references/response-shapes.md). Consult it when the response shape isn't obvious from these summary rules.
@@ -407,7 +409,8 @@ Where `<portal-base>` is derived from the `KOBITON_PORTAL` value in the active p
 
 ## Error Handling
 
-- **Unexpected argument / unknown flag**: run `$KOBITON_BIN <command> --help` to discover the correct syntax, then retry with the right arguments. Never guess flags.
+- **Unexpected argument / unknown flag**: run `$KOBITON_BIN <command> --help` to discover the correct syntax, then retry with the right arguments. Never guess flags. Exception: never drop `--hide` from `session create` - if it is rejected, the cached build is too old (see below).
+- **`Refusing to run 'session create' ... does not support --hide`** from the wrapper: the pinned build is not cached and the fallback build predates `--hide`, so creating a session would print the bearer token. Run `/automate:setup` (or re-open the session so the SessionStart hook downloads the pinned build), then retry the same command.
 - **`wd` errors exit 0**: WebDriver failures (e.g. no such element) return exit code 0 with a JSON error body - check the response JSON, not `$?`. A bounded `device log` exiting 124 (`timeout`) or 142 (perl-alarm) is the bound firing, not a failure.
 - **Session create failed**: device may be offline, already reserved, or the UDID is wrong - verify availability with the `listDevices` MCP tool before retrying.
 - **Session expired / auth error mid-flow**: `session ping` fails or a command returns auth error - offer to create a new session.
