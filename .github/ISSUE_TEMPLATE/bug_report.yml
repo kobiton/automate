@@ -49,7 +49,7 @@ body:
   - type: input
     id: cli-version
     attributes:
-      label: Kobiton CLI version (if the run-interactive-session skill or the `kobiton` CLI is involved)
+      label: Kobiton CLI version (if the run-interactive-session skill or the kobiton CLI is involved)
       description: Output of `~/.kobiton/bin/kobiton --version`; `/automate:doctor` also prints pinned vs installed.
       placeholder: "e.g. 2608.191335.0+master.1e8f487"
     validations:
@@ -89,7 +89,7 @@ body:
   - type: textarea
     id: doctor
     attributes:
-      label: "`/automate:doctor` output and logs (optional)"
+      label: "/automate:doctor output and logs (optional)"
       description: Paste the doctor output and any relevant log excerpt (redact API keys, tokens, and session JWTs first). Rendered as a code block — no backticks needed.
       render: shell
     validations:
