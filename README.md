@@ -401,7 +401,7 @@ Every step above uses only what this plugin ships: the app tools (`uploadAppToSt
 
 ## Tools
 
-31 MCP tools across 5 domains.
+32 MCP tools across 5 domains.
 
 ### Devices
 
@@ -451,6 +451,7 @@ Every step above uses only what this plugin ships: the app tools (`uploadAppToSt
 | `createTestSuite` | Create a test suite from existing test cases |
 | `updateTestSuite` | Update a test suite's metadata and membership |
 | `deleteTestSuite` | Delete a test suite (member test cases are kept) |
+| `listTeams` | List the teams the calling user belongs to (for team-scoped test-management calls) |
 
 ### Account
 

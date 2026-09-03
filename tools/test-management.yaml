@@ -9,10 +9,14 @@ tools:
       enforces that the session is a manual, prime-completed, revisit-eligible
       session owned by the user. The test case is named after the source
       session; call updateTestCase with action 'update_info' afterward to
-      rename, describe, or retag it. Returns the created test case record.
+      rename, describe, or retag it. Returns the created test case record. The
+      created test case inherits the source session's team (team_id in the
+      response; null = org-level).
     annotations:
       readOnlyHint: false
       destructiveHint: false
+      idempotentHint: false
+      openWorldHint: false
     inputSchema:
       type: object
       properties:
@@ -37,6 +41,7 @@ tools:
     annotations:
       readOnlyHint: true
       destructiveHint: false
+      openWorldHint: false
     inputSchema:
       type: object
       properties:
@@ -49,9 +54,11 @@ tools:
         teamId:
           type: integer
           description: >-
-            Optional team scope. When set, only test cases visible to the
-            caller via that team are returned (in addition to org-shared ones).
-            Omit to list every test case the caller can access in the org.
+            Team scope. Organization admins: optional - omit to get org-level
+            (team-less) test cases only (team_id = null); pass a teamId for
+            that team's test cases. Organization members: required - the API
+            returns 400 "Team id is required" without it; call listTeams to
+            discover your team ids. Results carry team_id (null = org-level).
         keyword:
           type: string
           description: Search by test case name, tag, or app package
@@ -229,10 +236,14 @@ tools:
       test case versions against the chosen devices. Provide either
       `testSuiteId` (run an existing suite) or `testCaseSelections` (run a
       bespoke list of test case versions). Returns the test run ID and the
-      sessions that were queued.
+      sessions that were queued. Test runs are team-homogeneous: the suite or
+      selected test case versions must all belong to one team; results carry
+      team_id (null = org-level).
     annotations:
       readOnlyHint: false
       destructiveHint: false
+      idempotentHint: false
+      openWorldHint: false
     inputSchema:
       type: object
       properties:
@@ -332,6 +343,7 @@ tools:
     annotations:
       readOnlyHint: true
       destructiveHint: false
+      openWorldHint: false
     inputSchema:
       type: object
       properties:
@@ -344,9 +356,11 @@ tools:
         teamId:
           type: integer
           description: >-
-            Optional team scope. When set, only test runs visible to the caller
-            via that team are returned (in addition to org-shared ones). Omit
-            to list every test run the caller can access in the org.
+            Team scope. Organization admins: optional - omit to get org-level
+            (team-less) test runs only (team_id = null); pass a teamId for
+            that team's test runs. Organization members: required - the API
+            returns 400 "Team id is required" without it; call listTeams to
+            discover your team ids. Results carry team_id (null = org-level).
         keyword:
           type: string
           description: Search by test run name
@@ -435,6 +449,7 @@ tools:
     annotations:
       readOnlyHint: true
       destructiveHint: false
+      openWorldHint: false
     inputSchema:
       type: object
       properties:
@@ -446,7 +461,12 @@ tools:
             logging.
         teamId:
           type: integer
-          description: Filter by team ID
+          description: >-
+            Team scope. Organization admins: optional - omit to get org-level
+            (team-less) test suites only (team_id = null); pass a teamId for
+            that team's test suites. Organization members: required - the API
+            returns 400 "Team id is required" without it; call listTeams to
+            discover your team ids. Results carry team_id (null = org-level).
         keyword:
           type: string
           description: Search by test suite name
@@ -502,6 +522,8 @@ tools:
     annotations:
       readOnlyHint: false
       destructiveHint: false
+      idempotentHint: false
+      openWorldHint: false
     inputSchema:
       type: object
       properties:
@@ -513,7 +535,13 @@ tools:
             logging.
         teamId:
           type: integer
-          description: Optional team ID that owns the new test suite
+          description: >-
+            Team that owns the new test suite. Organization admins may omit it
+            to create the suite in the org-level bucket (team_id = null).
+            Organization members must pass a team they belong to (call
+            listTeams to discover your team ids). Test suites are
+            team-homogeneous: every test case added must belong to the suite's
+            team.
         name:
           type: string
           description: Name for the new test suite
@@ -601,3 +629,30 @@ tools:
       required:
         - userIntent
         - testSuiteId
+  - name: listTeams
+    title: List Teams
+    description: >
+      List the teams the calling user belongs to (id and name). Use this to
+      discover a valid teamId for the team-scoped test-management tools: an
+      organization member must pass teamId to listTestCases, listTestSuites
+      and listTestRuns, so when one of those returns "Team id is required",
+      call this tool and retry with one of the returned team ids. The response
+      field `groups` carries the teams; an empty list means the caller belongs
+      to no team (an organization admin can assign one). Organization admins
+      may also scope by any team in their organization, not only the teams
+      returned here.
+    annotations:
+      readOnlyHint: true
+      destructiveHint: false
+      openWorldHint: false
+    inputSchema:
+      type: object
+      properties:
+        userIntent:
+          type: string
+          description: >-
+            A brief summary of what the user is trying to accomplish with this
+            tool call, refined from their original prompt. Used for audit
+            logging.
+      required:
+        - userIntent
