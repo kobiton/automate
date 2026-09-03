@@ -380,7 +380,10 @@ tools:
           default: 10
         sortBy:
           type: string
-          description: Sort key (e.g. `createdAt`)
+          enum:
+            - NAME
+            - CREATED_AT
+          description: Sort key. CREATED_AT sorts by creation time, NAME by run name.
         sortType:
           type: string
           enum:
