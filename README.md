@@ -401,7 +401,7 @@ Every step above uses only what this plugin ships: the app tools (`uploadAppToSt
 
 ## Tools
 
-31 MCP tools across 5 domains.
+32 MCP tools across 5 domains.
 
 ### Devices
 
@@ -438,15 +438,15 @@ Every step above uses only what this plugin ships: the app tools (`uploadAppToSt
 | Tool | Description |
 |------|-------------|
 | `saveTestCase` | Convert a finished manual session into a reusable test case |
-| `listTestCases` | List test cases with team and keyword filters |
+| `listTestCases` | List one team's test cases (teamId required for org members; admins omit = org-level only) |
 | `getTestCase` | Get test case details including its steps |
 | `updateTestCase` | Update a test case's metadata and steps |
 | `deleteTestCase` | Delete a test case |
 | `createTestRun` | Create a test run from a test suite or selected test cases (re-executes *recorded* steps — not the CLI's `kobiton test run`, which runs your own UIAutomator/XCUITest bundle; see `run-interactive-session`) |
-| `listTestRuns` | List test runs with team, keyword, and platform filters |
+| `listTestRuns` | List one team's test runs (teamId required for org members; admins omit = org-level only) |
 | `getTestRun` | Get test run details including its sessions |
 | `terminateTestRun` | Stop a running test run |
-| `listTestSuites` | List test suites with team and keyword filters |
+| `listTestSuites` | List one team's test suites (teamId required for org members; admins omit = org-level only) |
 | `getTestSuite` | Get test suite details including member test cases |
 | `createTestSuite` | Create a test suite from existing test cases |
 | `updateTestSuite` | Update a test suite's metadata and membership |
@@ -457,6 +457,7 @@ Every step above uses only what this plugin ships: the app tools (`uploadAppToSt
 | Tool | Description |
 |------|-------------|
 | `getCredential` | Return the authenticated user's username, API key, and portal URL — backs `/automate:setup` |
+| `listTeams` | List the teams the calling user belongs to (for team-scoped test-management calls) |
 | `getOrgSettings` | Return your organization's feature flags and preferences (e.g. live remediation) — read up front by `create-test-run` and `monitor-test-run` |
 
 ## Skills

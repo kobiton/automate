@@ -117,7 +117,7 @@ Detailed step-by-step instructions live in `skills/drive-automation-session/SKIL
 
 ## When the user asks to save or manage test cases
 
-The plugin exposes test-management tools covering test cases, test runs, and test suites. The most common ask is *"save the session I just ran as a reusable test case"*. For that, call `saveTestCase` with the session ID and a name. The remaining tools follow standard CRUD patterns (`createTestRun` / `listTestCases` / `getTestSuite` / `updateTestCase` / `terminateTestRun` etc.). For multi-step orchestration, ask the user to confirm before any `delete*` or `terminateTestRun` call.
+The plugin exposes test-management tools covering test cases, test runs, and test suites. The most common ask is *"save the session I just ran as a reusable test case"*. For that, call `saveTestCase` with the session ID and a name. The remaining tools follow standard CRUD patterns (`createTestRun` / `listTestCases` / `getTestSuite` / `updateTestCase` / `terminateTestRun` etc.). For multi-step orchestration, ask the user to confirm before any `delete*` or `terminateTestRun` call. Team scoping: there is no cross-team listing — each `list*` call covers one team, org members must pass `teamId` (discover ids with `listTeams`), and org admins omitting `teamId` get org-level (team-less) items only. Suites and runs are team-homogeneous.
 
 ## When the user asks to create / run a test run
 
