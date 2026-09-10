@@ -31,15 +31,16 @@ tools:
   - name: listTeams
     title: List Teams
     description: >
-      List the teams the calling user belongs to (id and name). Use this to
-      discover a valid teamId for the team-scoped test-management tools: an
-      organization member must pass teamId to listTestCases, listTestSuites
-      and listTestRuns, so when one of those returns "Team id is required",
-      call this tool and retry with one of the returned team ids. The response
-      field `groups` carries the teams; an empty list means the caller belongs
-      to no team (an organization admin can assign one). Organization admins
-      may also scope by any team in their organization, not only the teams
-      returned here.
+      List the teams the calling user belongs to (id and name). The
+      test-management tools have no cross-team listing: each list call covers
+      exactly one team, org members must always pass a teamId, and org admins
+      omitting teamId get org-level (team-less) items only - never all teams.
+      So when the team is not already known, call this tool first and query
+      each team; recovering from a "Team id is required" error works the same
+      way. The response field `groups` carries the teams; an empty list means
+      the caller belongs to no team (an organization admin can assign one).
+      Organization admins may also scope by any team in their organization,
+      not only the teams returned here.
     annotations:
       readOnlyHint: true
       destructiveHint: false

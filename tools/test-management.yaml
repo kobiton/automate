@@ -11,7 +11,9 @@ tools:
       session; call updateTestCase with action 'update_info' afterward to
       rename, describe, or retag it. Returns the created test case record. The
       created test case inherits the source session's team (team_id in the
-      response; null = org-level).
+      response; null = org-level). If the session had no team, the test case
+      is org-level and is NOT visible to org members through listTestCases;
+      use getTestCase with the returned id.
     annotations:
       readOnlyHint: false
       destructiveHint: false
@@ -35,9 +37,10 @@ tools:
   - name: listTestCases
     title: List Test Cases
     description: >
-      List test cases in the current user's organization with optional team,
-      keyword, and platform filters. Returns test case ID, name, description,
-      platform, owner, and timestamps.
+      List test cases for one team (teamId required for org members; admins
+      may omit it to get org-level items only), with optional keyword and
+      platform filters. Returns test case ID, name, description, platform,
+      owner, and timestamps.
     annotations:
       readOnlyHint: true
       destructiveHint: false
@@ -54,11 +57,9 @@ tools:
         teamId:
           type: integer
           description: >-
-            Team scope. Organization admins: optional - omit to get org-level
-            (team-less) test cases only (team_id = null); pass a teamId for
-            that team's test cases. Organization members: required - the API
-            returns 400 "Team id is required" without it; call listTeams to
-            discover your team ids. Results carry team_id (null = org-level).
+            Team scope. Required for org members, optional for admins (omit =
+            org-level items only). Get ids from listTeams; results carry
+            team_id (null = org-level).
         keyword:
           type: string
           description: Search by test case name, tag, or app package
@@ -87,6 +88,7 @@ tools:
     annotations:
       readOnlyHint: true
       destructiveHint: false
+      openWorldHint: false
     inputSchema:
       type: object
       properties:
@@ -122,6 +124,8 @@ tools:
     annotations:
       readOnlyHint: false
       destructiveHint: false
+      idempotentHint: false
+      openWorldHint: false
     inputSchema:
       type: object
       properties:
@@ -214,6 +218,8 @@ tools:
     annotations:
       readOnlyHint: false
       destructiveHint: true
+      idempotentHint: true
+      openWorldHint: false
     inputSchema:
       type: object
       properties:
@@ -338,8 +344,10 @@ tools:
   - name: listTestRuns
     title: List Test Runs
     description: >
-      List test runs with optional team, keyword, and platform filters. Returns
-      test run ID, name, status, platform, and aggregated execution counts.
+      List test runs for one team (teamId required for org members; admins
+      may omit it to get org-level items only), with optional keyword and
+      platform filters. Returns test run ID, name, status, platform, and
+      aggregated execution counts.
     annotations:
       readOnlyHint: true
       destructiveHint: false
@@ -356,11 +364,9 @@ tools:
         teamId:
           type: integer
           description: >-
-            Team scope. Organization admins: optional - omit to get org-level
-            (team-less) test runs only (team_id = null); pass a teamId for
-            that team's test runs. Organization members: required - the API
-            returns 400 "Team id is required" without it; call listTeams to
-            discover your team ids. Results carry team_id (null = org-level).
+            Team scope. Required for org members, optional for admins (omit =
+            org-level items only). Get ids from listTeams; results carry
+            team_id (null = org-level).
         keyword:
           type: string
           description: Search by test run name
@@ -383,7 +389,9 @@ tools:
           enum:
             - NAME
             - CREATED_AT
-          description: Sort key. CREATED_AT sorts by creation time, NAME by run name.
+          description: >-
+            Sort key - exact upper-case values only. CREATED_AT sorts by
+            creation time, NAME by run name.
         sortType:
           type: string
           enum:
@@ -400,6 +408,7 @@ tools:
     annotations:
       readOnlyHint: true
       destructiveHint: false
+      openWorldHint: false
     inputSchema:
       type: object
       properties:
@@ -428,6 +437,8 @@ tools:
     annotations:
       readOnlyHint: false
       destructiveHint: true
+      idempotentHint: true
+      openWorldHint: false
     inputSchema:
       type: object
       properties:
@@ -446,9 +457,10 @@ tools:
   - name: listTestSuites
     title: List Test Suites
     description: >
-      List test suites in the current user's organization with optional team,
-      keyword and platform filters. Returns test suite ID, name, description,
-      platform, and member count.
+      List test suites for one team (teamId required for org members; admins
+      may omit it to get org-level items only), with optional keyword and
+      platform filters. Returns test suite ID, name, description, platform,
+      and member count.
     annotations:
       readOnlyHint: true
       destructiveHint: false
@@ -465,11 +477,9 @@ tools:
         teamId:
           type: integer
           description: >-
-            Team scope. Organization admins: optional - omit to get org-level
-            (team-less) test suites only (team_id = null); pass a teamId for
-            that team's test suites. Organization members: required - the API
-            returns 400 "Team id is required" without it; call listTeams to
-            discover your team ids. Results carry team_id (null = org-level).
+            Team scope. Required for org members, optional for admins (omit =
+            org-level items only). Get ids from listTeams; results carry
+            team_id (null = org-level).
         keyword:
           type: string
           description: Search by test suite name
@@ -497,6 +507,7 @@ tools:
     annotations:
       readOnlyHint: true
       destructiveHint: false
+      openWorldHint: false
     inputSchema:
       type: object
       properties:
@@ -539,12 +550,10 @@ tools:
         teamId:
           type: integer
           description: >-
-            Team that owns the new test suite. Organization admins may omit it
-            to create the suite in the org-level bucket (team_id = null).
-            Organization members must pass a team they belong to (call
-            listTeams to discover your team ids). Test suites are
-            team-homogeneous: every test case added must belong to the suite's
-            team.
+            Team that owns the new suite. Required for org members, optional
+            for admins (omit = org-level bucket). Get ids from listTeams.
+            Suites are team-homogeneous: every member test case must belong to
+            the suite's team.
         name:
           type: string
           description: Name for the new test suite
@@ -577,6 +586,8 @@ tools:
     annotations:
       readOnlyHint: false
       destructiveHint: false
+      idempotentHint: false
+      openWorldHint: false
     inputSchema:
       type: object
       properties:
@@ -617,6 +628,8 @@ tools:
     annotations:
       readOnlyHint: false
       destructiveHint: true
+      idempotentHint: true
+      openWorldHint: false
     inputSchema:
       type: object
       properties:

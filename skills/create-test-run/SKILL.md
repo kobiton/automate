@@ -194,6 +194,7 @@ On the user's answer:
 |-----------|----------|
 | No test case/suite id given | Ask for one — it's the only field with no default. |
 | `createTestRun` validation error (bad enum, missing pair) | Correct from the error + the Step-2 enum reference; don't blind-retry. |
+| 400 "All test cases must have the same team" | Test runs are team-homogeneous: the suite or selected test case versions must all belong to one team. Regroup the selection by `team_id` (visible on each test case) and create one run per team. |
 | No available devices for the platform | Tell the user; offer to widen (cloud devices) or wait. Don't create a run that can't dispatch. |
 | `getOrgSettings` fails before the monitor offer | Assume `flagOn = false` (drop the auto-open option); still offer monitor-only / don't-monitor. |
 
