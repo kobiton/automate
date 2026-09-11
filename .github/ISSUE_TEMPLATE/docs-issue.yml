@@ -1,0 +1,79 @@
+name: Documentation Issue
+description: Report incorrect, missing, unclear, or outdated documentation
+title: "[Docs] "
+labels: ["documentation"]
+
+body:
+  - type: input
+    id: page
+    attributes:
+      label: Which documentation page are you referring to?
+      description: Link to the documentation page or repository file where you found the issue.
+      placeholder: "https://docs.kobiton.com/..."
+    validations:
+      required: true
+
+  - type: input
+    id: product
+    attributes:
+      label: Which product or feature are you working with?
+      description: Enter the Kobiton product, feature, integration, or tool related to the documentation.
+      placeholder: "For example: MCP, deviceConnect, Scriptless Automation"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: Which deployment are you using?
+      description: Select the deployment that applies to your environment.
+      options:
+        - Cloud
+        - Hybrid
+        - Standalone
+        - Not sure
+        - Not applicable
+    validations:
+      required: true
+
+  - type: textarea
+    id: task
+    attributes:
+      label: What were you trying to do?
+      description: Describe the task or goal that brought you to the documentation.
+      placeholder: "For example: I was trying to configure..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: issue
+    attributes:
+      label: What is wrong or unclear?
+      description: Describe what is incorrect, missing, unclear, or outdated in the documentation.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What information did you expect to find?
+      description: Describe what would have helped you complete the task or understand the feature.
+    validations:
+      required: false
+
+  - type: input
+    id: plugin-version
+    attributes:
+      label: Which plugin version are you using?
+      description: If this issue applies to documentation bundled with the plugin, enter the plugin version.
+      placeholder: "For example: 1.11.0"
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Anything else you'd like to add?
+      description: Add any other details, links, screenshots, examples, or context that could help us understand the issue.
+    validations:
+      required: false
