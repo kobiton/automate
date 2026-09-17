@@ -298,3 +298,74 @@ tools:
       required:
         - userIntent
         - testFramework
+
+  - name: listValidations
+    title: List Validations
+    description: >
+      List the validations recorded during a test session, bounded per type so
+      the result stays small. Validations are the automated checks that ran
+      while the session executed. Omit `types` to get every type at once (the
+      full test-result picture for a session, crash information included);
+      pass one or more `types` to narrow. Map natural-language requests onto
+      the enum: "crash", "crashes", "did the app crash" → CRASH; "performance",
+      "slow", "response time" → RESPONSE_TIME; "a11y", "accessibility" →
+      ACCESSIBILITY; "blocked", "stuck step", "blocker" → BLOCKER; "wrong
+      element", "locator", "element selection" → ELEMENT_SELECTION;
+      "self-healed", "auto-corrected", "flex correct" → FLEX_CORRECT. If a
+      request does not map clearly to one of the six, ask the user to pick
+      rather than guessing. Every requested type is present in the result with
+      `total_items`, `total_pages`, `page` and `items`; a type with no findings
+      has `total_items: 0` and an empty `items` array — that is not an error.
+      Use `limit` and `offset` to page forward within a type. Crash items carry
+      a presigned crash-log URL; crash and accessibility items carry a presigned
+      screenshot URL when one exists.
+    annotations:
+      readOnlyHint: true
+      destructiveHint: false
+      openWorldHint: false
+    inputSchema:
+      type: object
+      properties:
+        userIntent:
+          type: string
+          description: >-
+            A brief summary of what the user is trying to accomplish with this
+            tool call, refined from their original prompt. Used for audit
+            logging.
+        sessionId:
+          type: integer
+          description: The session ID
+        types:
+          type: array
+          description: >-
+            Validation types to return. Omit to return all six. Values are
+            case-insensitive.
+          items:
+            type: string
+            enum:
+              - BLOCKER
+              - ELEMENT_SELECTION
+              - ACCESSIBILITY
+              - CRASH
+              - RESPONSE_TIME
+              - FLEX_CORRECT
+            description: >-
+              BLOCKER — a step the run could not get past. ELEMENT_SELECTION —
+              a step whose target element resolved to a different element than
+              expected. ACCESSIBILITY — accessibility findings such as low
+              contrast, missing labels or small touch targets. CRASH — an app
+              crash detected during the session, with its crash log.
+              RESPONSE_TIME — a command whose network response time exceeded
+              the threshold. FLEX_CORRECT — a step the run self-corrected to
+              keep going.
+        limit:
+          type: integer
+          description: Maximum number of items to return per type (default 10, max 20)
+          default: 10
+        offset:
+          type: integer
+          description: Item offset for pagination, applied within each type
+          default: 0
+      required:
+        - userIntent
+        - sessionId
