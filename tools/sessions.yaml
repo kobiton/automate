@@ -334,6 +334,34 @@ tools:
           description: >-
             Narrow the results to one command (step) of the session. Omit for
             the whole session.
+        type:
+          type: string
+          enum:
+            - TOUCH_TARGET_SIZE
+            - COLOR_CONTRAST
+            - CONTENT_LABELING
+          description: >-
+            Narrow the results to one kind of finding: TOUCH_TARGET_SIZE (tap
+            targets smaller than the guideline), COLOR_CONTRAST (text that
+            fails a contrast ratio) or CONTENT_LABELING (missing or duplicated
+            labels). Omit for all kinds.
+        include:
+          type: array
+          description: >-
+            Heavy fields to add to each item. By default an item carries only
+            its id, command id, type, issue name and standard — enough to count
+            and group findings. Ask for more only when you need it: `element`
+            (xpath, attributes and on-screen rect), `metadata` (the measured
+            values, e.g. contrast ratio vs threshold), `screen` (the raw screen
+            record) and `screenshot_url` (a presigned image link). Each roughly
+            multiplies the size of the response.
+          items:
+            type: string
+            enum:
+              - element
+              - metadata
+              - screen
+              - screenshot_url
         limit:
           type: integer
           description: Maximum number of items to return (default 10, max 20)
@@ -567,6 +595,42 @@ tools:
           type: integer
           description: Item offset for pagination
           default: 0
+      required:
+        - userIntent
+        - sessionId
+
+  - name: getAccessibilityValidationsSummary
+    title: Get Accessibility Validations Summary
+    description: >
+      Summarise a test session's accessibility findings as counts instead of
+      rows: the total, how many commands (steps) were scanned, when the most
+      recent finding was recorded, and the breakdown by finding type and by
+      issue name. Reach for this first whenever the question is "how bad is it",
+      "what kinds of accessibility issues does this session have" or "are there
+      any" — a busy session can hold tens of thousands of findings that collapse
+      to a handful of distinct issue kinds, so the summary answers in a fraction
+      of the size. Use listAccessibilityValidations afterwards to look at
+      individual findings. A session with no findings returns zero totals and
+      empty breakdowns with a null last-validation timestamp — that is a normal
+      answer, not an error. The timestamp is also how you tell a still-arriving
+      result set from a settled one: findings can keep landing for several
+      minutes after a session ends.
+    annotations:
+      readOnlyHint: true
+      destructiveHint: false
+      openWorldHint: false
+    inputSchema:
+      type: object
+      properties:
+        userIntent:
+          type: string
+          description: >-
+            A brief summary of what the user is trying to accomplish with this
+            tool call, refined from their original prompt. Used for audit
+            logging.
+        sessionId:
+          type: integer
+          description: The session ID
       required:
         - userIntent
         - sessionId

@@ -78,7 +78,7 @@ There is no local way to test that a new tool YAML matches a deployed server-sid
 | File | Tools |
 |---|---|
 | `tools/devices.yaml` | `listDevices`, `getDeviceStatus`, `reserveDevice`, `terminateReservation` |
-| `tools/sessions.yaml` | `listSessions`, `getSession`, `getSessionArtifacts`, `getUserInputEvents`, `terminateSession`, `startNativeSession`, `listAccessibilityValidations`, `listCrashValidations`, `listResponseTimeValidations`, `listBlockerValidations`, `listElementSelectionValidations`, `listFlexCorrects` |
+| `tools/sessions.yaml` | `listSessions`, `getSession`, `getSessionArtifacts`, `getUserInputEvents`, `terminateSession`, `startNativeSession`, `listAccessibilityValidations`, `listCrashValidations`, `listResponseTimeValidations`, `listBlockerValidations`, `listElementSelectionValidations`, `listFlexCorrects`, `getAccessibilityValidationsSummary` |
 | `tools/apps.yaml` | `listApps`, `uploadAppToStore`, `confirmAppUpload`, `getAppParsingStatus`, `getApp` |
 | `tools/user.yaml` | `getCredential`, `listTeams`, `getOrgSettings` |
 | `tools/test-management.yaml` | 14 test-case / test-run / test-suite CRUD tools |
