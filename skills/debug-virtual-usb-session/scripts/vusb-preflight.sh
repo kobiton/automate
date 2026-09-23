@@ -36,7 +36,9 @@
 #            failure. Never leaves a partial download at a resolved cache path.
 #
 # Environment overrides (tests, mirrors):
-#   KOBITON_VUSB_BASE_URL           download endpoint (default https://public.kobiton.download/virtualusb)
+#   KOBITON_VUSB_BASE_URL           download endpoint (default https://public.kobiton.download/virtualusb).
+#                                   The .sha256 sidecar is fetched from the SAME host, so this is a trust
+#                                   decision: point it only at a mirror you trust (or a local test server).
 #   KOBITON_VUSB_SYSTEM_APP         system install to detect (default /Applications/virtualUSB.app)
 #   KOBITON_VUSB_PLATFORM_OVERRIDE  value used instead of `uname -s`
 
@@ -183,7 +185,9 @@ download_version() {
     rm -rf "$tmp"; return 1
   fi
 
-  expected="$(awk '{print tolower($1)}' "$tmp/$ARTIFACT.sha256")"
+  # First field of the first line only, lowercased, CR stripped: tolerates
+  # `<hex>  <file>`, bare `<hex>`, CRLF sidecars and trailing lines alike.
+  expected="$(awk 'NR==1{print tolower($1)}' "$tmp/$ARTIFACT.sha256" | tr -d '\r')"
   actual="$(sha256 "$tmp/$ARTIFACT")" || {
     echo "virtualUSB client: no sha256 tool available (need shasum or sha256sum) - refusing unverified install." >&2
     rm -rf "$tmp"; return 1
@@ -198,12 +202,17 @@ download_version() {
       echo "virtualUSB client: could not unpack $ARTIFACT ($version), or virtualUSB.app/Contents/MacOS/vusb is missing inside it - download discarded." >&2
       rm -rf "$tmp"; return 1
     fi
-    mkdir -p "$CACHE_ROOT/$version"
-    rm -rf "$CACHE_ROOT/$version/virtualUSB.app"
-    mv -f "$APP_DIR" "$CACHE_ROOT/$version/virtualUSB.app"
+    if ! { mkdir -p "$CACHE_ROOT/$version" \
+        && rm -rf "$CACHE_ROOT/$version/virtualUSB.app" \
+        && mv -f "$APP_DIR" "$CACHE_ROOT/$version/virtualUSB.app"; }; then
+      echo "virtualUSB client: could not move the verified bundle into $CACHE_ROOT/$version - download discarded." >&2
+      rm -rf "$tmp" "$CACHE_ROOT/$version/virtualUSB.app"; return 1
+    fi
   else
-    mkdir -p "$CACHE_ROOT/$version"
-    mv -f "$tmp/$ARTIFACT" "$CACHE_ROOT/$version/$ARTIFACT"
+    if ! { mkdir -p "$CACHE_ROOT/$version" && mv -f "$tmp/$ARTIFACT" "$CACHE_ROOT/$version/$ARTIFACT"; }; then
+      echo "virtualUSB client: could not move the verified installer into $CACHE_ROOT/$version - download discarded." >&2
+      rm -rf "$tmp"; return 1
+    fi
   fi
   rm -rf "$tmp"
   return 0
