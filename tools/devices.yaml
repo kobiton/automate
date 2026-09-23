@@ -10,7 +10,11 @@ tools:
       in CLI sessions; is_cloud: false devices are unrestricted. When no
       device matches, the response includes applied_filters echoing the
       interpreted filter values, so an empty device list can be told apart
-      from a filter that matched nothing.
+      from a filter that matched nothing. With virtualUsb: true the result
+      is private devices only, each carrying virtual_usb_ready (and
+      virtual_usb_reason when false), and applied_filters is always present
+      with virtualUsb: true, even for a non-empty list. virtualUsb: true
+      requires deviceGroup PRIVATE or omitted; CLOUD and ALL are rejected.
     annotations:
       readOnlyHint: true
       destructiveHint: false
@@ -56,6 +60,15 @@ tools:
         groupId:
           type: integer
           description: Filter by device group ID
+        virtualUsb:
+          type: boolean
+          description: >-
+            When true, list only private devices whose host machine can
+            serve virtualUSB: adds `virtual_usb_ready` per device, returns
+            ready devices only unless `udid` is given (then the device is
+            returned flagged, with `virtual_usb_reason` when not ready), and
+            always echoes `applied_filters` including `virtualUsb: true`.
+            `deviceGroup` must be PRIVATE or omitted.
         limit:
           type: integer
           description: Maximum number of devices to return (max 20)
