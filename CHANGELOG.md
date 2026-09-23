@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.13.0 - 2026-09-23
+
+### Added: debug-virtual-usb-session skill
+
+A sixth skill, `debug-virtual-usb-session`, attaches a real Kobiton device to the user's own machine over virtualUSB so it shows up in local `adb` (Android) or Xcode (iOS), then drives the familiar debug loop from plain language — install a local build, reproduce the problem, capture logcat / device logs and screenshots — and always disconnects. It targets private devices only, found with the new `listDevices` filter below, and never calls `reserveDevice` / `terminateReservation`: `vusb connect --udid` books the device itself and `vusb disconnect --udid` is the release.
+
+- **Pinned client, installed on first use.** The plugin pins one virtualUSB client build in `skills/debug-virtual-usb-session/VUSB_VERSION`. `scripts/vusb-preflight.sh` (Step 1 of the skill — deliberately *not* run by the SessionStart hook or `/automate:setup`, so users who never invoke the skill download nothing) fetches that build from `https://public.kobiton.download/virtualusb/<version>/`, verifies its published sha256, and on macOS unpacks the whole `virtualUSB.app` bundle into `~/.kobiton/vusb/<version>/` — the `.pkg` is universal, so Intel and Apple Silicon Macs both run it from the cache. On Windows the verified `.msi` is cached and the exact install steps (UAC, then `vusb setup-adb` in an administrator terminal) are handed to the user. Linux hosts are redirected. A cache hit performs no network I/O; a checksum mismatch discards the download and leaves any existing cache untouched; an existing `/Applications/virtualUSB.app` at another version stops the preflight instead of unpacking a second copy (virtualUSB 1 and 2 cannot coexist). Output is a machine-readable `key=value` contract ending in `outcome=` (`no action needed` | `installed` | `updated` | `handed off to human` | `redirected (limitation)`).
+- **`~/.kobiton/bin/vusb` wrapper.** `scripts/vusb.sh` resolves the client by absolute path (cached pin → system install at the pin → newest cached with a drift warning) and, on `login` without `--apikey`, injects `--apibaseurl`, `--username` and `--apikey` from `~/.kobiton/.credentials` — the API key never enters the transcript. Every other subcommand passes through verbatim.
+- **References.** `references/limitations.md` is the pre-connect gate (iOS 17.0–17.3, iOS on a Windows host, Linux, public devices, device in use, `adb reverse`, coexisting versions, API-key-only sign-in, daemon left behind by uninstall); `references/error-map.md` maps each client message to a plain-language meaning and next step; `references/cli-reference.md` documents the command surface, the `status` output shapes to parse (its exit code is not a reliable signal), and the preflight contract.
+- **`/automate:doctor` Check 6 — vUSB client (pinned vs installed; pin published).** Reports the pin, the installed client's version and whether the pinned folder is still published, in both the Markdown and TOML command files. No network request unless a client is present, then at most one HEAD; a machine without the client gets a skipped row, never a failure. The summary now counts six checks.
+- **Docs.** README Skills table and platform note, `CLAUDE.md` routing / skills / compatibility-matrix rows and an accurate list of the skill test suites, and an `AGENTS.md` section for non-Claude hosts.
+
+### Changed: listDevices virtualUsb filter
+
+`listDevices` gains an optional boolean `virtualUsb` (no default). With `virtualUsb: true` the result is private devices only, each carrying `virtual_usb_ready`; ready devices only unless `udid` is given, in which case the named device is returned flagged with a `virtual_usb_reason` when it is not ready (or a top-level `virtual_usb_reason` when the UDID is unknown, public, or outside the caller's access). `applied_filters` is always present on this path — including `virtualUsb: true` and a non-empty list. `deviceGroup` must be `PRIVATE` or omitted; `CLOUD` and `ALL` are rejected. Callers that never pass `virtualUsb` see exactly the previous behaviour. The tool count stays at 39.
+
 ## 1.12.0 - 2026-08-26
 
 ### Fixed: session-type enumeration now matches what the API returns
