@@ -401,7 +401,7 @@ Every step above uses only what this plugin ships: the app tools (`uploadAppToSt
 
 ## Tools
 
-32 MCP tools across 5 domains.
+39 MCP tools across 5 domains.
 
 ### Devices
 
@@ -420,6 +420,13 @@ Every step above uses only what this plugin ships: the app tools (`uploadAppToSt
 | `getSession` | Get session details including commands, capabilities, metadata |
 | `getSessionArtifacts` | Get download URLs for video, logs, screenshots, reports |
 | `getUserInputEvents` | Get the touch/swipe gestures a human made on the device-only live view during a session |
+| `listAccessibilityValidations` | List a session's accessibility findings, paged; filter by type and opt into heavy fields |
+| `getAccessibilityValidationsSummary` | Counts and breakdown of a session's accessibility findings, without the rows |
+| `listCrashValidations` | List the app crashes detected in a session, with crash logs, paged |
+| `listResponseTimeValidations` | List a session's steps that exceeded the response-time threshold, paged |
+| `listBlockerValidations` | List the blockers hit while replaying a test case in a session, paged |
+| `listElementSelectionValidations` | List a session's steps whose target element resolved differently than recorded, paged |
+| `listFlexCorrects` | List the steps Flex Correct self-healed in a session, paged |
 | `terminateSession` | Stop a running test session |
 | `startNativeSession` | Start an XCUITest / UIAutomator / GameDriver native automation session on a device |
 

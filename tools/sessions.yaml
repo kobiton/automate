@@ -298,3 +298,337 @@ tools:
       required:
         - userIntent
         - testFramework
+
+  - name: listAccessibilityValidations
+    title: List Accessibility Validations
+    description: >
+      List the accessibility findings recorded during a test session — issues such
+      as low colour contrast, missing content labels or touch targets that are too
+      small, each naming the command it was found on and the issue it represents.
+      Items are lean by default; use `include` to add the element, metadata, screen
+      or screenshot URL. Reach for this when the user asks about "a11y",
+      "accessibility issues", "contrast", "labels" or "touch targets" in a session.
+      Results are paged: each call returns at most `limit` items (default 10,
+      max 20) plus `page`, `total_pages` and `total_items`; pass `offset` to
+      page forward. A session with no findings of this type returns
+      `total_items: 0` and an empty `items` array — that is a normal answer,
+      not an error.
+    annotations:
+      readOnlyHint: true
+      destructiveHint: false
+      openWorldHint: false
+    inputSchema:
+      type: object
+      properties:
+        userIntent:
+          type: string
+          description: >-
+            A brief summary of what the user is trying to accomplish with this
+            tool call, refined from their original prompt. Used for audit
+            logging.
+        sessionId:
+          type: integer
+          description: The session ID
+        commandId:
+          type: integer
+          description: >-
+            Narrow the results to one command (step) of the session. Omit for
+            the whole session.
+        type:
+          type: string
+          enum:
+            - TOUCH_TARGET_SIZE
+            - COLOR_CONTRAST
+            - CONTENT_LABELING
+          description: >-
+            Narrow the results to one kind of finding: TOUCH_TARGET_SIZE (tap
+            targets smaller than the guideline), COLOR_CONTRAST (text that
+            fails a contrast ratio) or CONTENT_LABELING (missing or duplicated
+            labels). Omit for all kinds.
+        include:
+          type: array
+          description: >-
+            Heavy fields to add to each item. By default an item carries only
+            its id, command id, type, issue name and standard — enough to count
+            and group findings. Ask for more only when you need it: `element`
+            (xpath, attributes and on-screen rect), `metadata` (the measured
+            values, e.g. contrast ratio vs threshold), `screen` (the raw screen
+            record) and `screenshot_url` (a presigned image link). Each roughly
+            multiplies the size of the response.
+          items:
+            type: string
+            enum:
+              - element
+              - metadata
+              - screen
+              - screenshot_url
+        limit:
+          type: integer
+          description: Maximum number of items to return (default 10, max 20)
+          default: 10
+        offset:
+          type: integer
+          description: Item offset for pagination
+          default: 0
+      required:
+        - userIntent
+        - sessionId
+
+  - name: listCrashValidations
+    title: List Crash Validations
+    description: >
+      List the app crashes detected during a test session — when the crash
+      happened, which app package crashed, the command (step) it happened on, and
+      presigned URLs for the crash log and the screenshot. Reach for this when the
+      user asks "did the app crash", "any crashes", "crash log" or "why did it die"
+      for a session.
+      Results are paged: each call returns at most `limit` items (default 10,
+      max 20) plus `page`, `total_pages` and `total_items`; pass `offset` to
+      page forward. A session with no findings of this type returns
+      `total_items: 0` and an empty `items` array — that is a normal answer,
+      not an error.
+    annotations:
+      readOnlyHint: true
+      destructiveHint: false
+      openWorldHint: false
+    inputSchema:
+      type: object
+      properties:
+        userIntent:
+          type: string
+          description: >-
+            A brief summary of what the user is trying to accomplish with this
+            tool call, refined from their original prompt. Used for audit
+            logging.
+        sessionId:
+          type: integer
+          description: The session ID
+        commandId:
+          type: integer
+          description: >-
+            Narrow the results to one command (step) of the session. Omit for
+            the whole session.
+        limit:
+          type: integer
+          description: Maximum number of items to return (default 10, max 20)
+          default: 10
+        offset:
+          type: integer
+          description: Item offset for pagination
+          default: 0
+      required:
+        - userIntent
+        - sessionId
+
+  - name: listResponseTimeValidations
+    title: List Response Time Validations
+    description: >
+      List the commands (steps) of a test session whose network response time
+      exceeded the response-time threshold — each item names the command and the
+      actual versus target response time in milliseconds. Reach for this when the
+      user asks about "performance", "slow steps", "response time" or "latency" in
+      a session.
+      Results are paged: each call returns at most `limit` items (default 10,
+      max 20) plus `page`, `total_pages` and `total_items`; pass `offset` to
+      page forward. A session with no findings of this type returns
+      `total_items: 0` and an empty `items` array — that is a normal answer,
+      not an error.
+    annotations:
+      readOnlyHint: true
+      destructiveHint: false
+      openWorldHint: false
+    inputSchema:
+      type: object
+      properties:
+        userIntent:
+          type: string
+          description: >-
+            A brief summary of what the user is trying to accomplish with this
+            tool call, refined from their original prompt. Used for audit
+            logging.
+        sessionId:
+          type: integer
+          description: The session ID
+        commandId:
+          type: integer
+          description: >-
+            Narrow the results to one command (step) of the session. Omit for
+            the whole session.
+        limit:
+          type: integer
+          description: Maximum number of items to return (default 10, max 20)
+          default: 10
+        offset:
+          type: integer
+          description: Item offset for pagination
+          default: 0
+      required:
+        - userIntent
+        - sessionId
+
+  - name: listBlockerValidations
+    title: List Blocker Validations
+    description: >
+      List the blockers hit while a saved test case was replayed in this session —
+      steps the run could not get past, newest first, with the step, the execution
+      it belonged to and whether it has been resolved. Reach for this when the
+      user asks "what blocked the run", "stuck step" or "blockers" for a session.
+      Results are paged: each call returns at most `limit` items (default 10,
+      max 20) plus `page`, `total_pages` and `total_items`; pass `offset` to
+      page forward. A session with no findings of this type returns
+      `total_items: 0` and an empty `items` array — that is a normal answer,
+      not an error.
+    annotations:
+      readOnlyHint: true
+      destructiveHint: false
+      openWorldHint: false
+    inputSchema:
+      type: object
+      properties:
+        userIntent:
+          type: string
+          description: >-
+            A brief summary of what the user is trying to accomplish with this
+            tool call, refined from their original prompt. Used for audit
+            logging.
+        sessionId:
+          type: integer
+          description: The session ID
+        limit:
+          type: integer
+          description: Maximum number of items to return (default 10, max 20)
+          default: 10
+        offset:
+          type: integer
+          description: Item offset for pagination
+          default: 0
+      required:
+        - userIntent
+        - sessionId
+
+  - name: listElementSelectionValidations
+    title: List Element Selection Validations
+    description: >
+      List the element-selection validations of a test session — steps where the
+      target element resolved to a different element than the one recorded, with
+      the recorded screens, target element, action type and action data. Reach for
+      this when the user asks about "wrong element", "locator", "element mismatch"
+      or "element selection" in a session.
+      Results are paged: each call returns at most `limit` items (default 10,
+      max 20) plus `page`, `total_pages` and `total_items`; pass `offset` to
+      page forward. A session with no findings of this type returns
+      `total_items: 0` and an empty `items` array — that is a normal answer,
+      not an error.
+    annotations:
+      readOnlyHint: true
+      destructiveHint: false
+      openWorldHint: false
+    inputSchema:
+      type: object
+      properties:
+        userIntent:
+          type: string
+          description: >-
+            A brief summary of what the user is trying to accomplish with this
+            tool call, refined from their original prompt. Used for audit
+            logging.
+        sessionId:
+          type: integer
+          description: The session ID
+        commandId:
+          type: integer
+          description: >-
+            Narrow the results to one command (step) of the session. Omit for
+            the whole session.
+        limit:
+          type: integer
+          description: Maximum number of items to return (default 10, max 20)
+          default: 10
+        offset:
+          type: integer
+          description: Item offset for pagination
+          default: 0
+      required:
+        - userIntent
+        - sessionId
+
+  - name: listFlexCorrects
+    title: List Flex Corrects
+    description: >
+      List the steps Flex Correct self-healed during a test session — the corrected
+      element, the baseline device the step was recorded on, and the recorded step.
+      Reach for this when the user asks "what was auto-corrected", "self-healed
+      steps" or "flex correct" for a session.
+      Results are paged: each call returns at most `limit` items (default 10,
+      max 20) plus `page`, `total_pages` and `total_items`; pass `offset` to
+      page forward. A session with no findings of this type returns
+      `total_items: 0` and an empty `items` array — that is a normal answer,
+      not an error.
+    annotations:
+      readOnlyHint: true
+      destructiveHint: false
+      openWorldHint: false
+    inputSchema:
+      type: object
+      properties:
+        userIntent:
+          type: string
+          description: >-
+            A brief summary of what the user is trying to accomplish with this
+            tool call, refined from their original prompt. Used for audit
+            logging.
+        sessionId:
+          type: integer
+          description: The session ID
+        commandId:
+          type: integer
+          description: >-
+            Narrow the results to one command (step) of the session. Omit for
+            the whole session.
+        limit:
+          type: integer
+          description: Maximum number of items to return (default 10, max 20)
+          default: 10
+        offset:
+          type: integer
+          description: Item offset for pagination
+          default: 0
+      required:
+        - userIntent
+        - sessionId
+
+  - name: getAccessibilityValidationsSummary
+    title: Get Accessibility Validations Summary
+    description: >
+      Summarise a test session's accessibility findings as counts instead of
+      rows: the total, how many commands (steps) were scanned, when the most
+      recent finding was recorded, and the breakdown by finding type and by
+      issue name. Reach for this first whenever the question is "how bad is it",
+      "what kinds of accessibility issues does this session have" or "are there
+      any" — a busy session can hold tens of thousands of findings that collapse
+      to a handful of distinct issue kinds, so the summary answers in a fraction
+      of the size. Use listAccessibilityValidations afterwards to look at
+      individual findings. A session with no findings returns zero totals and
+      empty breakdowns with a null last-validation timestamp — that is a normal
+      answer, not an error. The timestamp is also how you tell a still-arriving
+      result set from a settled one: findings can keep landing for several
+      minutes after a session ends.
+    annotations:
+      readOnlyHint: true
+      destructiveHint: false
+      openWorldHint: false
+    inputSchema:
+      type: object
+      properties:
+        userIntent:
+          type: string
+          description: >-
+            A brief summary of what the user is trying to accomplish with this
+            tool call, refined from their original prompt. Used for audit
+            logging.
+        sessionId:
+          type: integer
+          description: The session ID
+      required:
+        - userIntent
+        - sessionId
