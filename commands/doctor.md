@@ -1,6 +1,6 @@
 ---
 name: "doctor"
-description: Run read-only health checks on the Kobiton automate plugin (CLI, credentials, profile).
+description: Run read-only health checks on the Kobiton automate plugin (CLI, credentials, profile, vUSB client).
 allowed-tools:
   - Bash
   - Read
@@ -8,7 +8,7 @@ allowed-tools:
 
 # Kobiton Automate Doctor
 
-Run each check below in sequence. Print one line per check using `✓` (pass) or `✗` (failure). Never short-circuit — run all checks even if some fail. After the last check, print a summary line: `Summary: <passed>/5 checks passed.`
+Run each check below in sequence. Print one line per check using `✓` (pass) or `✗` (failure). Never short-circuit — run all checks even if some fail. After the last check, print a summary line: `Summary: <passed>/6 checks passed.`
 
 For each `✗`, also print an indented remediation hint on the following line (prefixed with `→ `).
 
@@ -147,17 +147,52 @@ Interpret:
 
 `latest` differing from `pin` is normal (the download server tracks newer builds continuously; pins advance with plugin releases) — mention it only as the informational value in the pass/fail line, never as a failure by itself.
 
+## Check 6: vUSB client (pinned vs installed; pin published)
+
+Reports whether the virtualUSB client used by the `debug-virtual-usb-session` skill matches the plugin's pin. The client is installed on first use of that skill, not by the SessionStart hook, so "not installed" is a skipped row, never a failure. No network request is made unless a client is present; then exactly one HEAD request checks that the pinned folder is still published. Nothing is downloaded.
+
+The pin file is at `<plugin-root>/skills/debug-virtual-usb-session/VUSB_VERSION`. Resolve `<plugin-root>` to its absolute path first, then run:
+
+```bash
+PIN="$(tr -d '[:space:]' < "<plugin-root>/skills/debug-virtual-usb-session/VUSB_VERSION" 2>/dev/null)"
+token() { "$1" --version 2>/dev/null | awk '{for (i = 1; i <= NF; i++) if ($i == "virtualUSB") {print $(i + 1); exit}}'; }
+INSTALLED=""; SOURCE=""
+for c in "$HOME/.kobiton/bin/vusb" "/Applications/virtualUSB.app/Contents/MacOS/vusb" "/c/Program Files/virtualUSB/vusb.exe"; do
+  [ -x "$c" ] || continue
+  INSTALLED="$(token "$c")"; SOURCE="$c"
+  [ -n "$INSTALLED" ] && break
+done
+PIN_ON_SERVER="skipped"
+if [ -n "$PIN" ] && [ -n "$INSTALLED" ]; then
+  CODE="$(curl -s -o /dev/null -I -w '%{http_code}' --connect-timeout 5 --max-time 15 "https://public.kobiton.download/virtualusb/$PIN/" 2>/dev/null)"
+  case "$CODE" in 200) PIN_ON_SERVER="yes";; 404) PIN_ON_SERVER="pruned";; *) PIN_ON_SERVER="unknown";; esac
+fi
+echo "pin=$PIN"
+echo "installed=$INSTALLED"
+echo "source=$SOURCE"
+echo "pin_on_server=$PIN_ON_SERVER"
+```
+
+Interpret:
+
+- `pin` empty → print `✗ vUSB client (no VUSB_VERSION pin found in the plugin)` and `    → Re-install the plugin; the pin file ships with it.`
+- `installed` empty → print `- vUSB client (skipped — not installed; the debug-virtual-usb-session skill installs it on first use; pinned <pin>)` and do not count as pass or fail. No network request was made.
+- `installed == pin` → print `✓ vUSB client (pinned <pin> = installed, <source>; pin published: <pin_on_server>)`. If `pin_on_server=pruned`, append on the next line: `    → Note: the pinned client is no longer downloadable upstream. Existing installs keep working; fresh installs need a newer plugin release. Update the automate plugin to its latest version to refresh the pin.`
+- `installed != pin` → print `✗ vUSB client (installed <installed> ≠ pinned <pin>; pin published: <pin_on_server>)` and `    → Re-run the debug-virtual-usb-session preflight (bash <plugin-root>/skills/debug-virtual-usb-session/scripts/vusb-preflight.sh). If the mismatch comes from a system install in /Applications or Program Files, update or remove it first — virtualUSB 1 and 2 cannot coexist, and uninstalling leaves the daemon behind.`
+
+`pin_on_server=unknown` (network unreachable) is informational; the pass/fail verdict comes from `installed` vs `pin` alone.
+
 ## Summary
 
 Count:
-- `passed` = number of `✓` lines printed across Checks 1–5.
+- `passed` = number of `✓` lines printed across Checks 1–6.
 - Skipped checks (printed with `-`) do not count as passed or failed.
 
 Print exactly:
 
 ```
-Summary: <passed>/5 checks passed.
+Summary: <passed>/6 checks passed.
 ```
 
-If `passed < 5`, append: `Fix the issues above and rerun /automate:doctor.`
-If `passed == 5`, append: `All checks passed. You're ready to use the plugin.`
+If any `✗` line was printed, append: `Fix the issues above and rerun /automate:doctor.`
+If no `✗` line was printed (skipped `-` rows do not block), append: `All checks passed. You're ready to use the plugin.`

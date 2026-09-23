@@ -1,7 +1,7 @@
 description = "Read-only health checks for the Kobiton automate plugin"
 
 prompt = '''
-Run read-only health checks for the Kobiton automate plugin. Use your bash tool to run each check below. Print one ✓ (pass) or ✗ (failure) line per check. For each ✗, print an indented remediation hint on the next line prefixed with `→ `. **Never modify any files.** After all 5 checks, print `Summary: <passed>/5 checks passed.`
+Run read-only health checks for the Kobiton automate plugin. Use your bash tool to run each check below. Print one ✓ (pass) or ✗ (failure) line per check. For each ✗, print an indented remediation hint on the next line prefixed with `→ `. **Never modify any files.** After all 6 checks, print `Summary: <passed>/6 checks passed.`
 
 ## Check 1: CLI wrapper installed
 
@@ -129,18 +129,48 @@ Interpret:
 
 `latest` differing from `pin` is normal — informational only, never a failure by itself.
 
+## Check 6: vUSB client (pinned vs installed; pin published)
+
+Reports whether the virtualUSB client used by the `debug-virtual-usb-session` skill matches the plugin's pin. The client is installed on first use of that skill (not by any hook), so "not installed" is a skipped row, never a failure. No network request unless a client is present; then exactly one HEAD request checks that the pinned folder is still published. Nothing is downloaded.
+
+```bash
+PIN="$(tr -d '[:space:]' < "$HOME/.gemini/extensions/kobiton-automate/skills/debug-virtual-usb-session/VUSB_VERSION" 2>/dev/null)"
+token() { "$1" --version 2>/dev/null | awk '{for (i = 1; i <= NF; i++) if ($i == "virtualUSB") {print $(i + 1); exit}}'; }
+INSTALLED=""; SOURCE=""
+for c in "$HOME/.kobiton/bin/vusb" "/Applications/virtualUSB.app/Contents/MacOS/vusb" "/c/Program Files/virtualUSB/vusb.exe"; do
+  [ -x "$c" ] || continue
+  INSTALLED="$(token "$c")"; SOURCE="$c"
+  [ -n "$INSTALLED" ] && break
+done
+PIN_ON_SERVER="skipped"
+if [ -n "$PIN" ] && [ -n "$INSTALLED" ]; then
+  CODE="$(curl -s -o /dev/null -I -w '%{http_code}' --connect-timeout 5 --max-time 15 "https://public.kobiton.download/virtualusb/$PIN/" 2>/dev/null)"
+  case "$CODE" in 200) PIN_ON_SERVER="yes";; 404) PIN_ON_SERVER="pruned";; *) PIN_ON_SERVER="unknown";; esac
+fi
+echo "pin=$PIN"; echo "installed=$INSTALLED"; echo "source=$SOURCE"; echo "pin_on_server=$PIN_ON_SERVER"
+```
+
+Interpret:
+
+- `pin` empty → `✗ vUSB client (no VUSB_VERSION pin found in the plugin)`, remediation: `→ Re-install the plugin; the pin file ships with it.`
+- `installed` empty → `- vUSB client (skipped — not installed; the debug-virtual-usb-session skill installs it on first use; pinned <pin>)`, do not count as pass or fail. No network request was made.
+- `installed == pin` → `✓ vUSB client (pinned <pin> = installed, <source>; pin published: <pin_on_server>)`. If `pin_on_server=pruned`, append: `→ Note: the pinned client is no longer downloadable upstream. Existing installs keep working; fresh installs need a newer plugin release. Update the automate plugin to its latest version to refresh the pin.`
+- `installed != pin` → `✗ vUSB client (installed <installed> ≠ pinned <pin>; pin published: <pin_on_server>)`, remediation: `→ Re-run the debug-virtual-usb-session preflight (bash "$HOME/.gemini/extensions/kobiton-automate/skills/debug-virtual-usb-session/scripts/vusb-preflight.sh"). If the mismatch comes from a system install in /Applications or Program Files, update or remove it first — virtualUSB 1 and 2 cannot coexist, and uninstalling leaves the daemon behind.`
+
+`pin_on_server=unknown` (network unreachable) is informational; the verdict comes from `installed` vs `pin` alone.
+
 ## Summary
 
 Count:
-- `passed` = number of `✓` lines across Checks 1–5
+- `passed` = number of `✓` lines across Checks 1–6
 - Skipped checks (printed with `-`) do not count as passed or failed
 
 Print exactly:
 
 ```
-Summary: <passed>/5 checks passed.
+Summary: <passed>/6 checks passed.
 ```
 
-If `passed < 5`, append: `Fix the issues above and rerun /automate:doctor.`
-If `passed == 5`, append: `All checks passed. You're ready to use the plugin.`
+If any `✗` line was printed, append: `Fix the issues above and rerun /automate:doctor.`
+If no `✗` line was printed (skipped `-` rows do not block), append: `All checks passed. You're ready to use the plugin.`
 '''

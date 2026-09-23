@@ -351,6 +351,7 @@ That's the full loop: device → session → test case → test run. Every skill
 | You want quick inspection or troubleshooting when something breaks — poke at the device, pull logs, push files | `run-interactive-session` |
 | You have a test case or suite and want to kick off a test run from it | `create-test-run` |
 | A test run is already going and you want to watch it and catch blockers | `monitor-test-run` |
+| You want to debug your app on a real device attached to *your* machine — see it in `adb` / Xcode, install a local build, read logcat | `debug-virtual-usb-session` |
 
 Say it your way — your assistant routes by meaning, not keyword: "rerun / revisit / replay **a test case** on other devices" goes to `create-test-run`; "rerun **a session**" means saving it as a test case first (sessions aren't rerun directly); "replay **the recording**" just opens the session's artifacts, no new run. And if your prompt names a goal but not a method ("test the login screen of app ABC"), the assistant asks one short question — run your scripts, let it drive the flow, or explore hands-on — defaulting to `drive-automation-session` so the result stays saveable as a test case.
 
@@ -407,7 +408,7 @@ Every step above uses only what this plugin ships: the app tools (`uploadAppToSt
 
 | Tool | Description |
 |------|-------------|
-| `listDevices` | List available devices filtered by platform, availability, or group |
+| `listDevices` | List available devices filtered by platform, availability, or group; `virtualUsb: true` narrows to private devices ready for virtualUSB (adds `virtual_usb_ready` / `virtual_usb_reason`) |
 | `getDeviceStatus` | Get real-time status of a specific device |
 | `reserveDevice` | Reserve a device for exclusive testing |
 | `terminateReservation` | Release a reserved device by terminating its reservation |
@@ -476,15 +477,16 @@ Every step above uses only what this plugin ships: the app tools (`uploadAppToSt
 | **drive-automation-session** | Drives an already-reserved device from a natural-language intent via a direct Appium HTTP session (observe-decide-act loop). Returns a session id consumable by `saveTestCase`. Complements `run-interactive-session` — it uses the automation session type rather than the CLI. |
 | **create-test-run** | Creates a test run from a test case or suite — fills sensible defaults from the `createTestRun` schema when details are omitted, confirms a summary, then offers to monitor it and hands off to `monitor-test-run`. |
 | **monitor-test-run** | Watches a running test run and narrates it: reads the live-remediation flag up front, surfaces the live-remediation URL the moment an execution is blocked (optionally auto-opening the window), and post-mortems so a `BLOCKER_ENCOUNTERED` execution is never reported as passed. Quiet between real state changes. |
+| **debug-virtual-usb-session** | Debugs your app on a real Kobiton device attached to your own machine over virtualUSB: finds vUSB-ready private devices (`listDevices` with `virtualUsb: true`), connects the device so it appears in `adb` / Xcode locally, runs the install-reproduce-capture-logs loop from plain language, and always disconnects. Installs the pinned virtualUSB client on first use (macOS: cached; Windows: verified installer handed to you). |
 
-> **Platform support note:** all MCP tools and the `run-automation-suite` skill work on every platform the host CLI supports. The `run-interactive-session` skill downloads its CLI binary on install (a version pinned by the plugin release, sha256-verified, cached under `~/.kobiton/cli/`) and runs on **macOS (Apple Silicon), Linux (x64), and Windows (x64 under Git Bash)**. Intel Macs are not supported — no macos-x64 build is published; there, use `run-automation-suite` or the MCP tools directly. For the full per-skill picture — which skills need a persistent local filesystem, which need the `~/.kobiton/.credentials` file that `/automate:setup` writes, and which run on an MCP connection alone — see the Skill compatibility matrix in [`CLAUDE.md`](CLAUDE.md#skill-compatibility-matrix).
+> **Platform support note:** all MCP tools and the `run-automation-suite` skill work on every platform the host CLI supports. The `run-interactive-session` skill downloads its CLI binary on install (a version pinned by the plugin release, sha256-verified, cached under `~/.kobiton/cli/`) and runs on **macOS (Apple Silicon), Linux (x64), and Windows (x64 under Git Bash)**. Intel Macs are not supported — no macos-x64 build is published; there, use `run-automation-suite` or the MCP tools directly. The `debug-virtual-usb-session` skill downloads the virtualUSB client on its first use only (macOS: any architecture, cached under `~/.kobiton/vusb/`; Windows: a verified `.msi` you install once with administrator rights), and is not supported on Linux hosts. For the full per-skill picture — which skills need a persistent local filesystem, which need the `~/.kobiton/.credentials` file that `/automate:setup` writes, and which run on an MCP connection alone — see the Skill compatibility matrix in [`CLAUDE.md`](CLAUDE.md#skill-compatibility-matrix).
 
 ## Commands
 
 | Command | Description |
 |---------|-------------|
 | `/automate:setup` | Fetch credentials from the authenticated MCP server and write them to `~/.kobiton/.credentials` |
-| `/automate:doctor` | Read-only diagnostic for CLI installation, credentials file, active profile, and required fields |
+| `/automate:doctor` | Read-only diagnostic for CLI installation, credentials file, active profile, required fields, CLI version drift, and the virtualUSB client pin |
 
 On Cursor (CLI and IDE) these register without the `automate:` prefix — as `/setup` and `/doctor`, distinguishable from Cursor's built-ins by the Kobiton description.
 

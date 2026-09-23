@@ -14,6 +14,7 @@ Every skill is a step on that path; route by intent:
 | quick inspection / troubleshooting — poke at a device, pull logs, push files | `run-interactive-session` |
 | to kick off a test run from a test case or suite | `create-test-run` |
 | to watch a running test run and catch blockers | `monitor-test-run` |
+| to debug their app on a real device attached to their own machine — see it in `adb` / Xcode, install a local build, read logcat ("virtualUSB", "vusb", "plug the Kobiton device into my machine") | `debug-virtual-usb-session` |
 
 Vocabulary the skills assume: **session** (one recorded device connection), **test case** (saved replayable steps, usually from a session), **test run** (execution of a case/suite across devices), **test suite** (ordered collection of cases), **reservation** (exclusive device hold), **device UDID** (unique device identifier), **live remediation** (browser takeover to fix a blocked execution mid-run).
 
@@ -53,7 +54,7 @@ pnpm exec vitest run skills/run-automation-suite/scripts/render-capabilities.tes
 
 CI runs `pnpm install --frozen-lockfile && pnpm run validate && pnpm test` on every push/PR to `main` (`.github/workflows/ci.yml`). A second workflow runs CodeQL (`.github/workflows/codeql.yml`). No lint step.
 
-**Test files** — all under `scripts/` plus one skill test. The `.codex/` mirror copy of `render-capabilities.test.js` is excluded by `vitest.config.js` (`exclude: ['.codex/**']`) so the same suite doesn't run twice.
+**Test files** — four build-script suites under `scripts/` plus one suite per bundled skill runtime under `skills/*/scripts/`. The `.codex/` mirror copies of the skill tests are excluded by `vitest.config.js` (`exclude: ['.codex/**']`) so the same suites don't run twice.
 
 | File | Covers |
 |---|---|
@@ -62,6 +63,11 @@ CI runs `pnpm install --frozen-lockfile && pnpm run validate && pnpm test` on ev
 | `scripts/sync-codex-artifacts.test.js` | `.codex/` mirror sync + `--check` parity |
 | `scripts/sync-version.test.js` | version field sync across host manifests + `CHANGELOG.md` top-entry match |
 | `skills/run-automation-suite/scripts/render-capabilities.test.js` | Appium capability renderer |
+| `skills/run-automation-suite/scripts/chromeless-launcher.test.js` | chromeless-launcher dispatcher: argument parsing, per-OS shim layout (forces an unsupported `OSTYPE` to exit before touching Chrome) |
+| `skills/drive-automation-session/scripts/appium.test.js` | `node:https` Appium client: request shaping, credentials loading, error envelopes |
+| `skills/drive-automation-session/scripts/strip-webview-dom.test.js` | webview DOM reducer |
+| `skills/monitor-test-run/scripts/poll-test-run.test.js` | test-run poller: state-change emission, terminal detection, line protocol |
+| `skills/debug-virtual-usb-session/scripts/vusb-preflight.test.js` | vUSB preflight + wrapper: Linux / unknown-host redirect (nothing cached, no download), system-install detection via the `--version` token, cache hit + symlink install, offline hand-off, wrapper binary resolution and `login` credential injection — all with a sandboxed `$HOME`, `KOBITON_VUSB_PLATFORM_OVERRIDE`, and a closed-port `KOBITON_VUSB_BASE_URL` so it runs on any OS |
 
 When adding a new tool YAML or skill that hits a new validation path, extend `setupValidProject` in `scripts/validate.test.js`. Pure additions to an existing pattern don't require a fixture update.
 
@@ -96,6 +102,7 @@ All five tool YAMLs set the full annotation block (`readOnlyHint`, `destructiveH
 | `drive-automation-session` | `scripts/appium.js` (`node:https`-only Appium HTTP client) drives an automation-type session from a natural-language intent; `scripts/strip-webview-dom.js` shrinks webview source | refs: `references/endpoint-reference.md`, `references/loop-discipline.md`, `references/capabilities.md` |
 | `create-test-run` | Conversational glue over the `createTestRun` MCP tool (no local runtime): fills defaults from the createTestRun schema, confirms a summary, creates the run, then offers monitoring in one prompt and delegates to `monitor-test-run` | uses `Skill` to delegate; no `scripts/` |
 | `monitor-test-run` | `scripts/poll-test-run.js` (`node:https`-only; reads `~/.kobiton/.credentials`) polls run state over REST and emits only on change; host streams it (Claude Code: `Monitor` tool). Surfaces blockers + the live-remediation URL; auto-opens the window via the shared chromeless launcher when opted in | refs: the bundled poller; reuses `run-automation-suite`'s `chromeless-launcher.*` |
+| `debug-virtual-usb-session` | `scripts/vusb-preflight.sh` installs the virtualUSB client pinned in `VUSB_VERSION` on first use (macOS: sha256-verified `macos.pkg` unpacked to `~/.kobiton/vusb/<version>/virtualUSB.app`; Windows: verified `windows.msi` cached and handed to the user) and installs the `~/.kobiton/bin/vusb` wrapper; `scripts/vusb.sh` resolves the binary by absolute path and injects credentials on `login`. The skill then connects a vUSB-ready private device (`listDevices({virtualUsb: true})`) with `vusb connect --udid`, drives `adb` / `xcrun`, and always `vusb disconnect`s | client is **downloaded on first use of this skill only** (not by the hook); refs: `references/limitations.md`, `references/error-map.md`, `references/cli-reference.md` |
 
 ### Build pipeline
 
@@ -121,7 +128,7 @@ The plugin ships configs for five AI CLI hosts. Source-of-truth is the root file
 
 **Header field-name differs by host.** Claude / Copilot / Gemini / Cursor use `headers` in MCP config; Codex uses `http_headers` (snake_case wrapper). The `X-AI-Tool-Name` value also differs per host (`Claude` / `Codex` / `Gemini` / `Cursor`). When adding a new host config, copy from the closest existing one — don't mix idioms across hosts.
 
-`AGENTS.md` is the cross-tool brief read by every non-Claude-Code host. When extending a skill's workflow or known-limitations list, mirror substantive changes into `AGENTS.md` so non-Claude hosts stay current. `AGENTS.md` currently covers `run-automation-suite`, `run-interactive-session`, `drive-automation-session`, `create-test-run`, and `monitor-test-run`. Note `create-test-run`/`monitor-test-run` reference Claude Code's `Monitor` tool for streaming the poller; non-Claude hosts must substitute their own streamed-shell / watch / loop affordance (see the `monitor-test-run` SKILL.md host table).
+`AGENTS.md` is the cross-tool brief read by every non-Claude-Code host. When extending a skill's workflow or known-limitations list, mirror substantive changes into `AGENTS.md` so non-Claude hosts stay current. `AGENTS.md` currently covers `run-automation-suite`, `run-interactive-session`, `drive-automation-session`, `create-test-run`, `monitor-test-run`, and `debug-virtual-usb-session`. Note `create-test-run`/`monitor-test-run` reference Claude Code's `Monitor` tool for streaming the poller; non-Claude hosts must substitute their own streamed-shell / watch / loop affordance (see the `monitor-test-run` SKILL.md host table).
 
 ### Skill compatibility matrix
 
@@ -136,6 +143,7 @@ Columns are keyed on **capabilities**, not on product names. "Has a filesystem" 
 | `drive-automation-session` | **yes** — the observe-decide-act loop passes state through `iter-N.*.json` turn files | **yes** — `scripts/appium.js` reads it directly and never calls MCP `getCredential` | Node 18+; otherwise cross-platform (`node:https` only, no native binary) | no | no |
 | `run-automation-suite` | **yes** — reads the user's own Appium script directory and runs it | **no** — the skill never reads that file; the user's script carries its own Kobiton credentials in its capabilities / hub URL | Node 18+, Appium 2.x, plus the script's own language runtime (npm / python / java / dotnet / ruby) | no | no |
 | `run-interactive-session` | **yes** — executes the downloaded CLI binary cached under `~/.kobiton/cli/` | **yes** — `run.sh` loads it before invoking the binary | **macOS (Apple Silicon), Linux (x64), Windows (x64 under Git Bash).** The CLI is downloaded by `install-cli.sh` per the `CLI_VERSION` pin (sha256-verified; first run needs network once). **Intel Macs unsupported** (no macos-x64 build published) — route to `run-automation-suite` or `drive-automation-session` | no | no |
+| `debug-virtual-usb-session` | **yes** — runs the cached virtualUSB client under `~/.kobiton/vusb/` (or the system install), hands the device to local `adb` / `xcrun`, writes artifacts under the workspace | **yes** — `vusb.sh login` reads it to sign the client in with the API key | **macOS (any architecture** — the pinned `.pkg` is universal; downloaded on first use of the skill by `vusb-preflight.sh`, sha256-verified, cached; the first connect needs one administrator dialog in a GUI session**), Windows (x64** — the verified `.msi` is installed once by the user with administrator rights, then `vusb setup-adb`**). Linux: no** (the preflight redirects). iOS devices are list-only on Windows hosts | no | no |
 
 **In one line:** `create-test-run` is the plugin's only pure-MCP skill, so it is the only one that works when the host provides nothing but an authenticated MCP connection — a chat surface, or the MCP-only entries at the bottom of `AGENTS.md`'s Cross-host install table. Every other skill needs a persistent local filesystem *and*, in most cases, a credentials file that only `/automate:setup` writes; those requirements are what a CLI host (Claude Code, Codex CLI, Gemini CLI, Copilot CLI, Cursor) supplies. When a capability is missing, name the specific missing one and the alternative — "needs the credentials file `/automate:setup` writes" tells the user what to do; "needs a CLI host" does not.
 
@@ -149,13 +157,15 @@ Two commands ship in two file formats so each host can read its preferred one. M
 | `/automate:doctor` | `commands/doctor.md` | `commands/automate/doctor.toml` |
 
 - `/automate:setup` — bootstraps `~/.kobiton/.credentials` from the authenticated MCP session by calling the `getCredential` tool. Also re-runs `install-cli.sh`, which downloads the pinned CLI build on first run and installs the `~/.kobiton/bin/kobiton` wrapper the `run-interactive-session` skill depends on (Codex CLI installs it automatically via SessionStart; other CLIs run setup once).
-- `/automate:doctor` — read-only health check: CLI install, credentials file, active profile, required fields, CLI version drift (pinned vs installed vs latest published).
+- `/automate:doctor` — read-only health check: CLI install, credentials file, active profile, required fields, CLI version drift (pinned vs installed vs latest published), and the vUSB client pin (Check 6: pinned vs installed, and whether the pin is still published — skipped, not failed, when no client is installed; at most one HEAD request and only when a client exists).
 
 Gemini CLI derives `/automate:setup` from the directory path `commands/automate/setup.toml`. Claude Code and Copilot CLI read `commands/setup.md` with the plugin name (`automate`) supplying the namespace. When changing one command's behavior, change both file formats so cross-host parity holds.
 
 ## Hooks
 
 `hooks/hooks.json` ships a single `SessionStart` command hook that runs `bash ${CLAUDE_PLUGIN_ROOT}/scripts/install-cli.sh` to ensure the pinned CLI build is cached (download on first run, no network on cache hits) and install the `~/.kobiton/bin/kobiton` wrapper. The Codex mirror at `.codex/hooks/hooks.json` carries the same hook, and `.cursor/hooks/hooks.json` carries a `sessionStart` equivalent (`${CURSOR_PLUGIN_ROOT}` interpolation). On Codex, the user trusts the hook once via `/hooks`; subsequent sessions run it silently. On Claude Code it runs every session. Cursor ships the hook but does not currently execute SessionStart hooks for plugins — Cursor users run `/setup` once instead.
+
+The virtualUSB preflight (`skills/debug-virtual-usb-session/scripts/vusb-preflight.sh`) is deliberately **not** hooked: it downloads a ~30 MB client, so it runs only from Step 1 of the `debug-virtual-usb-session` skill (or by hand). Users who never invoke that skill never download it, and `/automate:setup` does not run it either.
 
 When modifying `scripts/install-cli.sh` (or adding any new script that hooks invoke), run `pnpm run build:codex` to refresh the `.codex/scripts/` mirror — the `--check` mode in `pnpm run validate` will otherwise fail CI. Hook scripts should be idempotent.
 
