@@ -112,7 +112,13 @@ Call `listDevices({virtualUsb: true, platform?: "ANDROID" | "IOS", deviceName?})
 - **One match** → confirm `device_name` / `udid` in a single sentence and proceed.
 - **Empty** → show the `applied_filters` echo so the user sees what was searched, and offer to check a specific device: `listDevices({virtualUsb: true, udid: "<udid>"})` returns that device flagged even when not ready - apply the not-ready rule below (or relay the top-level `virtual_usb_reason` when the UDID is unknown, public, or outside the user's access) and **STOP**.
 - **The user named a UDID** → `listDevices({virtualUsb: true, udid})`.
-- **The named or picked device is `virtual_usb_ready: false`** → relay `virtual_usb_diagnosis.message` and `virtual_usb_diagnosis.next_step` when the diagnosis is present (for an organization admin it also carries `host`; quote `host.host_name` when present so the admin can find the machine in Portal → Device Management; it is null for Kobiton-hosted machines), otherwise relay `virtual_usb_reason` ("host machine has virtualUSB disabled or its routing is not reachable yet; check the machine in Portal → Device Management"), then **STOP**. Never try `vusb connect` on a not-ready device.
+- **The named or picked device is `virtual_usb_ready: false`** → relay `virtual_usb_reason` ("host machine has virtualUSB disabled or its routing is not reachable yet; check the machine in Portal → Device Management"). If the user is an organization admin or asks why, call `listHostingMachines({udid})` and relay:
+  - `sku_note` when present (the organization lacks the virtualUSB add-on);
+  - otherwise the machine's `virtual_usb_status.message` and `virtual_usb_status.next_step`, quoting `host_name` when it is non-null so the admin can find the machine in Portal → Device Management (it is null for Kobiton-hosted machines);
+  - an empty `machines` list → its `reason`;
+  - the admin-only error → "ask an organization admin to check the host machine in Portal → Device Management".
+
+  Then **STOP**. Never try `vusb connect` on a not-ready device.
 
 Never pass `deviceGroup: "CLOUD"` or `"ALL"` with `virtualUsb: true` - the tool rejects it ("virtualUSB is offered on private devices only"). Record `udid`, `device_name`, `platform_name`, `platform_version`, `is_booked`.
 
@@ -182,7 +188,7 @@ Every failure surfaces as `<plain-language meaning> → <next step>` from [`refe
 ## Error Handling
 
 - **`Authorization info not found. Please login to your Kobiton's account first!`** - not signed in: `$VUSB login` once, retry the failed command once.
-- **`virtualUSB is not included in your current subscription`** - the organization has no virtualUSB add-on; stop and name the org admin as the next step. For an admin, Step 3 surfaces this earlier as `virtual_usb_diagnosis.cause = VUSB_SKU_MISSING` on a not-ready device, before any connect.
+- **`virtualUSB is not included in your current subscription`** - the organization has no virtualUSB add-on; stop and name the org admin as the next step. For an admin, Step 3 surfaces this before any connect as the `sku_note` from `listHostingMachines`.
 - **`Failed to connect to dcb app server`** - the daemon is not running: on macOS the first `connect` installs it via the administrator dialog (ask the user to approve it; do not loop); on Windows `vusb setup-adb` in an administrator terminal. Over SSH it cannot be installed - hand off.
 - **Already retained / in use** - another session holds the device: pick another ready device or ask the holder / a Portal admin to release it. Do not wait on it.
 - **Host unreachable / timeout** - VPN or proxy on this machine, or the device's host machine routing (Portal → Device Management); one retry after the network changes.
@@ -212,4 +218,4 @@ Every failure surfaces as `<plain-language meaning> → <next step>` from [`refe
 
 > "Connect the Pixel 8 with UDID 3A091FDJH00042 over vusb."
 
-`listDevices({virtualUsb: true, udid: "3A091FDJH00042"})` → `virtual_usb_ready: false`, `virtual_usb_reason: "host machine has virtualUSB disabled or its routing is not reachable yet; check the machine in Portal → Device Management"`, and (the user is an organization admin) `virtual_usb_diagnosis: {cause: "VUSB_DISABLED_ON_HOST", message: "virtualUSB is turned off on this device's host machine.", next_step: "Enable virtualUSB for the machine in Portal → Device Management.", host: {host_name: "lab-mac-07", enabled: false, …}}`. Relay the diagnosis: "virtualUSB is turned off on this device's host machine (`lab-mac-07`). Enable virtualUSB for the machine in Portal → Device Management." A non-admin gets `cause: "ADMIN_REQUIRED"` instead - relay its message and next step (ask an org admin). Do not attempt `vusb connect`; offer `listDevices({virtualUsb: true, platform: "ANDROID"})` for a ready alternative, and stop - nothing was connected, so no teardown.
+`listDevices({virtualUsb: true, udid: "3A091FDJH00042"})` → `virtual_usb_ready: false`, `virtual_usb_reason: "host machine has virtualUSB disabled or its routing is not reachable yet; check the machine in Portal → Device Management"`. Relay it. The user is an organization admin, so call `listHostingMachines({udid: "3A091FDJH00042"})` → `sku_active: true`, one machine `{host_name: "lab-mac-07", virtual_usb: {enabled: false, …}, virtual_usb_status: {state: "DISABLED", message: "virtualUSB is turned off on this machine.", next_step: "Enable virtualUSB for the machine in Portal → Device Management."}}`. Relay: "virtualUSB is turned off on this device's host machine (`lab-mac-07`). Enable virtualUSB for the machine in Portal → Device Management." A non-admin gets the admin-only error instead - relay "ask an organization admin to check the host machine in Portal → Device Management". Do not attempt `vusb connect`; offer `listDevices({virtualUsb: true, platform: "ANDROID"})` for a ready alternative, and stop - nothing was connected, so no teardown.

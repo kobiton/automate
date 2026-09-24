@@ -402,13 +402,14 @@ Every step above uses only what this plugin ships: the app tools (`uploadAppToSt
 
 ## Tools
 
-39 MCP tools across 5 domains.
+40 MCP tools across 5 domains.
 
 ### Devices
 
 | Tool | Description |
 |------|-------------|
-| `listDevices` | List available devices filtered by platform, availability, or group; `virtualUsb: true` narrows to private devices ready for virtualUSB (adds `virtual_usb_ready` / `virtual_usb_reason`; a not-ready device named by `udid` also carries `virtual_usb_diagnosis` - the host-side cause for an org admin, ask-an-admin otherwise) |
+| `listDevices` | List available devices filtered by platform, availability, or group; `virtualUsb: true` narrows to private devices ready for virtualUSB (adds `virtual_usb_ready` / `virtual_usb_reason`); an org admin can pass the same `udid` to `listHostingMachines` to see why a device is not ready |
+| `listHostingMachines` | Org admins only: list host machines with their virtualUSB configuration and a `virtual_usb_status` (state, message, next step); `udid` narrows to one device's host; never returns IP addresses |
 | `getDeviceStatus` | Get real-time status of a specific device |
 | `reserveDevice` | Reserve a device for exclusive testing |
 | `terminateReservation` | Release a reserved device by terminating its reservation |
