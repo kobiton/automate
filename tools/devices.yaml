@@ -86,8 +86,7 @@ tools:
     description: >
       List the organization's host machines (the machines private devices are
       attached to) with their virtualUSB configuration. Organization admins
-      only; other users get an error asking them to contact an organization
-      admin. Each machine carries id, host_name (null for Kobiton-hosted
+      only; other users get the server's permission error unchanged. Each machine carries id, host_name (null for Kobiton-hosted
       machines), host_type, virtual_usb (enabled, network_routing,
       ip_address_configured, provisioning_status) and virtual_usb_status
       (state, message, next_step). virtual_usb_status.state is one of
