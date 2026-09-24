@@ -20,7 +20,7 @@ tools:
       When virtualUsb is true and udid names a device that is not ready, that
       device also carries virtual_usb_diagnosis with cause, message and
       next_step. For an organization admin the cause names the specific
-      host-side problem and the diagnosis adds a host summary (host_name,
+      host-side problem and the diagnosis adds a host summary (host_name, null for Kobiton-hosted machines,
       host_type, enabled, network_routing, ip_address_configured,
       provisioning_status) and org.sku_active; for other users the cause is
       ADMIN_REQUIRED with a message to ask an organization admin. Causes:
