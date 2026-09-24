@@ -114,6 +114,7 @@ tools:
             logging.
         udid:
           type: string
+          maxLength: 255
           description: >-
             Return only the host machine of this private device (for example
             one listDevices reported with `virtual_usb_ready: false`).
