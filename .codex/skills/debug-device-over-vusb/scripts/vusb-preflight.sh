@@ -1,7 +1,7 @@
 #!/bin/bash
-# Prepares the virtualUSB client for the debug-virtual-usb-session skill:
+# Prepares the virtualUSB client for the debug-device-over-vusb skill:
 #
-#   1. Ensures the client build pinned in skills/debug-virtual-usb-session/VUSB_VERSION
+#   1. Ensures the client build pinned in skills/debug-device-over-vusb/VUSB_VERSION
 #      is available. On macOS the pinned macos.pkg is downloaded from
 #      https://public.kobiton.download/virtualusb/<version>/ with mandatory
 #      sha256 verification, unpacked, and cached as
@@ -16,7 +16,7 @@
 #      Windows, where MSYS `ln -sf` copies files).
 #
 # Idempotent - safe to invoke repeatedly. Invoked by Step 1 of the skill, and
-# by hand (`bash <plugin-root>/skills/debug-virtual-usb-session/scripts/vusb-preflight.sh`).
+# by hand (`bash <plugin-root>/skills/debug-device-over-vusb/scripts/vusb-preflight.sh`).
 # It is NOT run by the SessionStart hook: only users of this skill download
 # the client.
 #
@@ -77,7 +77,7 @@ echo "pin=$PIN"
 
 if [ "$MODE" = "redirect" ]; then
   if [ "$PLATFORM" = "linux" ]; then
-    echo "virtualUSB client: Linux hosts are not supported by the debug-virtual-usb-session skill (Linux builds of the client exist, but the skill's connect/debug flow is validated on macOS and Windows only)." >&2
+    echo "virtualUSB client: Linux hosts are not supported by the debug-device-over-vusb skill (Linux builds of the client exist, but the skill's connect/debug flow is validated on macOS and Windows only)." >&2
   else
     echo "virtualUSB client: unsupported platform '$OS'." >&2
   fi

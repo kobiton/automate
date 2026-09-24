@@ -1,5 +1,5 @@
 #!/bin/bash
-# Wrapper for the virtualUSB client used by the debug-virtual-usb-session skill.
+# Wrapper for the virtualUSB client used by the debug-device-over-vusb skill.
 # Usage: vusb [vusb args...]
 # Install: created by scripts/vusb-preflight.sh as ~/.kobiton/bin/vusb
 #          (symlink on macOS, bash exec-shim on Windows).
@@ -41,7 +41,7 @@ SYSTEM_APP="${KOBITON_VUSB_SYSTEM_APP:-/Applications/virtualUSB.app}"
 WIN_EXE="/c/Program Files/virtualUSB/vusb.exe"
 PIN=""
 [ -f "$SKILL_DIR/VUSB_VERSION" ] && PIN="$(tr -d '[:space:]' < "$SKILL_DIR/VUSB_VERSION")"
-PREFLIGHT_HINT="Run the debug-virtual-usb-session preflight: bash \"$SKILL_DIR/scripts/vusb-preflight.sh\""
+PREFLIGHT_HINT="Run the debug-device-over-vusb preflight: bash \"$SKILL_DIR/scripts/vusb-preflight.sh\""
 
 version_token() {
   "$1" --version 2>/dev/null | awk '{for (i = 1; i <= NF; i++) if ($i == "virtualUSB") {print $(i + 1); exit}}' || true
@@ -82,7 +82,7 @@ case "${KOBITON_VUSB_PLATFORM_OVERRIDE:-$(uname -s)}" in
     fi
     ;;
   *)
-    echo "Error: the debug-virtual-usb-session skill supports macOS and Windows hosts only." >&2
+    echo "Error: the debug-device-over-vusb skill supports macOS and Windows hosts only." >&2
     exit 1
     ;;
 esac

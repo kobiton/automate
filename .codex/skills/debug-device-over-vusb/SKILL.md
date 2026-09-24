@@ -1,5 +1,5 @@
 ---
-name: debug-virtual-usb-session
+name: debug-device-over-vusb
 description: >-
   Debug the user's app on a real Kobiton device attached to this machine over
   virtualUSB, driven by natural language. Installs the pinned virtualUSB
@@ -52,7 +52,7 @@ Use it when the user wants to debug or reproduce a problem *locally against a re
 
 Before the flow can succeed:
 
-- **virtualUSB client** - installed by this skill's own preflight (Step 1), never by the plugin's SessionStart hook or `/automate:setup`, so only users of this skill download it. The plugin pins one client build in `skills/debug-virtual-usb-session/VUSB_VERSION`; the preflight fetches that build from `https://public.kobiton.download/virtualusb/<version>/`, verifies its published sha256, and on macOS caches the whole `virtualUSB.app` bundle under `~/.kobiton/vusb/<version>/`. On Windows it caches the verified `.msi` and prints the install steps for the user (UAC, then `vusb setup-adb` in an administrator terminal). The wrapper `~/.kobiton/bin/vusb` (symlink on macOS, exec-shim on Windows) resolves the binary by absolute path - `~/.kobiton/bin` is not on `PATH` and must not be added.
+- **virtualUSB client** - installed by this skill's own preflight (Step 1), never by the plugin's SessionStart hook or `/automate:setup`, so only users of this skill download it. The plugin pins one client build in `skills/debug-device-over-vusb/VUSB_VERSION`; the preflight fetches that build from `https://public.kobiton.download/virtualusb/<version>/`, verifies its published sha256, and on macOS caches the whole `virtualUSB.app` bundle under `~/.kobiton/vusb/<version>/`. On Windows it caches the verified `.msi` and prints the install steps for the user (UAC, then `vusb setup-adb` in an administrator terminal). The wrapper `~/.kobiton/bin/vusb` (symlink on macOS, exec-shim on Windows) resolves the binary by absolute path - `~/.kobiton/bin` is not on `PATH` and must not be added.
 - **Credentials file** - `~/.kobiton/.credentials` with `KOBITON_USER`, `KOBITON_API_KEY`, `KOBITON_PORTAL` in the active profile (`$KOBITON_PROFILE`, default `default`), written by `/automate:setup`. `~/.kobiton/bin/vusb login` reads it and signs the client in with the API key; the key never appears in the transcript.
 - **Kobiton MCP connection** - `listDevices({virtualUsb: true, …})` is how vUSB-ready devices are found. MCP tool names below are bare (`listDevices`); the host resolves its registered prefix.
 - **Local tooling** - `adb` on `PATH` for Android; Xcode command line tools (`xcrun devicectl`) on macOS for iOS.
@@ -85,9 +85,9 @@ Every client call goes through the wrapper at `~/.kobiton/bin/vusb`, which:
 
 ### 1. Preflight: make the pinned client available
 
-Resolve `<plugin-root>` (this file is `<plugin-root>/skills/debug-virtual-usb-session/SKILL.md`) and run, once:
+Resolve `<plugin-root>` (this file is `<plugin-root>/skills/debug-device-over-vusb/SKILL.md`) and run, once:
 
-    bash <plugin-root>/skills/debug-virtual-usb-session/scripts/vusb-preflight.sh
+    bash <plugin-root>/skills/debug-device-over-vusb/scripts/vusb-preflight.sh
 
 Read the `key=value` lines on stdout (contract in [`references/cli-reference.md`](references/cli-reference.md#preflight-keyvalue-contract)); the last line is `outcome=`:
 

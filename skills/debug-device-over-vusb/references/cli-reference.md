@@ -36,7 +36,7 @@ Decision rule for Step 7 / Step 9 of the skill: **connected** ⇔ the picked UDI
 
 ## Preflight `key=value` contract
 
-`bash <plugin-root>/skills/debug-virtual-usb-session/scripts/vusb-preflight.sh` prints, on stdout and in this order:
+`bash <plugin-root>/skills/debug-device-over-vusb/scripts/vusb-preflight.sh` prints, on stdout and in this order:
 
 | Key | Value |
 |---|---|

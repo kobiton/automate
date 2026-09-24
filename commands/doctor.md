@@ -149,12 +149,12 @@ Interpret:
 
 ## Check 6: vUSB client (pinned vs installed; pin published)
 
-Reports whether the virtualUSB client used by the `debug-virtual-usb-session` skill matches the plugin's pin. The client is installed on first use of that skill, not by the SessionStart hook, so "not installed" is a skipped row, never a failure. No network request is made unless a client is present; then exactly one HEAD request checks that the pinned folder is still published. Nothing is downloaded.
+Reports whether the virtualUSB client used by the `debug-device-over-vusb` skill matches the plugin's pin. The client is installed on first use of that skill, not by the SessionStart hook, so "not installed" is a skipped row, never a failure. No network request is made unless a client is present; then exactly one HEAD request checks that the pinned folder is still published. Nothing is downloaded.
 
-The pin file is at `<plugin-root>/skills/debug-virtual-usb-session/VUSB_VERSION`. Resolve `<plugin-root>` to its absolute path first, then run:
+The pin file is at `<plugin-root>/skills/debug-device-over-vusb/VUSB_VERSION`. Resolve `<plugin-root>` to its absolute path first, then run:
 
 ```bash
-PIN="$(tr -d '[:space:]' < "<plugin-root>/skills/debug-virtual-usb-session/VUSB_VERSION" 2>/dev/null)"
+PIN="$(tr -d '[:space:]' < "<plugin-root>/skills/debug-device-over-vusb/VUSB_VERSION" 2>/dev/null)"
 token() { "$1" --version 2>/dev/null | awk '{for (i = 1; i <= NF; i++) if ($i == "virtualUSB") {print $(i + 1); exit}}'; }
 INSTALLED=""; SOURCE=""
 for c in "$HOME/.kobiton/bin/vusb" "/Applications/virtualUSB.app/Contents/MacOS/vusb" "/c/Program Files/virtualUSB/vusb.exe"; do
@@ -176,9 +176,9 @@ echo "pin_on_server=$PIN_ON_SERVER"
 Interpret:
 
 - `pin` empty → print `✗ vUSB client (no VUSB_VERSION pin found in the plugin)` and `    → Re-install the plugin; the pin file ships with it.`
-- `installed` empty → print `- vUSB client (skipped — not installed; the debug-virtual-usb-session skill installs it on first use; pinned <pin>)` and do not count as pass or fail. No network request was made.
+- `installed` empty → print `- vUSB client (skipped — not installed; the debug-device-over-vusb skill installs it on first use; pinned <pin>)` and do not count as pass or fail. No network request was made.
 - `installed == pin` → print `✓ vUSB client (pinned <pin> = installed, <source>; pin published: <pin_on_server>)`. If `pin_on_server=pruned`, append on the next line: `    → Note: the pinned client is no longer downloadable upstream. Existing installs keep working; fresh installs need a newer plugin release. Update the automate plugin to its latest version to refresh the pin.`
-- `installed != pin` → print `✗ vUSB client (installed <installed> ≠ pinned <pin>; pin published: <pin_on_server>)` and `    → Re-run the debug-virtual-usb-session preflight (bash <plugin-root>/skills/debug-virtual-usb-session/scripts/vusb-preflight.sh). If the mismatch comes from a system install in /Applications or Program Files, update or remove it first — virtualUSB 1 and 2 cannot coexist, and uninstalling leaves the daemon behind.`
+- `installed != pin` → print `✗ vUSB client (installed <installed> ≠ pinned <pin>; pin published: <pin_on_server>)` and `    → Re-run the debug-device-over-vusb preflight (bash <plugin-root>/skills/debug-device-over-vusb/scripts/vusb-preflight.sh). If the mismatch comes from a system install in /Applications or Program Files, update or remove it first — virtualUSB 1 and 2 cannot coexist, and uninstalling leaves the daemon behind.`
 
 `pin_on_server=unknown` (network unreachable) is informational; the pass/fail verdict comes from `installed` vs `pin` alone.
 
