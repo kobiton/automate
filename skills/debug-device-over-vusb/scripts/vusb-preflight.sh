@@ -267,7 +267,7 @@ if [ "$MODE" = "cache" ]; then
     OUTCOME="no action needed"
   elif [ -z "$(newest_cached)" ] && pgrep -x dcb >/dev/null 2>&1; then
     # (b) A daemon of unknown origin is running, with no known client anywhere.
-    echo "virtualUSB client: a virtualUSB daemon (dcb) is running, but no virtualUSB.app exists in $SYSTEM_APP or under $CACHE_ROOT. virtualUSB 1 and 2 cannot coexist: remove the existing virtualUSB install and its daemon, then re-run this preflight." >&2
+    echo "virtualUSB client: an unknown virtualUSB daemon (dcb) is running, and no virtualUSB.app was found in $SYSTEM_APP or under $CACHE_ROOT. It may belong to another virtualUSB install (virtualUSB 1 and 2 cannot coexist). Quit that virtualUSB app or uninstall the other client, then re-run this preflight." >&2
     OUTCOME="handed off to human"
   else
     HAD_CACHE="$(newest_cached)"

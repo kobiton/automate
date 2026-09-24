@@ -15,6 +15,8 @@ tools:
       virtual_usb_reason when false), and applied_filters is always present
       with virtualUsb: true, even for a non-empty list. virtualUsb: true
       requires deviceGroup PRIVATE or omitted; CLOUD and ALL are rejected.
+      virtual_usb_ready reflects the host machine's virtualUSB configuration,
+      not current availability; check is_online and is_booked for that.
     annotations:
       readOnlyHint: true
       destructiveHint: false
