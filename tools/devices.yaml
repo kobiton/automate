@@ -17,6 +17,17 @@ tools:
       requires deviceGroup PRIVATE or omitted; CLOUD and ALL are rejected.
       virtual_usb_ready reflects the host machine's virtualUSB configuration,
       not current availability; check is_online and is_booked for that.
+      When virtualUsb is true and udid names a device that is not ready, that
+      device also carries virtual_usb_diagnosis with cause, message and
+      next_step. For an organization admin the cause names the specific
+      host-side problem and the diagnosis adds a host summary (host_name,
+      host_type, enabled, network_routing, ip_address_configured,
+      provisioning_status) and org.sku_active; for other users the cause is
+      ADMIN_REQUIRED with a message to ask an organization admin. Causes:
+      ADMIN_REQUIRED, UNAVAILABLE, VUSB_SKU_MISSING, HOST_NOT_VISIBLE,
+      VUSB_DISABLED_ON_HOST, NO_NETWORK_ROUTE, ROUTING_PROVISIONING,
+      ROUTING_PROVISIONING_FAILED, ROUTING_NOT_READY. The diagnosis never
+      fails the call.
     annotations:
       readOnlyHint: true
       destructiveHint: false
@@ -70,6 +81,11 @@ tools:
             ready devices only unless `udid` is given (then the device is
             returned flagged, with `virtual_usb_reason` when not ready), and
             always echoes `applied_filters` including `virtualUsb: true`.
+            A not-ready device named by `udid` also carries
+            `virtual_usb_diagnosis` (`cause`, `message`, `next_step`): the
+            specific host-side cause plus a `host` summary and
+            `org.sku_active` for an organization admin, `ADMIN_REQUIRED`
+            (ask an admin) for other users; it never fails the call.
             `deviceGroup` must be PRIVATE or omitted.
         limit:
           type: integer

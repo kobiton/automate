@@ -408,7 +408,7 @@ Every step above uses only what this plugin ships: the app tools (`uploadAppToSt
 
 | Tool | Description |
 |------|-------------|
-| `listDevices` | List available devices filtered by platform, availability, or group; `virtualUsb: true` narrows to private devices ready for virtualUSB (adds `virtual_usb_ready` / `virtual_usb_reason`) |
+| `listDevices` | List available devices filtered by platform, availability, or group; `virtualUsb: true` narrows to private devices ready for virtualUSB (adds `virtual_usb_ready` / `virtual_usb_reason`; a not-ready device named by `udid` also carries `virtual_usb_diagnosis` - the host-side cause for an org admin, ask-an-admin otherwise) |
 | `getDeviceStatus` | Get real-time status of a specific device |
 | `reserveDevice` | Reserve a device for exclusive testing |
 | `terminateReservation` | Release a reserved device by terminating its reservation |
