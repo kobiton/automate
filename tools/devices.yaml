@@ -10,7 +10,15 @@ tools:
       in CLI sessions; is_cloud: false devices are unrestricted. When no
       device matches, the response includes applied_filters echoing the
       interpreted filter values, so an empty device list can be told apart
-      from a filter that matched nothing.
+      from a filter that matched nothing. With virtualUsb: true the result
+      is private devices only, each carrying virtual_usb_ready (and
+      virtual_usb_reason when false), and applied_filters is always present
+      with virtualUsb: true, even for a non-empty list. virtualUsb: true
+      requires deviceGroup PRIVATE or omitted; CLOUD and ALL are rejected.
+      virtual_usb_ready reflects the host machine's virtualUSB configuration,
+      not current availability; check is_online and is_booked for that.
+      Organization admins can call listHostingMachines with the same udid to
+      see the virtualUSB status of that device's host machine.
     annotations:
       readOnlyHint: true
       destructiveHint: false
@@ -56,12 +64,126 @@ tools:
         groupId:
           type: integer
           description: Filter by device group ID
+        virtualUsb:
+          type: boolean
+          description: >-
+            When true, list only private devices whose host machine can
+            serve virtualUSB: adds `virtual_usb_ready` per device, returns
+            ready devices only unless `udid` is given (then the device is
+            returned flagged, with `virtual_usb_reason` when not ready), and
+            always echoes `applied_filters` including `virtualUsb: true`.
+            `deviceGroup` must be PRIVATE or omitted. Organization admins can
+            call `listHostingMachines` with the same `udid` to see the
+            virtualUSB status of that device's host machine.
         limit:
           type: integer
           description: Maximum number of devices to return (max 20)
           default: 5
       required:
         - userIntent
+  - name: listHostingMachines
+    title: List Hosting Machines
+    description: >
+      List the organization's host machines (the machines private devices are
+      attached to) with their virtualUSB configuration. Organization admins
+      only; other users get the server's permission error unchanged. Each machine carries id, host_name (null for Kobiton-hosted
+      machines), host_type, virtual_usb (enabled, network_routing,
+      ip_address_configured, provisioning_status) and virtual_usb_status
+      (state, message, next_step). virtual_usb_status.state is one of
+      DISABLED, NO_NETWORK_ROUTE, ROUTING_PROVISIONING,
+      ROUTING_PROVISIONING_FAILED or CONFIGURED; relay message and next_step
+      to the user. The response also carries a top-level sku_active and, when
+      the organization lacks the virtualUSB add-on, a sku_note to relay
+      instead. With udid, only the host machine of that private device is
+      returned; when the device or its host machine is not visible to the
+      caller, machines is empty and reason explains why. applied_filters
+      echoes the interpreted filters. IP addresses are never returned.
+      Admins can fix a DISABLED or NO_NETWORK_ROUTE machine with
+      configureHostingMachineVirtualUsb.
+    annotations:
+      readOnlyHint: true
+      destructiveHint: false
+      openWorldHint: false
+    inputSchema:
+      type: object
+      properties:
+        userIntent:
+          type: string
+          description: >-
+            A brief summary of what the user is trying to accomplish with this
+            tool call, refined from their original prompt. Used for audit
+            logging.
+        udid:
+          type: string
+          maxLength: 255
+          description: >-
+            Return only the host machine of this private device (for example
+            one listDevices reported with `virtual_usb_ready: false`).
+        limit:
+          type: integer
+          description: Maximum number of machines to return (max 50)
+          default: 20
+      required:
+        - userIntent
+  - name: configureHostingMachineVirtualUsb
+    title: Configure Hosting Machine virtualUSB
+    description: >
+      Enable virtualUSB on one host machine and set its network routing.
+      Organization admins only; other users get the server's permission error
+      unchanged. The organization needs the virtualUSB add-on. machineId is
+      the id from listHostingMachines. networkRouting KOBITON uses
+      Kobiton-managed routing; SELF_MANAGED uses the machine's own address,
+      given in ipAddress (required for SELF_MANAGED, not allowed with
+      KOBITON). This tool only enables virtualUSB and sets its routing: it
+      cannot turn virtualUSB off, and it will not switch a machine from
+      Kobiton-managed to self-managed routing, because both end active
+      connections; do those in Portal > Device Management. A request that
+      matches the current configuration changes nothing and returns
+      changed false. Returns changed and machine, in the same shape as
+      listHostingMachines (virtual_usb, virtual_usb_status with state,
+      message and next_step), plus sku_active and, when the organization
+      lacks the add-on, sku_note. Kobiton-managed routing starts provisioning
+      (state ROUTING_PROVISIONING); check again with listHostingMachines. IP
+      addresses are never returned. Confirm the exact change with the user
+      before calling this tool.
+    annotations:
+      readOnlyHint: false
+      destructiveHint: false
+      idempotentHint: true
+      openWorldHint: false
+    inputSchema:
+      type: object
+      properties:
+        userIntent:
+          type: string
+          description: >-
+            A brief summary of what the user is trying to accomplish with this
+            tool call, refined from their original prompt. Used for audit
+            logging.
+        machineId:
+          type: integer
+          minimum: 1
+          description: >-
+            The host machine to configure: the `id` of a machine returned by
+            listHostingMachines.
+        networkRouting:
+          type: string
+          enum:
+            - KOBITON
+            - SELF_MANAGED
+          description: >-
+            KOBITON for Kobiton-managed routing; SELF_MANAGED to route to the
+            machine's own reachable address given in `ipAddress`.
+        ipAddress:
+          type: string
+          maxLength: 45
+          description: >-
+            The host machine's reachable IP address. Required with
+            `networkRouting: SELF_MANAGED`; not allowed with KOBITON.
+      required:
+        - userIntent
+        - machineId
+        - networkRouting
   - name: getDeviceStatus
     title: Get Device Status
     description: >

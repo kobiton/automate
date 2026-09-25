@@ -1,0 +1,15 @@
+# virtualUSB limitations gate
+
+Check every row **before** `vusb connect`, using the picked device's `platform_name` / `platform_version` from `listDevices({virtualUsb: true, …})`, the host OS from `uname -s`, and the client's own output. `stop` means do not connect; `warn` means tell the user and continue only if their plan does not depend on the limited capability.
+
+| Condition | Detected from | Action | Message |
+|---|---|---|---|
+| iOS 17.0–17.3 device | `platform_name: "iOS"` and `platform_version` `17.0`–`17.3` (any patch) | stop | "iOS 17.0–17.3 is not supported over virtualUSB; pick a device on another iOS version." |
+| iOS device on a Windows host | `platform_name: "iOS"` and `uname -s` matches `MINGW*`/`MSYS*`/`CYGWIN*` | stop (list-only) | "On Windows an iOS device can be connected and listed but not driven with Xcode tooling; use a macOS host to debug an iOS app. I can still list vUSB-ready devices for you." |
+| Linux host | `uname -s` = `Linux` (the preflight already prints `outcome=redirected (limitation)`) | stop | "virtualUSB debugging from this plugin runs on macOS and Windows hosts only; use a macOS or Windows machine, or the `run-interactive-session` skill for device access from Linux." |
+| Public / cloud device | `listDevices({virtualUsb: true})` never returns them; `deviceGroup: CLOUD` or `ALL` is rejected with "virtualUSB is offered on private devices only" | stop | "virtualUSB is offered on your organization's private devices only; public cloud devices cannot be connected. Pick a private device." |
+| Device already in use by another session | `is_booked: true` in the device row, or `vusb connect` reports the device is already retained / in use | stop | "The device is in use by another session (manual, automation, or another virtualUSB user). Pick another vUSB-ready device, or ask the current holder to release it." |
+| `adb reverse` needed | The user's plan mentions `adb reverse`, a local dev server the app must reach through the device, or React Native / Flutter hot reload over `adb reverse` | warn | "`adb reverse` does not pass traffic over virtualUSB; `adb forward`, install, shell, logcat and screen capture work. Point the app at a reachable host instead." |
+| virtualUSB 1 and 2 cannot coexist | Preflight `outcome=handed off to human` with "virtualUSB <v> is installed in /Applications" or "an unknown virtualUSB daemon (dcb) is running" | stop | "An older virtualUSB is installed on this machine; version 1 and 2 cannot coexist. Uninstall it (and its daemon) first, then re-run the preflight." |
+| Sign-in takes an API key only | `vusb login` accepts `--apikey`; there is no password or SSO sign-in | note | "The client signs in with your Kobiton API key; the wrapper injects it from `~/.kobiton/.credentials`, so `/automate:setup` must have run." |
+| Uninstall leaves the daemon behind | User asks to remove virtualUSB, or a version mismatch persists after removing `/Applications/virtualUSB.app` | note | "Removing virtualUSB.app does not remove its background daemon (dcb); stop and remove the daemon as well before installing another version." |

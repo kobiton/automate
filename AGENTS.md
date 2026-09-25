@@ -6,7 +6,7 @@ Cross-tool agent instructions for the Kobiton mobile testing platform's MCP plug
 
 Kobiton is a real-device mobile cloud for Android + iOS testing. This MCP plugin gives AI agents tools to:
 
-- **Devices**: list, get status, reserve, terminate reservation
+- **Devices**: list (incl. `virtualUsb: true` to find private devices ready for virtualUSB), list host machines with their virtualUSB status (`listHostingMachines`, org admins only), enable and route virtualUSB on a host machine (`configureHostingMachineVirtualUsb`, org admins only), get status, reserve, terminate reservation
 - **Apps**: list, upload, confirm upload, get parsing status, get details
 - **Sessions**: list, get, get artifacts, get user-input events, terminate
 - **Test management**: create / list / get / update / delete test cases, test runs, and test suites; `saveTestCase` converts a finished manual session into a reusable test case
@@ -31,6 +31,7 @@ Route by intent:
 | quick inspection / troubleshooting — poke at a device, pull logs, push files | `run-interactive-session` |
 | to kick off a test run from a test case or suite | `create-test-run` |
 | to watch a running test run and catch blockers | `monitor-test-run` |
+| to debug their app on a real device attached to their own machine — see it in `adb` / Xcode, install a local build, read logcat | `debug-device-over-vusb` |
 
 Vocabulary: **session** = one recorded device connection (commands, video, logs under a session id); **test case** = saved replayable steps, usually created from a session; **test run** = execution of a case/suite across devices with per-device results; **test suite** = ordered collection of cases; **reservation** = exclusive device hold; **device UDID** = unique device identifier; **live remediation** = browser takeover to fix a blocked test-run execution mid-run.
 
@@ -45,6 +46,7 @@ A prompt like *"test the login screen of app ABC"* names a goal but not a method
 | Hands-on/diagnostic verbs: explore, poke, inspect, debug, adb, logs, push/pull a file | `run-interactive-session` |
 | Names an existing test case or suite to execute | `create-test-run` |
 | A run is already in flight ("watch", "follow", "track") | `monitor-test-run` |
+| Wants the device on *their own* machine: "real device", "plug in", "see it in adb / Xcode", "virtualUSB", "vusb", install a local build and read logcat | `debug-device-over-vusb` |
 
 If no signal decides it, ask ONE short question — *"Run your own test scripts, have me drive the flow (saveable as a test case), or explore the device hands-on?"* — and recommend `drive-automation-session` as the default: it works from a plain-language goal on any platform, and its session can be saved with `saveTestCase`, so nothing is lost if the user later wants to rerun. Do not silently route a "test X" goal to `run-interactive-session` — CLI sessions don't feed `saveTestCase` (see the session model below), so that choice quietly forfeits the saveable-test-case outcome.
 
@@ -61,6 +63,7 @@ Users say the same thing many ways; route by what the phrase means, not the keyw
 | "explore / poke around / grab logs / adb / push a file" | hands-on device access | `run-interactive-session` |
 | "test the X flow / log in and do Y" | agent-driven flow | `drive-automation-session` |
 | "run my (Appium) tests / scripts" | execute local scripts | `run-automation-suite` |
+| "debug on a real phone / plug the Kobiton device in / see it in adb or Xcode / vusb" | attach a real device to the user's machine over virtualUSB and debug locally | `debug-device-over-vusb` |
 
 ### Kobiton session model (background the routing relies on)
 
@@ -127,6 +130,23 @@ Mirrors the `create-test-run` skill. Resolve the target (test case or suite id),
 
 Mirrors the `monitor-test-run` skill. Read `getOrgSettings` once for `live_remediation_enabled`, then **stream** the bundled poller `skills/monitor-test-run/scripts/poll-test-run.js --run-id <id>` so each emitted line re-engages you — it polls run state over REST (reads `~/.kobiton/.credentials`) and prints only on real state changes, exiting on `DONE`. **Claude Code uses its `Monitor` tool for this; other hosts must substitute their own streamed-shell / watch / loop affordance** (do NOT launch it as a silent detached background process — its stdout won't come back, which defeats the watch). On a blocker, surface the `<portal>/devices/launch?id=<deviceId>` URL (and optionally open it via `run-automation-suite`'s chromeless launcher); a flag-ON blocker is on a resolution timeout, so treat it as an open ask of the user, not a passive watch. Full workflow + the poller's line protocol in `skills/monitor-test-run/SKILL.md`.
 
+## When the user asks to debug their app on a real device over virtualUSB
+
+Mirrors the `debug-device-over-vusb` skill: the device is attached to the user's own machine over USB-over-IP so it appears in local `adb` / Xcode, and the user's normal install / reproduce / read-the-logs loop runs from plain language. macOS and Windows hosts only (Linux is redirected); iOS devices are list-only on Windows; iOS 17.0–17.3 is unsupported.
+
+1. **Preflight**: `bash <plugin-root>/skills/debug-device-over-vusb/scripts/vusb-preflight.sh` once. Read the `key=value` stdout; the last line is `outcome=`. `no action needed` / `installed` / `updated` → continue. `handed off to human` (Windows install steps, an older system install, a pruned pin, offline) or `redirected (limitation)` → print its stderr verbatim and stop; exit 1 (checksum mismatch / unverifiable download / unpack failure) → print stderr and stop. Never loop on it. The client is downloaded only here — never by a hook or `/automate:setup`.
+2. **Credentials**: `~/.kobiton/.credentials` must exist (`/automate:setup`); the wrapper's `login` reads it.
+3. **Pick a device**: `listDevices({virtualUsb: true, platform?, deviceName?})` — private, `virtual_usb_ready: true` devices only, with `applied_filters` always echoed. Several → ask one question; one → confirm; none → show `applied_filters` and offer `listDevices({virtualUsb: true, udid})`, which returns the named device flagged (`virtual_usb_reason` when not ready, or a top-level `virtual_usb_reason` when unknown / public / no access). A named or picked device with `virtual_usb_ready: false` → relay `virtual_usb_reason`; for an org admin (or when the user asks why) call `listHostingMachines({udid})` and relay `sku_note` when present, else the machine's `virtual_usb_status.message` + `next_step` (quote `host_name` when non-null), the empty-list `reason`, or, on a permission error, "ask an organization admin to check the host machine in Portal → Device Management" — then stop; never `vusb connect` a not-ready device. Exception: an admin whose host is `DISABLED` / `NO_NETWORK_ROUTE` → offer `configureHostingMachineVirtualUsb({machineId, networkRouting, ipAddress?})`: ask Kobiton-managed or self-managed (with the machine's IP address from the admin), state the exact change, get an explicit yes, call it, relay `virtual_usb_status.message` + `next_step`; `ROUTING_PROVISIONING` → wait a few minutes, re-check `listHostingMachines({udid})` then `listDevices({virtualUsb: true, udid})`; `CONFIGURED` + `virtual_usb_ready: true` → continue. Never turn virtualUSB off or switch Kobiton-managed → self-managed (Portal only). Never pass `deviceGroup: CLOUD` or `ALL` with `virtualUsb: true` (rejected: private devices only).
+4. **Limitations gate** (`skills/debug-device-over-vusb/references/limitations.md`) with `uname -s` + `platform_name` / `platform_version`: iOS 17.0–17.3 → stop; iOS on Windows → list-only, stop; `is_booked: true` → device in use, stop; `adb reverse` needed → warn (not passed over virtualUSB).
+5. **Login**: `~/.kobiton/bin/vusb login` — the wrapper injects `--apibaseurl`, `--username`, `--apikey` from the credentials file; the key never enters the transcript.
+6. **Connect**: `~/.kobiton/bin/vusb connect --udid <udid>`. **Never call `reserveDevice` first** — `connect` books the device itself and a prior reservation makes it fail as already retained. On macOS the first connect raises one administrator dialog in the GUI session; ask the user to approve it, do not re-issue the command in a loop.
+7. **Verify by parsing output, never the exit code**: `~/.kobiton/bin/vusb status` must list the UDID with no `Failed` / `error` line (`vusb status` exits 0 on some failures and 1 on others — the text is the signal). Then `adb devices -l | grep -i <udid>` (Android; empty → `adb kill-server`, `sleep 3`, re-check once, then disconnect + connect once) or `xcrun devicectl list devices` (iOS, macOS only).
+8. **Debug loop**: `adb -s <serial> install -r <apk>`, `logcat -c`, launch / reproduce (`am start`, `input tap|text`), `logcat -d -v time > .kobiton/vusb/<udid>/logcat-<ts>.txt`, `exec-out screencap -p`; iOS via `xcrun devicectl device install app` / `process launch` and `log stream`. Report trimmed log excerpts and artifact paths.
+9. **Teardown — always, including after any failure from step 6 on**: `~/.kobiton/bin/vusb disconnect --udid <udid>`, confirm `status` no longer lists the UDID, then `listDevices({virtualUsb: true, udid, available: false})` polled up to 60 s until `is_online && !is_booked`. **Never call `terminateReservation`** — `disconnect` is the release.
+10. **Errors**: map every client line through `skills/debug-device-over-vusb/references/error-map.md` and report `<meaning> → <next step>`: "Authorization info not found" → `login` once and retry once; "not included in your current subscription" → org admin; "Failed to connect to dcb app server" → daemon not up (administrator dialog / `vusb setup-adb`), do not loop; already retained → pick another device; unreachable → VPN / proxy / the host machine's routing in Portal → Device Management; installed ≠ pin → re-run the preflight.
+
+Full workflow in `skills/debug-device-over-vusb/SKILL.md`; command surface, `status` output shapes and the preflight contract in `skills/debug-device-over-vusb/references/cli-reference.md`.
+
 ## Known limitations
 
 Several behaviors of the current Kobiton MCP server have known gaps that agents should plan around:
@@ -162,6 +182,13 @@ same as "can run this skill", because a chat surface with code execution still h
   version, sha256-verified, cached under `~/.kobiton/cli/`) — the first install needs network access
   once. No Intel-Mac build is published; route those users to `run-automation-suite` or
   `drive-automation-session`.
+- **`debug-device-over-vusb`** needs a local filesystem, `~/.kobiton/.credentials`, local `adb` /
+  `xcrun`, and a **macOS (any architecture) or Windows (x64 under Git Bash)** host. On macOS the pinned
+  virtualUSB client is downloaded on the skill's first use (sha256-verified, cached under
+  `~/.kobiton/vusb/`) and runs from the cache; the first connect needs one administrator dialog in a GUI
+  session. On Windows the verified `.msi` is downloaded and the **user installs it once** with
+  administrator rights. **Linux hosts are redirected** (not supported). iOS devices are list-only on
+  Windows hosts. Nothing is downloaded for users who never invoke this skill.
 
 When a capability is missing, name the **specific** missing one and the alternative — "needs the
 credentials file `/automate:setup` writes" tells the user what to do next; "needs a CLI host" does not.
