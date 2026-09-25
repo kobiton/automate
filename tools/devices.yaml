@@ -98,6 +98,8 @@ tools:
       returned; when the device or its host machine is not visible to the
       caller, machines is empty and reason explains why. applied_filters
       echoes the interpreted filters. IP addresses are never returned.
+      Admins can fix a DISABLED or NO_NETWORK_ROUTE machine with
+      configureHostingMachineVirtualUsb.
     annotations:
       readOnlyHint: true
       destructiveHint: false
@@ -123,6 +125,65 @@ tools:
           default: 20
       required:
         - userIntent
+  - name: configureHostingMachineVirtualUsb
+    title: Configure Hosting Machine virtualUSB
+    description: >
+      Enable virtualUSB on one host machine and set its network routing.
+      Organization admins only; other users get the server's permission error
+      unchanged. The organization needs the virtualUSB add-on. machineId is
+      the id from listHostingMachines. networkRouting KOBITON uses
+      Kobiton-managed routing; SELF_MANAGED uses the machine's own address,
+      given in ipAddress (required for SELF_MANAGED, not allowed with
+      KOBITON). This tool only enables virtualUSB and sets its routing: it
+      cannot turn virtualUSB off, and it will not switch a machine from
+      Kobiton-managed to self-managed routing, because both end active
+      connections; do those in Portal > Device Management. A request that
+      matches the current configuration changes nothing and returns
+      changed false. Returns changed and machine, in the same shape as
+      listHostingMachines (virtual_usb, virtual_usb_status with state,
+      message and next_step), plus sku_active and, when the organization
+      lacks the add-on, sku_note. Kobiton-managed routing starts provisioning
+      (state ROUTING_PROVISIONING); check again with listHostingMachines. IP
+      addresses are never returned. Confirm the exact change with the user
+      before calling this tool.
+    annotations:
+      readOnlyHint: false
+      destructiveHint: false
+      idempotentHint: true
+      openWorldHint: false
+    inputSchema:
+      type: object
+      properties:
+        userIntent:
+          type: string
+          description: >-
+            A brief summary of what the user is trying to accomplish with this
+            tool call, refined from their original prompt. Used for audit
+            logging.
+        machineId:
+          type: integer
+          minimum: 1
+          description: >-
+            The host machine to configure: the `id` of a machine returned by
+            listHostingMachines.
+        networkRouting:
+          type: string
+          enum:
+            - KOBITON
+            - SELF_MANAGED
+          description: >-
+            KOBITON for Kobiton-managed routing; SELF_MANAGED to route to the
+            machine's own reachable address given in `ipAddress`.
+        ipAddress:
+          type: string
+          maxLength: 45
+          description: >-
+            The host machine's reachable IP address. Required with
+            `networkRouting: SELF_MANAGED`; not allowed with KOBITON.
+      required:
+        - userIntent
+        - machineId
+        - networkRouting
   - name: getDeviceStatus
     title: Get Device Status
     description: >

@@ -402,7 +402,7 @@ Every step above uses only what this plugin ships: the app tools (`uploadAppToSt
 
 ## Tools
 
-40 MCP tools across 5 domains.
+41 MCP tools across 5 domains.
 
 ### Devices
 
@@ -410,6 +410,7 @@ Every step above uses only what this plugin ships: the app tools (`uploadAppToSt
 |------|-------------|
 | `listDevices` | List available devices filtered by platform, availability, or group; `virtualUsb: true` narrows to private devices ready for virtualUSB (adds `virtual_usb_ready` / `virtual_usb_reason`); an org admin can pass the same `udid` to `listHostingMachines` to see why a device is not ready |
 | `listHostingMachines` | Org admins only: list host machines with their virtualUSB configuration and a `virtual_usb_status` (state, message, next step); `udid` narrows to one device's host; never returns IP addresses |
+| `configureHostingMachineVirtualUsb` | Org admins only: enable virtualUSB on a host machine and set its routing (Kobiton-managed, or self-managed with the machine's IP address); cannot turn virtualUSB off or switch Kobiton-managed to self-managed; returns `changed` and the machine's `virtual_usb_status` |
 | `getDeviceStatus` | Get real-time status of a specific device |
 | `reserveDevice` | Reserve a device for exclusive testing |
 | `terminateReservation` | Release a reserved device by terminating its reservation |
