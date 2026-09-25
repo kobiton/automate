@@ -119,7 +119,7 @@ Call `listDevices({virtualUsb: true, platform?: "ANDROID" | "IOS", deviceName?})
   - a permission error ("You don't have permission to do this action.") → "ask an organization admin to check the host machine in Portal → Device Management".
 
   Then **STOP**, unless the admin rule below applies. Never try `vusb connect` on a not-ready device.
-- **Admin, host `DISABLED` or `NO_NETWORK_ROUTE` (or `ROUTING_PROVISIONING_FAILED`, as a retry), no `sku_note`** → offer to configure the host:
+- **Admin, host `DISABLED` or `NO_NETWORK_ROUTE`, no `sku_note`** → offer to configure the host:
   1. Ask which routing: Kobiton-managed (`KOBITON`), or self-managed (`SELF_MANAGED`) with the machine's reachable IP address, which the admin provides - never guess it.
   2. State exactly what will change ("enable virtualUSB on `<host_name>` with <routing>") and get an explicit yes.
   3. Call `configureHostingMachineVirtualUsb({machineId: <the machine's id>, networkRouting, ipAddress?})` and relay the returned `virtual_usb_status.message` and `next_step` (`changed: false` → nothing changed; say so).
