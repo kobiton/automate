@@ -410,7 +410,7 @@ Every step above uses only what this plugin ships: the app tools (`uploadAppToSt
 |------|-------------|
 | `listDevices` | List available devices filtered by platform, availability, or group; `virtualUsb: true` narrows to private devices ready for virtualUSB (adds `virtual_usb_ready` / `virtual_usb_reason`); an org admin can pass the same `udid` to `listHostingMachines` to see why a device is not ready |
 | `listHostingMachines` | Org admins only: list host machines with their virtualUSB configuration and a `virtual_usb_status` (state, message, next step); `udid` narrows to one device's host; never returns IP addresses |
-| `configureHostingMachineVirtualUsb` | Org admins only: enable virtualUSB on a host machine and set its routing (Kobiton-managed, or self-managed with the machine's IP address); cannot turn virtualUSB off or switch Kobiton-managed to self-managed; returns `changed` and the machine's `virtual_usb_status` |
+| `configureHostingMachine` | Org admins only: change one host machine's virtualUSB settings (on/off, Kobiton-managed or self-managed routing) and/or its max parallel tests in one save; turning virtualUSB off or leaving Kobiton-managed routing ends active virtualUSB sessions, as in Portal; returns `changed` and the machine; never returns IP addresses |
 | `getDeviceStatus` | Get real-time status of a specific device |
 | `reserveDevice` | Reserve a device for exclusive testing |
 | `terminateReservation` | Release a reserved device by terminating its reservation |

@@ -98,8 +98,8 @@ tools:
       returned; when the device or its host machine is not visible to the
       caller, machines is empty and reason explains why. applied_filters
       echoes the interpreted filters. IP addresses are never returned.
-      Admins can fix a DISABLED or NO_NETWORK_ROUTE machine with
-      configureHostingMachineVirtualUsb.
+      Each machine also carries max_parallel_tests (mode, limit). Admins can
+      change a machine's settings with configureHostingMachine.
     annotations:
       readOnlyHint: true
       destructiveHint: false
@@ -125,30 +125,37 @@ tools:
           default: 20
       required:
         - userIntent
-  - name: configureHostingMachineVirtualUsb
-    title: Configure Hosting Machine virtualUSB
+  - name: configureHostingMachine
+    title: Configure Hosting Machine
     description: >
-      Enable virtualUSB on one host machine and set its network routing.
-      Organization admins only; other users get the server's permission error
-      unchanged. The organization needs the virtualUSB add-on. machineId is
-      the id from listHostingMachines. networkRouting KOBITON uses
-      Kobiton-managed routing; SELF_MANAGED uses the machine's own address,
-      given in ipAddress (required for SELF_MANAGED, not allowed with
-      KOBITON). This tool only enables virtualUSB and sets its routing: it
-      cannot turn virtualUSB off, and it will not switch a machine from
-      Kobiton-managed to self-managed routing, because both end active
-      connections; do those in Portal > Device Management. A request that
-      matches the current configuration changes nothing and returns
-      changed false. Returns changed and machine, in the same shape as
-      listHostingMachines (virtual_usb, virtual_usb_status with state,
-      message and next_step), plus sku_active and, when the organization
-      lacks the add-on, sku_note. Kobiton-managed routing starts provisioning
-      (state ROUTING_PROVISIONING); check again with listHostingMachines. IP
-      addresses are never returned. Confirm the exact change with the user
-      before calling this tool.
+      Change the virtualUSB settings and/or the max parallel tests setting of
+      one host machine. Organization admins only; other users get the
+      server's permission error unchanged. machineId is the id from
+      listHostingMachines. Pass at least one of virtualUsb and
+      maxParallelTests; both sections are applied together in one save.
+      virtualUSB settings need the organization's virtualUSB add-on.
+      virtualUsb.enabled true needs networkRouting: KOBITON for
+      Kobiton-managed routing, or SELF_MANAGED with the machine's ipAddress;
+      virtualUsb.enabled false takes no routing and no address. Max parallel
+      tests caps how many of the machine's devices can be in use at the same
+      time: mode UNLIMITED, or CUSTOM with a limit. A request that matches the
+      current configuration changes nothing and returns changed false.
+      Returns changed and machine, in the same shape as listHostingMachines
+      (virtual_usb, virtual_usb_status with state, message and next_step, and
+      max_parallel_tests), plus sku_active and, when the organization lacks
+      the add-on, sku_note. IP addresses are never returned. Session
+      behaviour is the same as in the Kobiton portal: turning virtualUSB off
+      on, or moving off Kobiton-managed routing from, a machine that uses
+      Kobiton-managed routing ends the active virtualUSB sessions on its
+      devices; turning virtualUSB off on a self-managed machine does not
+      currently disconnect clients that are already connected; entering
+      Kobiton-managed routing starts provisioning (state
+      ROUTING_PROVISIONING), so check again with listHostingMachines. Confirm
+      the exact change with the user before calling this tool, and say which
+      sessions may end.
     annotations:
       readOnlyHint: false
-      destructiveHint: false
+      destructiveHint: true
       idempotentHint: true
       openWorldHint: false
     inputSchema:
@@ -166,24 +173,58 @@ tools:
           description: >-
             The host machine to configure: the `id` of a machine returned by
             listHostingMachines.
-        networkRouting:
-          type: string
-          enum:
-            - KOBITON
-            - SELF_MANAGED
+        virtualUsb:
+          type: object
           description: >-
-            KOBITON for Kobiton-managed routing; SELF_MANAGED to route to the
-            machine's own reachable address given in `ipAddress`.
-        ipAddress:
-          type: string
-          maxLength: 45
+            The machine's virtualUSB settings. Omit to leave them unchanged.
+          properties:
+            enabled:
+              type: boolean
+              description: Turn virtualUSB on (true) or off (false).
+            networkRouting:
+              type: string
+              enum:
+                - KOBITON
+                - SELF_MANAGED
+              description: >-
+                KOBITON for Kobiton-managed routing; SELF_MANAGED to route to
+                the machine's own reachable address given in `ipAddress`.
+                Required when `enabled` is true; not allowed when false.
+            ipAddress:
+              type: string
+              maxLength: 45
+              description: >-
+                The host machine's reachable IP address. Required with
+                `networkRouting: SELF_MANAGED`; not allowed with KOBITON or
+                when `enabled` is false.
+          required:
+            - enabled
+          additionalProperties: false
+        maxParallelTests:
+          type: object
           description: >-
-            The host machine's reachable IP address. Required with
-            `networkRouting: SELF_MANAGED`; not allowed with KOBITON.
+            How many of the machine's devices can be in use at the same time.
+            Omit to leave it unchanged.
+          properties:
+            mode:
+              type: string
+              enum:
+                - UNLIMITED
+                - CUSTOM
+              description: UNLIMITED for no cap; CUSTOM to cap at `limit`.
+            limit:
+              type: integer
+              minimum: 1
+              maximum: 999
+              description: >-
+                The cap on devices in use at the same time. Required with
+                `mode: CUSTOM`; not allowed with UNLIMITED.
+          required:
+            - mode
+          additionalProperties: false
       required:
         - userIntent
         - machineId
-        - networkRouting
   - name: getDeviceStatus
     title: Get Device Status
     description: >
