@@ -2,9 +2,7 @@
 
 ## 1.13.0 - 2026-09-29
 
-### Fixed: `/automate:setup` no longer passes your API key through the assistant
-
-Setup used to return the full API key in the `getCredential` tool result and then pass it on a shell command line, so the key ended up in the model context, the session transcript, permission prompts, and the process list. The "don't echo it" instruction only kept it out of the assistant's replies.
+### Changed: `/automate:setup` keeps your API key out of the assistant
 
 Setup now works like a PKCE exchange:
 
