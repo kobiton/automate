@@ -121,7 +121,7 @@ Call `listDevices({virtualUsb: true, platform?: "ANDROID" | "IOS", deviceName?})
   Then **STOP**, unless the admin rule below applies. Never try `vusb connect` on a not-ready device.
 - **Admin, host `DISABLED` or `NO_NETWORK_ROUTE`, no `sku_note`** → offer to configure the host:
   1. Ask which routing: Kobiton-managed (`KOBITON`), or self-managed (`SELF_MANAGED`) with the machine's reachable IP address, which the admin provides - never guess it. The machine's current address is never shown, so ask for it even to keep self-managed routing.
-  2. State exactly what will change ("enable virtualUSB on `<host_name>` with <routing>") and get an explicit yes.
+  2. State exactly what will change ("enable virtualUSB on `<host_name>` with <routing>") and **wait for an explicit yes in a separate reply**. The routing answer itself is not a yes: after it, ask the confirmation question and end your turn.
   3. Call `configureHostingMachine({machineId: <the machine's id>, virtualUsb: {enabled: true, networkRouting, ipAddress?}})` and relay the returned `virtual_usb_status.message` and `next_step` (`changed: false` → nothing changed; say so).
   4. `ROUTING_PROVISIONING` → tell the user setup takes a few minutes, then re-check `listHostingMachines({udid})` and `listDevices({virtualUsb: true, udid})` before any connect. `CONFIGURED` and `virtual_usb_ready: true` → continue the flow with this device. Anything else → relay it and **STOP**.
 
