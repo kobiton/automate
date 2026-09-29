@@ -120,7 +120,7 @@ Call `listDevices({virtualUsb: true, platform?: "ANDROID" | "IOS", deviceName?})
 
   Then **STOP**, unless the admin rule below applies. Never try `vusb connect` on a not-ready device.
 - **Admin, host `DISABLED` or `NO_NETWORK_ROUTE`, no `sku_note`** → offer to configure the host:
-  1. Ask which routing: Kobiton-managed (`KOBITON`), or self-managed (`SELF_MANAGED`) with the machine's reachable IP address, which the admin provides - never guess it.
+  1. Ask which routing: Kobiton-managed (`KOBITON`), or self-managed (`SELF_MANAGED`) with the machine's reachable IP address, which the admin provides - never guess it. The machine's current address is never shown, so ask for it even to keep self-managed routing.
   2. State exactly what will change ("enable virtualUSB on `<host_name>` with <routing>") and get an explicit yes.
   3. Call `configureHostingMachine({machineId: <the machine's id>, virtualUsb: {enabled: true, networkRouting, ipAddress?}})` and relay the returned `virtual_usb_status.message` and `next_step` (`changed: false` → nothing changed; say so).
   4. `ROUTING_PROVISIONING` → tell the user setup takes a few minutes, then re-check `listHostingMachines({udid})` and `listDevices({virtualUsb: true, udid})` before any connect. `CONFIGURED` and `virtual_usb_ready: true` → continue the flow with this device. Anything else → relay it and **STOP**.
@@ -181,7 +181,7 @@ Report findings as you go: what was reproduced, the relevant log excerpt (trimme
     $VUSB disconnect --udid <udid>
     $VUSB status
 
-`status` must no longer list the UDID (parse the output). Then confirm the platform released the device: `listDevices({virtualUsb: true, udid: "<udid>", available: false})`, polled with `sleep 10` for up to 60 s until `is_online === true && is_booked === false`. Report if it did not release within that window - never call `terminateReservation`. Record the disconnect time.
+`status` must no longer list the UDID (parse the output). Then confirm the platform released the device: `listDevices({virtualUsb: true, udid: "<udid>"})` (default `available`: online devices only), polled with `sleep 10` for up to 60 s until the device is returned with `is_booked === false`; an empty result means it went offline - report that instead. Report if it did not release within that window - never call `terminateReservation`. Record the disconnect time.
 
 ### 10. Error handling and summary
 
@@ -218,7 +218,7 @@ Every failure surfaces as `<plain-language meaning> → <next step>` from [`refe
 4. `~/.kobiton/bin/vusb login`, then `~/.kobiton/bin/vusb connect --udid R5CT1234ABC`; the user approves the administrator dialog.
 5. `~/.kobiton/bin/vusb status` lists `R5CT1234ABC`; `adb devices -l | grep -i R5CT1234ABC` shows it as `device`.
 6. `adb -s R5CT1234ABC install -r ./app/build/outputs/apk/debug/app-debug.apk`, `logcat -c`, launch the app, ask the user to open the cart, `logcat -d -v time > .kobiton/vusb/R5CT1234ABC/logcat-<ts>.txt`, `grep -n "FATAL EXCEPTION" -A 30` → quote the `NullPointerException` in `CartFragment.onViewCreated`.
-7. `~/.kobiton/bin/vusb disconnect --udid R5CT1234ABC`; `status` no longer lists it; `listDevices({virtualUsb: true, udid: "R5CT1234ABC", available: false})` → `is_booked: false`.
+7. `~/.kobiton/bin/vusb disconnect --udid R5CT1234ABC`; `status` no longer lists it; `listDevices({virtualUsb: true, udid: "R5CT1234ABC"})` → `is_booked: false`.
 8. Summary: device, times, the stack trace excerpt, the logcat path, released = yes.
 
 ### Example 2: the pick is not ready
