@@ -8,7 +8,7 @@ allowed-tools:
 
 # Kobiton Automate Setup
 
-Bootstrap the plugin: ensure the CLI wrapper symlink is installed, then fetch the user's Kobiton credentials via the `getCredential` MCP tool and write them to `~/.kobiton/.credentials`. After writing, recommend running `/automate:doctor` to verify.
+Bootstrap the plugin: ensure the CLI wrapper symlink is installed, then have the bundled `write-credentials.js` script fetch the user's Kobiton credentials and write them to `~/.kobiton/.credentials`. The API key goes straight from Kobiton to the file: it never appears in a tool result, a command you run, or your replies. After writing, recommend running `/automate:doctor` to verify.
 
 ## Step 0: Ensure the CLI wrapper is installed
 
@@ -29,23 +29,41 @@ The script is idempotent. On first run it downloads the CLI build pinned by this
 - **`OK`**: wrapper in place, continue to Step 1.
 - **`MISSING`**: the install script could not install the wrapper — unsupported platform (Intel Macs and non-x64 architectures have no published CLI build) or the first-time download failed (its stderr says which). Surface the script's message to the user and continue to Step 1 anyway — credentials still need to be written so other tools work; only `run-interactive-session` is affected.
 
-## Step 1: Fetch credentials via MCP
+## Rules for this command
 
-Call the MCP tool `getCredential` with `userIntent: "Bootstrap ~/.kobiton/.credentials for the automate plugin"`.
+- The API key must never enter this conversation. Never read, `cat`, `grep`, or print `~/.kobiton/.credentials` or `~/.kobiton/.setup-pending`, and never put a key into a command. The script prints at most the last 4 characters of a key.
+- If any tool result or script output ever contains an `apiKey` field, do not use it, repeat it, or write it anywhere.
+
+All steps below run the bundled script. This file (`setup.md`) lives at `<plugin-root>/commands/setup.md`, so the script is at `<plugin-root>/scripts/write-credentials.js`. Resolve `<plugin-root>` to its absolute path the same way as in Step 0.
+
+## Step 1: Create a setup challenge
+
+```bash
+node <plugin-root>/scripts/write-credentials.js --init
+```
+
+It prints one line, `CHALLENGE <challenge>`. Keep `<challenge>` for Step 2. The matching secret stays in a private file on disk that only the script reads.
+
+## Step 2: Request a setup token via MCP
+
+Call the MCP tool `getCredential` with `userIntent: "Bootstrap ~/.kobiton/.credentials for the automate plugin"` and `challenge: "<challenge>"` from Step 1.
 
 The tool returns:
 
 ```json
-{"username": "<user>", "apiKey": "<key>", "portal": "https://api.kobiton.com"}
+{"username": "<user>", "portal": "https://api.kobiton.com", "exchangeToken": "<one-time token>", "expiresAt": "<ISO time>"}
 ```
 
-**On error:** Surface the tool's error message verbatim. If the message looks auth-related (401, "Unauthorized", etc.), tell the user:
+The exchange token is single-use and expires in a few minutes; it is not an API key. Continue promptly.
 
-> "MCP authentication failed. Restart Claude Code so OAuth login can complete, then run `/automate:setup` again."
+- **The result has no `exchangeToken`:** the Kobiton server does not support this plugin version's setup flow yet. Tell the user: "The Kobiton server has not been updated for this plugin version yet. Try again later." Stop.
+- **On error:** surface the tool's error message verbatim. If the message looks auth-related (401, "Unauthorized", etc.), tell the user:
 
-Stop and do not proceed.
+  > "MCP authentication failed. Restart Claude Code so OAuth login can complete, then run `/automate:setup` again."
 
-## Step 2: Determine the profile name
+  Stop and do not proceed.
+
+## Step 3: Determine the profile name
 
 Run:
 
@@ -58,130 +76,72 @@ test -f ~/.kobiton/.credentials && grep -qE '^\[[[:space:]]*default[[:space:]]*\
   - Strip protocol, `api-` / `api` prefix, and `.kobiton.com` suffix.
   - Examples: `https://api-test.kobiton.com` → `test`, `https://api-test-green.kobiton.com` → `test-green`, `https://api.kobiton.com` → `prod`.
   - Ask the user: "Profile `[default]` already exists. Suggested name: `[<derived>]`. Use this name, or pick another?"
-  - Wait for confirmation or override. Use whatever name the user provides.
+  - Wait for confirmation or override. Use whatever name the user provides. Profile names may contain letters, digits, `.`, `-` and `_`.
 
-## Step 3: Conflict prompt (only if chosen profile already exists)
+## Step 4: Conflict prompt (only if chosen profile already exists)
 
 Run:
 
-Node is used (not python3) because every supported host CLI already runs on Node, while Windows commonly has no Python — the Microsoft Store `python3` stub exits with code 49 without running anything.
-
 ```bash
-PROFILE=<chosen> node <<'JS'
-const fs = require("fs"), os = require("os"), path = require("path");
-const name = process.env.PROFILE;
-const file = path.join(os.homedir(), ".kobiton", ".credentials");
-if (!fs.existsSync(file)) { console.log("PROFILE_FREE"); process.exit(0); }
-const parts = fs.readFileSync(file, "utf8").split(/^\s*\[\s*([^\]]+?)\s*\]\s*$/m);
-// parts = [pre, name1, body1, name2, body2, ...]
-const found = {};
-for (let i = 1; i < parts.length; i += 2) found[parts[i].trim()] = parts[i + 1];
-if (!(name in found)) { console.log("PROFILE_FREE"); process.exit(0); }
-const fields = {};
-for (const raw of found[name].split("\n")) {
-  const line = raw.trim();
-  if (!line || line.startsWith("#") || !line.includes("=")) continue;
-  const idx = line.indexOf("=");
-  fields[line.slice(0, idx).trim()] = line.slice(idx + 1).trim();
-}
-const key = fields.KOBITON_API_KEY || "";
-const masked = key.length >= 8 ? key.slice(0, 4) + "..." + key.slice(-4) : "(short)";
-console.log("PROFILE_EXISTS");
-console.log("KOBITON_USER=" + (fields.KOBITON_USER || ""));
-console.log("KOBITON_PORTAL=" + (fields.KOBITON_PORTAL || ""));
-console.log("KOBITON_API_KEY=" + masked);
-JS
+node <plugin-root>/scripts/write-credentials.js --show-profile <chosen>
 ```
 
-- **`PROFILE_FREE`**: skip to Step 4.
-- **`PROFILE_EXISTS`**: show the user the existing values (already printed by the script — relay them as-is) and ask:
+- **`PROFILE_FREE`**: skip to Step 5.
+- **`PROFILE_EXISTS`**: show the user the existing values the script printed (the key is already masked to its last 4 characters — relay the lines as-is) and ask:
 
   > "Profile `[<chosen>]` already exists with the values above. Choose: (1) Overwrite, (2) Keep existing — abort setup, (3) Use a different profile name."
 
-  - **(1)**: continue to Step 4.
+  - **(1)**: continue to Step 5 and remember to pass `--overwrite`.
   - **(2)**: print "Setup aborted. Existing profile preserved." Stop.
-  - **(3)**: ask for the new name and re-run Step 3 with that name.
+  - **(3)**: ask for the new name and re-run Step 4 with that name.
 
-## Step 4: Show summary and confirm before writing
+## Step 5: Show summary and confirm before writing
 
-Display what will be written so the user can verify before any change to disk. The API key is masked — show only the first 8 characters followed by `***`.
-
-Format the summary like this (substitute the real values; leave the section header literal):
+Display what will be written so the user can verify before any change to disk:
 
 ```
 Ready to write to ~/.kobiton/.credentials:
 
 [<chosen>]
 KOBITON_USER=<username>
-KOBITON_API_KEY=<first-8-chars>***
+KOBITON_API_KEY=(fetched directly by the setup script; not shown)
 KOBITON_PORTAL=<portal>
 ```
-
-If the API key is shorter than 8 characters (defensive — shouldn't happen with real keys), display only `***` instead.
 
 Then ask the user:
 
 > "Proceed and write to `~/.kobiton/.credentials`?"
 
-- If they confirm: continue to Step 5.
+- If they confirm: continue to Step 6.
 - If they decline: print "Setup aborted. Nothing was written." Stop.
 
-Never echo the full unmasked API key in chat.
-
-## Step 5: Atomic write
-
-Build the new file content in memory, preserving every other profile (both content and original position), and write atomically. When overwriting an existing profile, the new block replaces the old at the same position; only a genuinely new profile is appended at the end.
+## Step 6: Write the profile
 
 ```bash
-KB_PROFILE=<chosen> KB_USER=<username> KB_KEY=<apiKey> KB_PORTAL=<portal> node <<'JS'
-const fs = require("fs"), os = require("os"), path = require("path");
-const name = process.env.KB_PROFILE, user = process.env.KB_USER;
-const key = process.env.KB_KEY, portal = process.env.KB_PORTAL;
-const dir = path.join(os.homedir(), ".kobiton");
-fs.mkdirSync(dir, { recursive: true });
-const file = path.join(dir, ".credentials");
-const newBlock = `[${name}]\nKOBITON_USER=${user}\nKOBITON_API_KEY=${key}\nKOBITON_PORTAL=${portal}`;
-let blocks;
-if (fs.existsSync(file)) {
-  const parts = fs.readFileSync(file, "utf8").split(/^\s*\[\s*([^\]]+?)\s*\]\s*$/m);
-  const head = parts[0].trim();
-  blocks = head ? [head] : [];
-  let replaced = false;
-  for (let i = 1; i < parts.length; i += 2) {
-    const sectionName = parts[i].trim(), body = parts[i + 1].trim();
-    if (sectionName === name) {
-      // Replace in-place at the original position
-      blocks.push(newBlock);
-      replaced = true;
-    } else {
-      blocks.push(`[${sectionName}]\n${body}`);
-    }
-  }
-  // Profile is new — append at the end
-  if (!replaced) blocks.push(newBlock);
-} else {
-  blocks = [newBlock];
-}
-const tmp = file + ".tmp";
-fs.writeFileSync(tmp, blocks.join("\n\n") + "\n", { mode: 0o600 });
-fs.renameSync(tmp, file);
-try { fs.chmodSync(file, 0o600); } catch {}
-console.log("WROTE " + name);
-JS
+node <plugin-root>/scripts/write-credentials.js --token <exchangeToken> --portal <portal> --profile <chosen>
 ```
 
-Replace `<chosen>`, `<username>`, `<apiKey>`, `<portal>` with the actual values from Steps 1–3 before running. Pass them via env vars (`KB_*` to avoid clashing with the standard `$USER` shell variable) so they're not embedded in the heredoc and don't need shell quoting.
+Add `--overwrite` only when the user chose (1) in Step 4. Substitute `<exchangeToken>` and `<portal>` from Step 2. The script redeems the token directly with Kobiton, writes the profile atomically with mode 0600 (other profiles and their positions are preserved), and prints `WROTE <chosen> (key …<last4>)`.
 
-Windows note: POSIX file modes don't map onto NTFS ACLs, so the file may report `644` there regardless of the `0600` we set — `/automate:doctor` reports this informationally. The write itself (atomic temp-file + rename, profile preservation) behaves identically on all platforms.
+Windows note: POSIX file modes don't map onto NTFS ACLs, so the file may report `644` there regardless of the `0600` the script sets — `/automate:doctor` reports this informationally.
 
-## Step 6: Confirm to the user
+If it prints `ERROR <CODE> <message>`:
 
-After successful write, tell the user:
+- **`HTTP_400`** (the token is invalid, expired, or already used): start again from Step 1 — a token works only once and only for a few minutes.
+- **`HTTP_429`**: too many attempts; wait a minute, then start again from Step 1.
+- **`UNTRUSTED_PORTAL`**: the `portal` value is not a Kobiton API host. Stop and show the message to the user; do not retry with a different URL.
+- **Anything else**: show the message to the user and stop.
 
-> "Profile `[<chosen>]` written to `~/.kobiton/.credentials`. Run `/automate:doctor` to verify everything is set up correctly."
+## Step 7: Confirm to the user
+
+After a successful write, tell the user:
+
+> "Profile `[<chosen>]` written to `~/.kobiton/.credentials` (key …<last4>). Run `/automate:doctor` to verify everything is set up correctly."
 
 If the Step 0 sanity-check reported `MISSING`, also append:
 
 > "Note: the `~/.kobiton/bin/kobiton` CLI wrapper could not be installed (unsupported platform, or the CLI download failed — see the install script's message above). MCP tools, `run-automation-suite`, and `drive-automation-session` will still work — they read credentials from the file we just wrote. Only `run-interactive-session` requires the wrapper."
 
-Do not echo the API key in chat.
+## Note: earlier setups
+
+Plugin versions before 1.13.0 passed the API key through the conversation during setup, so transcripts of those setup sessions contain the full key. If such a transcript was ever shared, exported, or synced, rotate that API key in the Kobiton portal (**Settings > API Keys**) and run `/automate:setup` again.

@@ -13,72 +13,65 @@ Parse the output above:
 - "INSTALL_OK": wrapper in place at `~/.kobiton/bin/kobiton`, continue to Step 1.
 - "INSTALL_FAIL" or other error: the installer couldn't install the wrapper — unsupported platform (supported: macOS on Apple Silicon, Linux x64, Windows x64 under Git Bash; Intel Macs have no published CLI build) or the first-time download failed (the error text says which). Surface the error to the user, then continue anyway — credentials still need to be written so the MCP tools work; only `run-interactive-session` is affected.
 
-## Step 1: Fetch credentials via the `kobiton` MCP server
+## Rules for this command
 
-Call the MCP tool `getCredential` with `userIntent: "Bootstrap ~/.kobiton/.credentials for the automate plugin"`. It returns `{username, apiKey, portal}`.
+- The API key must never enter this conversation. Never read, `cat`, `grep`, or print `~/.kobiton/.credentials` or `~/.kobiton/.setup-pending`, and never put a key into a command. The script prints at most the last 4 characters of a key.
+- If any tool result or script output ever contains an `apiKey` field, do not use it, repeat it, or write it anywhere.
 
-On auth error (401, "Unauthorized"): tell the user to run `/mcp auth kobiton` to complete the OAuth flow, then retry `/automate:setup`. Stop.
+The steps below use your bash tool to run the bundled script at `$HOME/.gemini/extensions/kobiton-automate/scripts/write-credentials.js`.
 
-## Step 2: Confirm with the user before writing
+## Step 1: Create a setup challenge
 
-Show this masked summary (display the API key as first 8 characters followed by `***`; if it's shorter than 8 characters, show only `***`):
+```bash
+node $HOME/.gemini/extensions/kobiton-automate/scripts/write-credentials.js --init
+```
+
+It prints one line, `CHALLENGE <challenge>`. Keep `<challenge>` for Step 2.
+
+## Step 2: Request a setup token via the `kobiton` MCP server
+
+Call the MCP tool `getCredential` with `userIntent: "Bootstrap ~/.kobiton/.credentials for the automate plugin"` and `challenge: "<challenge>"`. It returns `{username, portal, exchangeToken, expiresAt}`. The exchange token is single-use, expires in a few minutes, and is not an API key.
+
+- If the result has no `exchangeToken`: tell the user "The Kobiton server has not been updated for this plugin version yet. Try again later." Stop.
+- On auth error (401, "Unauthorized"): tell the user to run `/mcp auth kobiton` to complete the OAuth flow, then retry `/automate:setup`. Stop.
+- On any other error: surface the message verbatim and stop.
+
+## Step 3: Confirm with the user before writing
+
+This Gemini command always writes the `[default]` profile. Show this summary:
 
 ```
 Ready to write to ~/.kobiton/.credentials:
 
 [default]
 KOBITON_USER=<username>
-KOBITON_API_KEY=<first-8-chars>***
+KOBITON_API_KEY=(fetched directly by the setup script; not shown)
 KOBITON_PORTAL=<portal>
 ```
 
 Ask: "Proceed? This will overwrite the [default] profile if it exists." If they decline, stop with "Setup aborted. Nothing was written."
 
-**NEVER echo the unmasked API key in chat.**
-
-## Step 3: Write the file atomically
-
-Use your bash tool. The script preserves any other profiles already in the file; the new `[default]` block replaces an existing `[default]` at the same position, or is appended at the end if none exists. File mode is set to 0600 (on Windows, POSIX modes don't map to NTFS ACLs, so 644 may be reported — informational). Node is used because every supported host runs on Node, while Windows commonly has no Python.
+## Step 4: Write the profile
 
 ```bash
-KB_USER='<username>' KB_KEY='<apiKey>' KB_PORTAL='<portal>' node <<'JS'
-const fs = require("fs"), os = require("os"), path = require("path");
-const dir = path.join(os.homedir(), ".kobiton");
-fs.mkdirSync(dir, { recursive: true });
-const file = path.join(dir, ".credentials");
-const block = `[default]\nKOBITON_USER=${process.env.KB_USER}\nKOBITON_API_KEY=${process.env.KB_KEY}\nKOBITON_PORTAL=${process.env.KB_PORTAL}`;
-let blocks;
-if (fs.existsSync(file)) {
-  const parts = fs.readFileSync(file, "utf8").split(/^\s*\[\s*([^\]]+?)\s*\]\s*$/m);
-  const head = parts[0].trim();
-  blocks = head ? [head] : [];
-  let replaced = false;
-  for (let i = 1; i < parts.length; i += 2) {
-    const n = parts[i].trim(), body = parts[i + 1].trim();
-    if (n === "default") { blocks.push(block); replaced = true; }
-    else blocks.push(`[${n}]\n${body}`);
-  }
-  if (!replaced) blocks.push(block);
-} else {
-  blocks = [block];
-}
-const tmp = file + ".tmp";
-fs.writeFileSync(tmp, blocks.join("\n\n") + "\n", { mode: 0o600 });
-fs.renameSync(tmp, file);
-try { fs.chmodSync(file, 0o600); } catch {}
-console.log("WROTE default");
-JS
+node $HOME/.gemini/extensions/kobiton-automate/scripts/write-credentials.js --token <exchangeToken> --portal <portal> --profile default --overwrite
 ```
 
-Substitute `<username>`, `<apiKey>`, `<portal>` with the actual values from Step 1 before running. Pass them via env vars (`KB_*` to avoid clashing with the standard `$USER`).
+Substitute `<exchangeToken>` and `<portal>` from Step 2. The script redeems the token directly with Kobiton, writes `[default]` atomically with mode 0600 (other profiles are preserved; on Windows, POSIX modes don't map to NTFS ACLs, so 644 may be reported — informational), and prints `WROTE default (key …<last4>)`.
 
-## Step 4: Confirm to the user
+If it prints `ERROR HTTP_400` (token invalid, expired, or already used) or `ERROR HTTP_429` (too many attempts), start again from Step 1 (after a minute for 429). For `ERROR UNTRUSTED_PORTAL` or any other error, show the message to the user and stop.
 
-After the write succeeds, tell the user: `Profile [default] written to ~/.kobiton/.credentials. Run /automate:doctor to verify.`
+## Step 5: Confirm to the user
+
+After the write succeeds, tell the user: `Profile [default] written to ~/.kobiton/.credentials (key …<last4>). Run /automate:doctor to verify.`
 
 If Step 0 reported `INSTALL_FAIL`, also append: `Note: the ~/.kobiton/bin/kobiton CLI wrapper could not be installed (unsupported platform, or the CLI download failed — see the installer's message above). MCP tools and run-automation-suite still work; only run-interactive-session requires the wrapper.`
 
 ## Note on advanced cases
 
-This Gemini skeleton always writes to the `[default]` profile. For multi-profile support (e.g., separate `[test]` / `[prod]` for different Kobiton environments), edit `~/.kobiton/.credentials` directly after setup, or use Claude Code's `/automate:setup` which negotiates profile names and handles conflicts interactively.
+This Gemini skeleton always writes to the `[default]` profile. For multi-profile support (e.g., separate `[test]` / `[prod]` for different Kobiton environments), use Claude Code's `/automate:setup`, which negotiates profile names and handles conflicts interactively.
+
+## Note: earlier setups
+
+Plugin versions before 1.13.0 passed the API key through the conversation during setup, so transcripts of those setup sessions contain the full key. If such a transcript was ever shared, exported, or synced, rotate that API key in the Kobiton portal (**Settings > API Keys**) and run `/automate:setup` again.
 '''
