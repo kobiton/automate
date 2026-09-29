@@ -16,9 +16,9 @@ allowed-tools: >-
   Read,
   Bash(~/.kobiton/bin/vusb:*),
   Bash(bash:*), Bash(adb:*), Bash(xcrun:*),
-  Bash(uname:*), Bash(pgrep:*),
+  Bash(uname:*), Bash(pgrep:*), Bash(nohup:*),
   Bash(cat:*), Bash(grep:*), Bash(head:*), Bash(tail:*),
-  Bash(sleep:*), Bash(timeout:*)
+  Bash(sleep:*)
 version: 1.0.0
 author: Kobiton Inc.
 license: MIT
@@ -127,7 +127,7 @@ Call `listDevices({virtualUsb: true, platform?: "ANDROID" | "IOS", deviceName?})
 
   Only ever enable here. Never turn virtualUSB off, never move a machine off Kobiton-managed routing (both end active virtualUSB sessions on its devices) and never change max parallel tests - none of these is part of a debug flow. If the user asks for one, point them to `configureHostingMachine` or Portal → Device Management outside this flow. A permission error → "ask an organization admin"; other errors → [`references/error-map.md`](references/error-map.md), then **STOP**.
 
-Never pass `deviceGroup: "CLOUD"` or `"ALL"` with `virtualUsb: true` - the tool rejects it ("virtualUSB is offered on private devices only"). Record `udid`, `device_name`, `platform_name`, `platform_version`, `is_booked`.
+Never pass `deviceGroup: "CLOUD"` or `"ALL"` with `virtualUsb: true` - the tool rejects it ("virtualUSB is offered on private devices only"). Record `id`, `udid`, `device_name`, `platform_name`, `platform_version`, `is_booked`.
 
 ### 4. Limitations gate
 
@@ -146,7 +146,10 @@ The wrapper injects `--apibaseurl`, `--username`, `--apikey` from `~/.kobiton/.c
 
 ### 6. Connect
 
-    $VUSB connect --udid <udid>
+    bash -c 'mkdir -p .kobiton/vusb/<udid>'
+    nohup $VUSB connect --udid <udid> > .kobiton/vusb/<udid>/connect.log 2>&1 &
+
+`connect` does not return: it holds the device for as long as the process runs, and ending the process (Ctrl+C / SIGTERM) releases it. So always start it in the background as above - never as a foreground call, which would block until the tool times out and then release the device. Then poll `$VUSB status` (Step 7) and read `connect.log` for `connected` or a `Connect failed:` line.
 
 The client books the device and attaches it; never call `reserveDevice`. On macOS the first connect (and every client version bump) raises one administrator dialog in the user's GUI session - tell the user to approve it, wait for them, and do not re-issue the command until they confirm. Map any `Connect failed:` line through the error map: not signed in (run Step 5 once, retry once), subscription missing (STOP), device already retained / in use (offer another device), host unreachable (VPN / proxy / machine routing, retry once), version mismatch (re-run the preflight). Record the connect time. From here on, Step 9 is mandatory.
 
@@ -174,14 +177,14 @@ Work from the user's description of the problem. Create the artifact directory f
   - crash triage: look for `FATAL EXCEPTION`, `AndroidRuntime`, `ANR in`, the app's own tags; quote the first stack frame inside the app's package.
 - **iOS** (macOS only, manual-assist): `xcrun devicectl device install app --device <id> <path-to-ipa-or-app>`, `xcrun devicectl device process launch --device <id> <bundle-id>`; logs via `log stream --device <id> --predicate 'process == "<AppName>"' | head -500` or Console.app / Xcode, which the user drives. Screenshots via Xcode's Devices window.
 
-Report findings as you go: what was reproduced, the relevant log excerpt (trimmed), and each artifact path. Bound long-running captures with `timeout`.
+Report findings as you go: what was reproduced, the relevant log excerpt (trimmed), and each artifact path. Keep captures bounded: `adb logcat -d` (dump and exit) or `-t <lines>`; for a streaming capture start it in the background and stop it after a fixed time (`<cmd> > <file> & pid=$!; sleep 30; kill $pid`). macOS has no `timeout` command.
 
 ### 9. Teardown (always - after success and after any failure from Step 6 onward)
 
     $VUSB disconnect --udid <udid>
     $VUSB status
 
-`status` must no longer list the UDID (parse the output). Then confirm the platform released the device: `listDevices({virtualUsb: true, udid: "<udid>"})` (default `available`: online devices only), polled with `sleep 10` for up to 60 s until the device is returned with `is_booked === false`; an empty result means it went offline - report that instead. Report if it did not release within that window - never call `terminateReservation`. Record the disconnect time.
+`status` must no longer list the UDID (parse the output), and the background `connect` process must have exited (`pgrep -f "connect --udid <udid>"` prints nothing). Then confirm the platform released the device: `getDeviceStatus({deviceId: <id from Step 3>})`, polled with `sleep 10` for up to 60 s until `is_booked === false`. While attached the device reports offline, so do not use the online-only device list for this check. Still booked after 60 s → report that the platform has not released it yet (it can lag behind the disconnect) and give the device name and UDID - never call `terminateReservation`. Record the disconnect time.
 
 ### 10. Error handling and summary
 
@@ -215,10 +218,10 @@ Every failure surfaces as `<plain-language meaning> → <next step>` from [`refe
 1. Preflight → `outcome=no action needed` (client cached at the pin). Credentials file present.
 2. `listDevices({virtualUsb: true, platform: "ANDROID", deviceName: "*Galaxy*"})` → one ready device, Galaxy S23 / Android 14 / `R5CT1234ABC`; confirm it.
 3. Gate: macOS host, Android, `is_booked: false` → proceed.
-4. `~/.kobiton/bin/vusb login`, then `~/.kobiton/bin/vusb connect --udid R5CT1234ABC`; the user approves the administrator dialog.
+4. `~/.kobiton/bin/vusb login`, then `nohup ~/.kobiton/bin/vusb connect --udid R5CT1234ABC > .kobiton/vusb/R5CT1234ABC/connect.log 2>&1 &`; the user approves the administrator dialog.
 5. `~/.kobiton/bin/vusb status` lists `R5CT1234ABC`; `adb devices -l | grep -i R5CT1234ABC` shows it as `device`.
 6. `adb -s R5CT1234ABC install -r ./app/build/outputs/apk/debug/app-debug.apk`, `logcat -c`, launch the app, ask the user to open the cart, `logcat -d -v time > .kobiton/vusb/R5CT1234ABC/logcat-<ts>.txt`, `grep -n "FATAL EXCEPTION" -A 30` → quote the `NullPointerException` in `CartFragment.onViewCreated`.
-7. `~/.kobiton/bin/vusb disconnect --udid R5CT1234ABC`; `status` no longer lists it; `listDevices({virtualUsb: true, udid: "R5CT1234ABC"})` → `is_booked: false`.
+7. `~/.kobiton/bin/vusb disconnect --udid R5CT1234ABC`; `status` no longer lists it and the `connect` process has exited; `getDeviceStatus({deviceId})` → `is_booked: false`.
 8. Summary: device, times, the stack trace excerpt, the logcat path, released = yes.
 
 ### Example 2: the pick is not ready

@@ -49,12 +49,16 @@ function makeFakeApp(appDir, version) {
 let home
 beforeEach(() => {
   home = mkdtempSync(join(tmpdir(), 'vusb-preflight-'))
+  // The preflight asks `pgrep -x dcb` whether a virtualUSB daemon is running; answer "no" so a
+  // daemon on the machine running the tests cannot change the outcome.
+  mkdirSync(join(home, 'shim'))
+  writeFileSync(join(home, 'shim', 'pgrep'), '#!/bin/bash\nexit 1\n', {mode: 0o755})
 })
 afterEach(() => {
   rmSync(home, {recursive: true, force: true})
 })
 
-const baseEnv = () => ({HOME: home, KOBITON_VUSB_BASE_URL: CLOSED_BASE_URL})
+const baseEnv = () => ({HOME: home, KOBITON_VUSB_BASE_URL: CLOSED_BASE_URL, PATH: `${join(home, 'shim')}:${process.env.PATH}`})
 
 describe('vusb-preflight.sh on unsupported hosts', () => {
   it('redirects Linux hosts: exit 0, outcome label, nothing cached, no download', () => {

@@ -8,13 +8,14 @@ Everything here was captured from client build `2609.111336.0+master.a033b54` (t
 vusb --version                 # prints: virtualUSB <version>
 vusb login [OPTIONS]           # --apibaseurl <url> --username <user-or-email> --apikey <uuid>
 vusb logout
-vusb connect --udid <udid>     # books the device and attaches it to this machine over USB-over-IP
+vusb connect --udid <udid>     # books the device and attaches it; stays running and holds the device until the process ends
 vusb disconnect --udid <udid>  # detaches it and releases the device
 vusb status                    # connection status of all devices attached by this machine
 vusb clear-pairing             # forgets stored device pairing records
 vusb export-logs [--out <dir>] [--days <n>]
 ```
 
+- `connect` does not return while the device is attached: it prints "The device will remain connected while this process is running. Send SIGINT (Ctrl+C) or SIGTERM to release the device and exit." Run it in the background (`nohup … &`); `disconnect --udid` (or ending the process) releases the device.
 - `--udid` is required on `connect` and `disconnect`; omitting it prints `error: The following required arguments were not provided:` and the usage.
 - `vusb <subcommand> --help` prints that subcommand's options. `vusb login --help` passes through the wrapper untouched (no credential injection).
 - Sign-in is API-key only. Through the wrapper, plain `~/.kobiton/bin/vusb login` is enough: it reads the active profile (`$KOBITON_PROFILE`, default `default`) of `~/.kobiton/.credentials` and injects `--apibaseurl`, `--username`, `--apikey`. Pass `--apikey` yourself to bypass the injection. The key never appears in the transcript.
