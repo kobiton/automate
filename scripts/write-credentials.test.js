@@ -87,6 +87,26 @@ describe('write-credentials.js --token', () => {
     expect(existsSync(join(dir, '.setup-pending'))).toBe(false)
   })
 
+  it('accepts a token that begins with a dash in the --token= form', async () => {
+    await initChallenge()
+
+    const r = await run(['--token=-starts-with-dash', `--portal=${portal}`, '--profile=default'])
+
+    expect(r.code).toBe(0)
+    expect(state.requests[0].body.exchangeToken).toBe('-starts-with-dash')
+  })
+
+  it('refuses to write a portal the server returns that is not a Kobiton host', async () => {
+    state.reply = {status: 200, body: {username: 'jane', apiKey: API_KEY, portal: 'https://evil.example'}}
+    await initChallenge()
+
+    const r = await run(['--token', 't', '--portal', portal, '--profile', 'default'])
+
+    expect(r.code).toBe(1)
+    expect(r.stdout).toMatch(/^ERROR UNTRUSTED_PORTAL/)
+    expect(existsSync(credsFile)).toBe(false)
+  })
+
   it('keeps other profiles and their positions when overwriting one', async () => {
     writeFileSync(credsFile, [
       '[prod]', 'KOBITON_USER=a', 'KOBITON_API_KEY=old', 'KOBITON_PORTAL=https://api.kobiton.com', '',

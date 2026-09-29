@@ -223,6 +223,7 @@ async function redeem({token, portal, profile, overwrite}) {
   }
   const {username, apiKey, portal: apiBase} = res.data || {}
   if (!username || !apiKey || !apiBase) fatal('BAD_RESPONSE', 'redeem response is missing fields')
+  if (!isTrustedPortal(apiBase)) fatal('UNTRUSTED_PORTAL', `redeem returned a non-Kobiton API host: ${apiBase}`)
 
   writeProfile(profile, {username, apiKey, portal: apiBase})
   emit(`WROTE ${profile} (key ${maskKey(apiKey)})`)
