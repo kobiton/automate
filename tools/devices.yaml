@@ -96,9 +96,14 @@ tools:
       the organization lacks the virtualUSB add-on, a sku_note to relay
       instead. With udid, only the host machine of that private device is
       returned; when the device or its host machine is not visible to the
-      caller, machines is empty and reason explains why. applied_filters
-      echoes the interpreted filters. IP addresses are never returned.
-      Each machine also carries max_parallel_tests (mode, limit). Admins can
+      caller, machines is empty and reason explains why. With machineId,
+      only that host machine is returned. applied_filters echoes the
+      interpreted filters, including afterId and machineId when given. IP
+      addresses are never returned. Each machine also carries
+      max_parallel_tests (mode, limit). Machines are returned in ascending id
+      order, at most limit (max 50) per call; the response carries
+      total_machines (all matching machines) and next_after_id (pass it as
+      afterId for the next page; null when there are no more). Admins can
       change a machine's settings with configureHostingMachine.
     annotations:
       readOnlyHint: true
@@ -119,6 +124,18 @@ tools:
           description: >-
             Return only the host machine of this private device (for example
             one listDevices reported with `virtual_usb_ready: false`).
+        machineId:
+          type: integer
+          minimum: 1
+          description: >-
+            Return only this host machine (the id from a previous
+            listHostingMachines result); combinable with udid.
+        afterId:
+          type: integer
+          minimum: 1
+          description: >-
+            Return only machines whose id is greater than this; pass the
+            previous page's next_after_id to get the next page.
         limit:
           type: integer
           description: Maximum number of machines to return (max 50)
