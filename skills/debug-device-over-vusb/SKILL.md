@@ -16,7 +16,8 @@ allowed-tools: >-
   Read,
   Bash(~/.kobiton/bin/vusb:*),
   Bash(bash:*), Bash(adb:*), Bash(xcrun:*),
-  Bash(uname:*), Bash(pgrep:*), Bash(nohup:*),
+  Bash(uname:*), Bash(pgrep:*), Bash(nohup:*), Bash(kill:*),
+  Bash(idevice_id:*), Bash(ideviceinfo:*), Bash(idevicesyslog:*), Bash(ideviceinstaller:*),
   Bash(cat:*), Bash(grep:*), Bash(head:*), Bash(tail:*),
   Bash(sleep:*)
 version: 1.0.0
@@ -162,7 +163,7 @@ Parse the output (never `$?`): the picked UDID must appear with no `Failed` / `e
 Then confirm the device is visible to local tooling:
 
 - **Android**: `adb devices -l | grep -i <udid>` (the serial normally equals the UDID; if not, take the serial from the matching line). Empty → `adb kill-server`, `sleep 3`, `adb devices -l | grep -i <udid>` once more. Still empty → `$VUSB disconnect --udid <udid>`, then `$VUSB connect --udid <udid>` once, re-check once. Still empty → error map, go to Step 9. `unauthorized` → ask the user to accept the USB-debugging prompt on the device (Portal live view), re-check once.
-- **iOS** (macOS only): `xcrun devicectl list devices` must show the device; note its identifier for the `--device` flag. Not listed → give it up to 30 s (`sleep 10`, re-check, at most three times), then error map, Step 9.
+- **iOS** (macOS only): `xcrun devicectl list devices` must show the device; note its identifier for the `--device` flag. Without Xcode (`unable to find utility "devicectl"`), use libimobiledevice if installed: `idevice_id -l | grep -i <udid>`. Not listed → give it up to 30 s (`sleep 10`, re-check, at most three times), then error map, Step 9. Neither tool → tell the user iOS debugging needs Xcode or libimobiledevice (`brew install libimobiledevice`), then Step 9.
 
 ### 8. Debug loop
 
@@ -175,7 +176,7 @@ Work from the user's description of the problem. Create the artifact directory f
   - capture: `adb -s <serial> logcat -d -v time > .kobiton/vusb/<udid>/logcat-<timestamp>.txt`; filter by package or tag with `grep` when reporting (`grep -i <package> .kobiton/vusb/<udid>/logcat-<timestamp>.txt | tail -200`).
   - screenshot: `adb -s <serial> exec-out screencap -p > .kobiton/vusb/<udid>/screen-<timestamp>.png`, then `Read` the file to look at it.
   - crash triage: look for `FATAL EXCEPTION`, `AndroidRuntime`, `ANR in`, the app's own tags; quote the first stack frame inside the app's package.
-- **iOS** (macOS only, manual-assist): `xcrun devicectl device install app --device <id> <path-to-ipa-or-app>`, `xcrun devicectl device process launch --device <id> <bundle-id>`; logs via `log stream --device <id> --predicate 'process == "<AppName>"' | head -500` or Console.app / Xcode, which the user drives. Screenshots via Xcode's Devices window.
+- **iOS** (macOS only, manual-assist): with Xcode, `xcrun devicectl device install app --device <id> <path-to-ipa-or-app>`, `xcrun devicectl device process launch --device <id> <bundle-id>`; logs via `log stream --device <id> --predicate 'process == "<AppName>"' | head -500` or Console.app / Xcode, which the user drives; screenshots via Xcode's Devices window. Without Xcode (libimobiledevice): `ideviceinstaller -u <udid> -i <path-to-ipa>`, logs via `idevicesyslog -u <udid> > .kobiton/vusb/<udid>/syslog-<timestamp>.txt & pid=$!; sleep 30; kill $pid`, device facts via named keys only (`ideviceinfo -u <udid> -k ProductType -k ProductVersion -k DeviceName`) - never the full `ideviceinfo` dump, which carries IMEI, serial and MAC addresses.
 
 Report findings as you go: what was reproduced, the relevant log excerpt (trimmed), and each artifact path. Keep captures bounded: `adb logcat -d` (dump and exit) or `-t <lines>`; for a streaming capture start it in the background and stop it after a fixed time (`<cmd> > <file> & pid=$!; sleep 30; kill $pid`). macOS has no `timeout` command.
 
