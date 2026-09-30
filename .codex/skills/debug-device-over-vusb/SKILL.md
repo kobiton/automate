@@ -128,6 +128,8 @@ Call `listDevices({virtualUsb: true, platform?: "ANDROID" | "IOS", deviceName?})
 
   Only ever enable here. Never turn virtualUSB off, never move a machine off Kobiton-managed routing (both end active virtualUSB sessions on its devices) and never change max parallel tests - none of these is part of a debug flow. If the user asks for one, point them to `configureHostingMachine` or Portal → Device Management outside this flow. A permission error → "ask an organization admin"; other errors → [`references/error-map.md`](references/error-map.md), then **STOP**.
 
+A device this session disconnected a few minutes ago can still show `is_booked: true` while the platform cleans it up - say so ("still being released after the last session; it frees up in a few minutes"), don't describe it as in use by someone else, and offer to wait or pick another device.
+
 Never pass `deviceGroup: "CLOUD"` or `"ALL"` with `virtualUsb: true` - the tool rejects it ("virtualUSB is offered on private devices only"). Record `id`, `udid`, `device_name`, `platform_name`, `platform_version`, `is_booked`.
 
 ### 4. Limitations gate
@@ -185,7 +187,7 @@ Report findings as you go: what was reproduced, the relevant log excerpt (trimme
     $VUSB disconnect --udid <udid>
     $VUSB status
 
-`status` must no longer list the UDID (parse the output), and the background `connect` process must have exited (`pgrep -f "connect --udid <udid>"` prints nothing). Then confirm the platform released the device: `getDeviceStatus({deviceId: <id from Step 3>})`, polled with `sleep 10` for up to 60 s until `is_booked === false`. While attached the device reports offline, so do not use the online-only device list for this check. Still booked after 60 s → report that the platform has not released it yet (it can lag behind the disconnect) and give the device name and UDID - never call `terminateReservation`. Record the disconnect time.
+`status` must no longer list the UDID (parse the output), and the background `connect` process must have exited (`pgrep -f "connect --udid <udid>"` prints nothing; it can take up to ~30 s after `disconnect`, so re-check with `sleep 10` up to three times, then `kill` the pid you started). Then confirm the platform released the device: `getDeviceStatus({deviceId: <id from Step 3>})`, polled every 30 s for up to 10 minutes until `is_booked === false`. After a session the platform runs device cleanup, which typically takes several minutes (about 7-8 on iOS), and while attached the device reports offline, so do not use the online-only device list for this check. Still booked after 10 minutes → report that the platform has not finished releasing it (name, UDID, disconnect time) - the disconnect itself succeeded; never call `terminateReservation`. Record the disconnect time.
 
 ### 10. Error handling and summary
 
