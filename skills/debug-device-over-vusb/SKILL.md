@@ -56,7 +56,7 @@ Before the flow can succeed:
 - **virtualUSB client** - installed by this skill's own preflight (Step 1), never by the plugin's SessionStart hook or `/automate:setup`, so only users of this skill download it. The plugin pins one client build in `skills/debug-device-over-vusb/VUSB_VERSION`; the preflight fetches that build from `https://public.kobiton.download/virtualusb/<version>/`, verifies its published sha256, and on macOS caches the whole `virtualUSB.app` bundle under `~/.kobiton/vusb/<version>/`. On Windows it caches the verified `.msi` and prints the install steps for the user (UAC, then `vusb setup-adb` in an administrator terminal). The wrapper `~/.kobiton/bin/vusb` (symlink on macOS, exec-shim on Windows) resolves the binary by absolute path - `~/.kobiton/bin` is not on `PATH` and must not be added.
 - **Credentials file** - `~/.kobiton/.credentials` with `KOBITON_USER`, `KOBITON_API_KEY`, `KOBITON_PORTAL` in the active profile (`$KOBITON_PROFILE`, default `default`), written by `/automate:setup`. `~/.kobiton/bin/vusb login` reads it and signs the client in with the API key; the key never appears in the transcript.
 - **Kobiton MCP connection** - `listDevices({virtualUsb: true, …})` is how vUSB-ready devices are found. MCP tool names below are bare (`listDevices`); the host resolves its registered prefix.
-- **Local tooling** - `adb` on `PATH` for Android; Xcode command line tools (`xcrun devicectl`) on macOS for iOS.
+- **Local tooling** - `adb` on `PATH` for Android; Xcode command line tools (`xcrun devicectl`) on macOS for iOS. On Windows, adb must be installed before the one-time `vusb setup-adb`, and an administrator terminal that runs as another account needs adb's folder added to its own `PATH` (the preflight's hand-off names it).
 - **Account and devices** - an organization with the virtualUSB add-on and at least one *private* device whose host machine has virtualUSB enabled with reachable routing (`virtual_usb_ready: true`). Public cloud devices are never offered.
 - **Administrator approval once** - on macOS the first `connect` (and every client version bump) installs the client's background daemon via a GUI administrator dialog; over SSH or without a GUI session this cannot complete. On Windows the `.msi` needs UAC.
 
@@ -146,7 +146,7 @@ Run `uname -s` once and check the picked device against [`references/limitations
 
     $VUSB login
 
-The wrapper injects `--apibaseurl`, `--username`, `--apikey` from `~/.kobiton/.credentials`; nothing sensitive is printed. `Error: Missing KOBITON_…` or `Profile [...] not found` → `/automate:doctor`, then `/automate:setup`, **STOP**. Any `Authentication error` → error-map row, **STOP**. Success → continue.
+The wrapper injects `--apibaseurl`, `--username`, `--apikey` from `~/.kobiton/.credentials`; nothing sensitive is printed. `Error: Missing KOBITON_…` or `Profile [...] not found` → `/automate:doctor`, then `/automate:setup`, **STOP**. Any `Authentication error` or `Login failed:` (for example `Invalid username/email or API key`) → error-map row, **STOP**. Success → continue.
 
 ### 6. Connect
 

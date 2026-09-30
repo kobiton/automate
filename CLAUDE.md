@@ -67,7 +67,7 @@ CI runs `pnpm install --frozen-lockfile && pnpm run validate && pnpm test` on ev
 | `skills/drive-automation-session/scripts/appium.test.js` | `node:https` Appium client: request shaping, credentials loading, error envelopes |
 | `skills/drive-automation-session/scripts/strip-webview-dom.test.js` | webview DOM reducer |
 | `skills/monitor-test-run/scripts/poll-test-run.test.js` | test-run poller: state-change emission, terminal detection, line protocol |
-| `skills/debug-device-over-vusb/scripts/vusb-preflight.test.js` | vUSB preflight + wrapper: Linux / unknown-host redirect (nothing cached, no download), system-install detection via the `--version` token, cache hit + symlink install, offline hand-off, wrapper binary resolution and `login` credential injection — all with a sandboxed `$HOME`, `KOBITON_VUSB_PLATFORM_OVERRIDE`, and a closed-port `KOBITON_VUSB_BASE_URL` so it runs on any OS |
+| `skills/debug-device-over-vusb/scripts/vusb-preflight.test.js` | vUSB preflight + wrapper: Linux / unknown-host redirect (nothing cached, no download), system-install detection via the `--version` token, cache hit + symlink install, offline hand-off, Windows hand-off steps (adb folder named for the administrator terminal, or an install-adb step when adb is missing), wrapper binary resolution and `login` credential injection — all with a sandboxed `$HOME`, `KOBITON_VUSB_PLATFORM_OVERRIDE`, and a closed-port `KOBITON_VUSB_BASE_URL` so it runs on any OS |
 
 When adding a new tool YAML or skill that hits a new validation path, extend `setupValidProject` in `scripts/validate.test.js`. Pure additions to an existing pattern don't require a fixture update.
 

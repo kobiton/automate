@@ -224,11 +224,23 @@ win_path() {
 }
 
 # windows_handoff_steps <installer-path>
+# `setup-adb` needs adb on the administrator terminal's PATH. When UAC elevates to a different
+# account, that terminal doesn't inherit the user's PATH, so the steps name adb's folder.
 windows_handoff_steps() {
+  local adb_path adb_dir="" setup n=2
+  adb_path="$(command -v adb 2>/dev/null || true)"
+  [ -n "$adb_path" ] && adb_dir="$(win_path "$(dirname "$adb_path")")"
+  setup="\"C:\\Program Files\\virtualUSB\\vusb.exe\" setup-adb"
   echo "Finish the virtualUSB install by hand (it needs administrator rights):" >&2
   echo "  1. Run \"$(win_path "$1")\" and accept the UAC prompt - it installs the virtualUSB USB driver." >&2
-  echo "  2. Open an administrator terminal and run: \"C:\\Program Files\\virtualUSB\\vusb.exe\" setup-adb" >&2
-  echo "  3. Re-run this preflight." >&2
+  if [ -z "$adb_dir" ]; then
+    echo "  2. Install Android SDK Platform-Tools and add its folder to your PATH - setup-adb needs adb, and adb is not on this machine's PATH." >&2
+    adb_dir="<platform-tools folder>"
+    n=3
+  fi
+  echo "  $n. Open an administrator terminal (cmd). If it runs as a different account than yours, first run: set \"PATH=%PATH%;$adb_dir\"" >&2
+  echo "     Then run: $setup" >&2
+  echo "  $((n + 1)). Re-run this preflight." >&2
 }
 
 # --- 3. Detect the installed client / ensure the pinned build is cached ------------

@@ -141,6 +141,36 @@ describe('vusb-preflight.sh on macOS (platform forced, no real package)', () => 
   })
 })
 
+describe('vusb-preflight.sh on Windows (platform forced, cached installer)', () => {
+  // A cached pinned .msi skips the download; no vusb.exe exists, so the preflight hands off.
+  const windows = (path) => ({...baseEnv(), KOBITON_VUSB_PLATFORM_OVERRIDE: 'MINGW64_NT-10.0', PATH: path})
+  const cacheMsi = () => {
+    mkdirSync(join(home, '.kobiton', 'vusb', PIN), {recursive: true})
+    writeFileSync(join(home, '.kobiton', 'vusb', PIN, 'windows.msi'), 'msi')
+  }
+
+  it('names the adb folder for the administrator terminal when adb is on PATH', () => {
+    cacheMsi()
+    writeFileSync(join(home, 'shim', 'adb'), '#!/bin/bash\n', {mode: 0o755})
+    const r = run(PREFLIGHT, [], windows(`${join(home, 'shim')}:/usr/bin:/bin`))
+    expect(r.code).toBe(0)
+    expect(parse(r.stdout).outcome).toBe('handed off to human')
+    expect(r.stderr).toContain(`2. Open an administrator terminal (cmd). If it runs as a different account than yours, first run: set "PATH=%PATH%;${join(home, 'shim')}"`)
+    expect(r.stderr).toContain('Then run: "C:\\Program Files\\virtualUSB\\vusb.exe" setup-adb')
+    expect(r.stderr).toContain('3. Re-run this preflight.')
+    expect(r.stderr).not.toContain('Platform-Tools')
+  })
+
+  it('adds an install-adb step before setup-adb when adb is not on PATH', () => {
+    cacheMsi()
+    const r = run(PREFLIGHT, [], windows(`${join(home, 'shim')}:/usr/bin:/bin`))
+    expect(r.code).toBe(0)
+    expect(r.stderr).toContain('2. Install Android SDK Platform-Tools and add its folder to your PATH')
+    expect(r.stderr).toContain('3. Open an administrator terminal (cmd). If it runs as a different account than yours, first run: set "PATH=%PATH%;<platform-tools folder>"')
+    expect(r.stderr).toContain('4. Re-run this preflight.')
+  })
+})
+
 describe('vusb.sh wrapper', () => {
   const darwin = () => ({HOME: home, KOBITON_VUSB_PLATFORM_OVERRIDE: 'Darwin'})
 

@@ -28,7 +28,7 @@ while [ -L "$SOURCE" ]; do
   [[ "$SOURCE" != /* ]] && SOURCE="$DIR/$SOURCE"
 done
 SCRIPT_DIR="$(cd "$(dirname "$SOURCE")" && pwd)"
-SKILL_DIR="$SCRIPT_DIR/.."
+SKILL_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 PROJECT_ROOT="$SKILL_DIR/../.."
 
 # --- 1. Resolve the client binary ---

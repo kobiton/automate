@@ -30,6 +30,9 @@ The exit code is **not** a reliable success signal: the client has been observed
 |---|---|
 | Daemon not running (fresh install, before the first `connect`) | `Failed to get status: DcbStatusError { message: "Unable to get connected device status: Failed to run command: Failed to connect to dcb app server: Connection refused (os error 61)" }` |
 | Not signed in (`connect` / `disconnect` / `status`) | `… Authentication error: Authorization info not found. Please login to your Kobiton's account first!` — `connect` prefixes it with `Connecting device <udid>...` then `Connect failed:`; `disconnect` with `Disconnect failed:` |
+| `login` succeeded | `Authenticating...` then `Login successfully`, exit 0 |
+| `login` with a rejected key or user | `Login failed: Invalid username/email or API key`, exit 1 |
+| `connect` right after a disconnect | `Connect failed: Failed to retain device: "The device you are trying to access is in clean up process. Please try again later."` — the platform is still releasing the device; the process exits |
 | Nothing attached | no device lines (a "no devices" / empty listing) |
 | Device attached | a line containing the UDID and a connected-state word (`Connected`) — treat the presence of the UDID as "attached" |
 
