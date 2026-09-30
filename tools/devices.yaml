@@ -97,10 +97,13 @@ tools:
       instead. With udid, only the host machine of that private device is
       returned; when the device or its host machine is not visible to the
       caller, machines is empty and reason explains why. A udid lookup also
-      adds device (udid, state, is_online) to the machine; when that device
-      is UNPLUGGED there, the machine is only its last known host, reason
-      says so, and virtualUSB cannot reach the device through it - do not
-      configure that machine for the device. With machineId,
+      adds device (udid, state, is_online, is_hidden) to the machine; when
+      that device is hidden or UNPLUGGED there, the machine is not where the
+      device is connected, reason says so, and virtualUSB cannot reach the
+      device through it - do not configure that machine for the device.
+      Machines whose devices are all hidden in Portal → Device Management
+      are left out, as the portal does, and total_machines counts only the
+      machines shown. With machineId,
       only that host machine is returned. applied_filters echoes the
       interpreted filters, including afterId and machineId when given. IP
       addresses are never returned. Each machine also carries
