@@ -117,10 +117,11 @@ Call `listDevices({virtualUsb: true, platform?: "ANDROID" | "IOS", deviceName?})
   - `sku_note` when present (the organization lacks the virtualUSB add-on);
   - otherwise the machine's `virtual_usb_status.message` and `virtual_usb_status.next_step`, quoting `host_name` when it is non-null so the admin can find the machine in Portal → Device Management (it is null for Kobiton-hosted machines);
   - an empty `machines` list → its `reason`;
+  - a machine whose `device.state` is `UNPLUGGED` → its `reason`: the device is not plugged into that machine now, so it is not where the device is connected. Never offer `configureHostingMachine` for it;
   - a permission error ("You don't have permission to do this action.") → "ask an organization admin to check the host machine in Portal → Device Management".
 
   Then **STOP**, unless the admin rule below applies. Never try `vusb connect` on a not-ready device.
-- **Admin, host `DISABLED` or `NO_NETWORK_ROUTE`, no `sku_note`** → offer to configure the host:
+- **Admin, host `DISABLED` or `NO_NETWORK_ROUTE`, no `sku_note`, `device.state` not `UNPLUGGED`** → offer to configure the host:
   1. Ask which routing: Kobiton-managed (`KOBITON`), or self-managed (`SELF_MANAGED`) with the machine's reachable IP address, which the admin provides - never guess it. The machine's current address is never shown, so ask for it even to keep self-managed routing.
   2. State exactly what will change ("enable virtualUSB on `<host_name>` with <routing>") and **wait for an explicit yes in a separate reply**. The routing answer itself is not a yes: after it, ask the confirmation question and end your turn.
   3. Call `configureHostingMachine({machineId: <the machine's id>, virtualUsb: {enabled: true, networkRouting, ipAddress?}})` and relay the returned `virtual_usb_status.message` and `next_step` (`changed: false` → nothing changed; say so).
