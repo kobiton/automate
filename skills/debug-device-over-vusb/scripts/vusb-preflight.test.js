@@ -53,7 +53,24 @@ beforeEach(() => {
   // daemon on the machine running the tests cannot change the outcome.
   mkdirSync(join(home, 'shim'))
   writeFileSync(join(home, 'shim', 'pgrep'), '#!/bin/bash\nexit 1\n', {mode: 0o755})
+  // The fake bundles are unsigned: shim codesign to report Kobiton's team unless a test says otherwise.
+  signing(true)
 })
+
+// signing(valid) -> shims `codesign` to pass (or fail) verification for Kobiton's team id
+function signing(valid) {
+  writeFileSync(join(home, 'shim', 'codesign'), valid
+    ? '#!/bin/bash\n[ "$1" = "-dv" ] && echo "TeamIdentifier=4X2699AQKX" >&2\nexit 0\n'
+    : '#!/bin/bash\nexit 1\n', {mode: 0o755})
+}
+
+// runningDcb(version) -> shims pgrep/ps so a daemon at <version> appears to be running
+function runningDcb(version) {
+  const dcb = join(home, 'shim', 'fake-dcb')
+  writeFileSync(dcb, `#!/bin/bash\necho "deviceBridge ${version}"\n`, {mode: 0o755})
+  writeFileSync(join(home, 'shim', 'pgrep'), '#!/bin/bash\necho 4242\n', {mode: 0o755})
+  writeFileSync(join(home, 'shim', 'ps'), `#!/bin/bash\necho "${dcb}"\n`, {mode: 0o755})
+}
 afterEach(() => {
   rmSync(home, {recursive: true, force: true})
 })
@@ -86,7 +103,8 @@ describe('vusb-preflight.sh on unsupported hosts', () => {
 })
 
 describe('vusb-preflight.sh on macOS (platform forced, no real package)', () => {
-  const darwin = () => ({...baseEnv(), KOBITON_VUSB_PLATFORM_OVERRIDE: 'Darwin'})
+  // A real /Applications/virtualUSB.app on the test machine must not leak in; tests that need one pass it.
+  const darwin = () => ({...baseEnv(), KOBITON_VUSB_PLATFORM_OVERRIDE: 'Darwin', KOBITON_VUSB_SYSTEM_APP: join(home, 'nope.app')})
 
   it('parses the version token of a system install at the pin: no action needed, no download', () => {
     const app = join(home, 'Applications', 'virtualUSB.app')
@@ -100,18 +118,64 @@ describe('vusb-preflight.sh on macOS (platform forced, no real package)', () => 
     expect(existsSync(join(home, '.kobiton', 'vusb', PIN))).toBe(false)
   })
 
-  it('hands off when the system install reports another version (fake prints "virtualUSB 1.2.3")', () => {
-    const app = join(home, 'Applications', 'virtualUSB.app')
-    makeFakeApp(app, '1.2.3')
-    const r = run(PREFLIGHT, [], {...darwin(), KOBITON_VUSB_SYSTEM_APP: app})
+  it.each([['1.2.3', 'older'], ['9999.1.0+master.abc1234', 'newer']])(
+    'uses a system install at another version (%s) with a drift warning (%s)', (version, relation) => {
+      const app = join(home, 'Applications', 'virtualUSB.app')
+      const bin = makeFakeApp(app, version)
+      const r = run(PREFLIGHT, [], {...darwin(), KOBITON_VUSB_SYSTEM_APP: app})
+      expect(r.code).toBe(0)
+      const kv = parse(r.stdout)
+      expect(kv.installed).toBe(version)
+      expect(kv.vusb).toBe(bin)
+      expect(kv.outcome).toBe('no action needed')
+      expect(r.stderr).toContain(`virtualUSB ${version} is installed in ${app}; this plugin was validated with ${PIN} ` +
+        `(the installed client is ${relation}). Continuing with the installed client`)
+      // no second copy unpacked, no download attempted
+      expect(existsSync(join(home, '.kobiton', 'vusb', PIN))).toBe(false)
+    })
+
+  it('re-verifies a cached pinned bundle: a failed signature is not a cache hit', () => {
+    makeFakeApp(join(home, '.kobiton', 'vusb', PIN, 'virtualUSB.app'), PIN)
+    signing(false)
+    const r = run(PREFLIGHT, [], darwin())
     expect(r.code).toBe(0)
-    const kv = parse(r.stdout)
-    expect(kv.installed).toBe('1.2.3')
-    expect(kv.outcome).toBe('handed off to human')
-    expect(r.stderr).toMatch(/virtualUSB 1\.2\.3 is installed/)
-    expect(r.stderr).toContain(`this plugin pins ${PIN}`)
-    // no second copy unpacked, no download attempted
-    expect(existsSync(join(home, '.kobiton', 'vusb', PIN))).toBe(false)
+    expect(r.stderr).toContain(`the cached build ${PIN} failed verification (signature or version); downloading it again`)
+    // the closed-port download fails and the unverified bundle is not offered as a fallback
+    expect(parse(r.stdout).outcome).toBe('handed off to human')
+    expect(parse(r.stdout).vusb).toBe('')
+  })
+
+  it('re-verifies a cached pinned bundle: a wrong --version is not a cache hit', () => {
+    makeFakeApp(join(home, '.kobiton', 'vusb', PIN, 'virtualUSB.app'), '0.0.1')
+    const r = run(PREFLIGHT, [], darwin())
+    expect(r.stderr).toContain('failed verification (signature or version)')
+  })
+
+  it('hands off when a running daemon (dcb) is another version than the client in use', () => {
+    makeFakeApp(join(home, '.kobiton', 'vusb', PIN, 'virtualUSB.app'), PIN)
+    runningDcb('1.0.0')
+    const r = run(PREFLIGHT, [], darwin())
+    expect(r.code).toBe(0)
+    expect(parse(r.stdout).outcome).toBe('handed off to human')
+    expect(r.stderr).toContain(`a virtualUSB daemon from another install is running (dcb 1.0.0), but this machine's client is virtualUSB ${PIN}`)
+  })
+
+  it('accepts a running daemon at the version of the client in use', () => {
+    makeFakeApp(join(home, '.kobiton', 'vusb', PIN, 'virtualUSB.app'), PIN)
+    runningDcb(PIN)
+    const r = run(PREFLIGHT, [], darwin())
+    expect(parse(r.stdout).outcome).toBe('no action needed')
+    expect(r.stderr).not.toContain('daemon')
+  })
+
+  it('hands off when an old cache exists and a foreign daemon runs (pin not cached)', () => {
+    makeFakeApp(join(home, '.kobiton', 'vusb', '1.0.0', 'virtualUSB.app'), '1.0.0')
+    runningDcb('5.5.5')
+    const r = run(PREFLIGHT, [], darwin())
+    // download fails on the closed port, the old cache is used, and its version must match the daemon
+    expect(parse(r.stdout).installed).toBe('1.0.0')
+    expect(parse(r.stdout).outcome).toBe('handed off to human')
+    expect(r.stderr).toContain('(dcb 5.5.5), but this machine\'s client is virtualUSB 1.0.0')
   })
 
   it('treats a cached pinned bundle as a hit and installs the wrapper symlink', () => {
@@ -172,7 +236,7 @@ describe('vusb-preflight.sh on Windows (platform forced, cached installer)', () 
 })
 
 describe('vusb.sh wrapper', () => {
-  const darwin = () => ({HOME: home, KOBITON_VUSB_PLATFORM_OVERRIDE: 'Darwin'})
+  const darwin = () => ({HOME: home, KOBITON_VUSB_PLATFORM_OVERRIDE: 'Darwin', KOBITON_VUSB_SYSTEM_APP: join(home, 'nope.app')})
 
   it('resolves the cached pinned bundle and passes --version through', () => {
     makeFakeApp(join(home, '.kobiton', 'vusb', PIN, 'virtualUSB.app'), PIN)
@@ -200,6 +264,15 @@ describe('vusb.sh wrapper', () => {
     expect(r.stdout.split('\n').filter(Boolean)).toEqual([
       'ARG:login', 'ARG:--apikey', 'ARG:k', 'ARG:--username', 'ARG:u', 'ARG:--apibaseurl', 'ARG:https://api.example.com'
     ])
+  })
+
+  it('prefers a system install at another version and warns about the drift', () => {
+    makeFakeApp(join(home, '.kobiton', 'vusb', PIN, 'virtualUSB.app'), PIN)
+    const app = join(home, 'Applications', 'virtualUSB.app')
+    makeFakeApp(app, '1.2.3')
+    const r = run(WRAPPER, ['--version'], {...darwin(), KOBITON_VUSB_SYSTEM_APP: app})
+    expect(r.stdout.trim()).toBe('virtualUSB 1.2.3')
+    expect(r.stderr).toContain(`Warning: using virtualUSB 1.2.3 from ${app}; this plugin was validated with ${PIN}`)
   })
 
   it('fails with the preflight hint when no client is installed', () => {

@@ -50,10 +50,15 @@ version_token() {
 BINARY=""
 case "${KOBITON_VUSB_PLATFORM_OVERRIDE:-$(uname -s)}" in
   Darwin)
-    if [ -n "$PIN" ] && [ -x "$CACHE_ROOT/$PIN/virtualUSB.app/Contents/MacOS/vusb" ]; then
-      BINARY="$CACHE_ROOT/$PIN/virtualUSB.app/Contents/MacOS/vusb"
-    elif [ -x "$SYSTEM_APP/Contents/MacOS/vusb" ] && [ "$(version_token "$SYSTEM_APP/Contents/MacOS/vusb")" = "$PIN" ]; then
+    if [ -x "$SYSTEM_APP/Contents/MacOS/vusb" ]; then
+      # A system install wins at any version (the preflight never unpacks a second copy beside it).
       BINARY="$SYSTEM_APP/Contents/MacOS/vusb"
+      SYSTEM_VERSION="$(version_token "$BINARY")"
+      if [ "$SYSTEM_VERSION" != "$PIN" ]; then
+        echo "Warning: using virtualUSB ${SYSTEM_VERSION:-(unknown version)} from $SYSTEM_APP; this plugin was validated with ${PIN:-unknown}. Run /automate:doctor for details." >&2
+      fi
+    elif [ -n "$PIN" ] && [ -x "$CACHE_ROOT/$PIN/virtualUSB.app/Contents/MacOS/vusb" ]; then
+      BINARY="$CACHE_ROOT/$PIN/virtualUSB.app/Contents/MacOS/vusb"
     else
       # Pinned build not cached (pruned upstream, offline, or the pin changed):
       # use the newest cached bundle with a warning.
@@ -67,7 +72,7 @@ case "${KOBITON_VUSB_PLATFORM_OVERRIDE:-$(uname -s)}" in
       fi
     fi
     if [ -z "$BINARY" ]; then
-      echo "Error: the virtualUSB client is not installed (no cached bundle under $CACHE_ROOT and no matching $SYSTEM_APP)." >&2
+      echo "Error: the virtualUSB client is not installed (no cached bundle under $CACHE_ROOT and no $SYSTEM_APP)." >&2
       echo "$PREFLIGHT_HINT" >&2
       exit 1
     fi

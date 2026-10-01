@@ -6,11 +6,18 @@
 #      https://public.kobiton.download/virtualusb/<version>/ with mandatory
 #      sha256 verification, unpacked, and cached as
 #      ~/.kobiton/vusb/<version>/virtualUSB.app (the whole bundle - the
-#      binary resolves its daemon and assets relative to itself). On Windows
+#      binary resolves its daemon and assets relative to itself). The package
+#      must carry Kobiton's Developer ID Installer signature (team 4X2699AQKX)
+#      and the unpacked bundle must pass `codesign --verify`; a cached bundle is
+#      re-verified (signature + version) on every run. On Windows
 #      the pinned windows.msi is downloaded and verified into the same cache,
 #      but never executed: the installer needs UAC and a USB driver, so the
 #      human finishes the install. Linux hosts are not supported by the skill.
-#      A cache hit performs no network I/O.
+#      A cache hit performs no network I/O. A client already installed in
+#      /Applications (macOS) or Program Files (Windows) is used as-is, with a
+#      warning when its version differs from the pin; a running virtualUSB
+#      daemon (dcb) whose version differs from the client in use stops the
+#      preflight, because two virtualUSB installs cannot coexist.
 #   2. Installs the ~/.kobiton/bin/vusb entry point pointing at this plugin
 #      version's vusb.sh wrapper (symlink on macOS; a bash exec-shim on
 #      Windows, where MSYS `ln -sf` copies files).
@@ -32,8 +39,9 @@
 #   stderr - human-readable messages (hand-off steps, warnings, errors).
 #   exit   - 0 on every tolerated outcome (including offline, or the pinned
 #            folder pruned upstream, with or without a cache); 1 only on a
-#            checksum mismatch, an unverifiable download, or an unpack
-#            failure. Never leaves a partial download at a resolved cache path.
+#            checksum mismatch, an unverifiable download, a signature
+#            failure, or an unpack failure. Never leaves a partial download at
+#            a resolved cache path.
 #
 # Environment overrides (tests, mirrors):
 #   KOBITON_VUSB_BASE_URL           download endpoint (default https://public.kobiton.download/virtualusb).
@@ -41,6 +49,7 @@
 #                                   decision: point it only at a mirror you trust (or a local test server).
 #   KOBITON_VUSB_SYSTEM_APP         system install to detect (default /Applications/virtualUSB.app)
 #   KOBITON_VUSB_PLATFORM_OVERRIDE  value used instead of `uname -s`
+# pkgutil, codesign, pgrep and ps are resolved through PATH (tests put shims first).
 
 set -euo pipefail
 
@@ -124,6 +133,50 @@ version_token() {
   "$1" --version 2>/dev/null | awk '{for (i = 1; i <= NF; i++) if ($i == "virtualUSB") {print $(i + 1); exit}}' || true
 }
 
+TEAM_ID="4X2699AQKX"
+
+# pkg_signed <pkg> -> 0 when the package carries Kobiton's Developer ID Installer signature
+pkg_signed() {
+  pkgutil --check-signature "$1" 2>/dev/null | grep -q "Developer ID Installer: .*($TEAM_ID)"
+}
+
+# app_signed <app-dir> -> 0 when the bundle verifies and is signed by Kobiton's team
+app_signed() {
+  codesign --verify --deep --strict "$1" >/dev/null 2>&1 \
+    && codesign -dv "$1" 2>&1 | grep -qx "TeamIdentifier=$TEAM_ID"
+}
+
+# bundle_ok <vusb-binary> <version> -> 0 when that cached bundle is signed and reports <version>
+bundle_ok() {
+  [ -x "$1" ] && app_signed "${1%/Contents/MacOS/vusb}" && [ "$(version_token "$1")" = "$2" ]
+}
+
+# running_dcb_version -> version of a running virtualUSB daemon (dcb), or nothing.
+# Always returns 0. `dcb --version` prints "deviceBridge <version>".
+running_dcb_version() {
+  local pid bin
+  pid="$(pgrep -x dcb 2>/dev/null | head -1)" || true
+  [ -n "$pid" ] || return 0
+  bin="$(ps -o comm= -p "$pid" 2>/dev/null | head -1)" || true
+  [ -x "$bin" ] || bin="/usr/local/bin/dcb"
+  [ -x "$bin" ] || return 0
+  "$bin" --version 2>/dev/null | awk '$1 == "deviceBridge" {print $2; exit}' || true
+}
+
+# version_relation <a> <b> -> "newer", "older" or "the same build" for <a> relative to <b>
+# (compares the numeric part before "+"), or "of unknown version" when <a> is empty
+version_relation() {
+  local a="${1%%+*}" b="${2%%+*}"
+  if [ -z "$1" ]; then echo "of unknown version"; return; fi
+  if [ "$a" = "$b" ]; then echo "the same build"; return; fi
+  if [ "$(printf '%s\n%s\n' "$a" "$b" | sort -V | tail -1)" = "$a" ]; then echo "newer"; else echo "older"; fi
+}
+
+# drift_warning <installed> <location> -> warns that the client in use is not the pinned build
+drift_warning() {
+  echo "virtualUSB ${1:-(unknown version)} is installed in $2; this plugin was validated with $PIN (the installed client is $(version_relation "$1" "$PIN")). Continuing with the installed client - run /automate:doctor for details." >&2
+}
+
 # cached_client <version> -> prints the path of that version's client in the cache
 cached_client() {
   if [ "$MODE" = "cache" ]; then
@@ -140,7 +193,11 @@ newest_cached() {
   for d in "$CACHE_ROOT"/*/; do
     [ -d "$d" ] || continue
     c="$(cached_client "$(basename "$d")")"
-    if [ "$MODE" = "cache" ]; then [ -x "$c" ] || continue; else [ -f "$c" ] || continue; fi
+    if [ "$MODE" = "cache" ]; then
+      [ -x "$c" ] && app_signed "${c%/Contents/MacOS/vusb}" || continue
+    else
+      [ -f "$c" ] || continue
+    fi
     if [ -z "$newest" ] || [ "$c" -nt "$newest" ]; then newest="$c"; fi
   done
   printf '%s' "$newest"
@@ -198,8 +255,16 @@ download_version() {
   fi
 
   if [ "$MODE" = "cache" ]; then
+    if ! pkg_signed "$tmp/$ARTIFACT"; then
+      echo "virtualUSB client: $ARTIFACT ($version) is not signed by Kobiton (Developer ID Installer, team $TEAM_ID) - download discarded, existing cache untouched." >&2
+      rm -rf "$tmp"; return 1
+    fi
     if ! unpack_pkg "$tmp/$ARTIFACT" "$tmp"; then
       echo "virtualUSB client: could not unpack $ARTIFACT ($version), or virtualUSB.app/Contents/MacOS/vusb is missing inside it - download discarded." >&2
+      rm -rf "$tmp"; return 1
+    fi
+    if ! app_signed "$APP_DIR"; then
+      echo "virtualUSB client: the unpacked virtualUSB.app ($version) failed code-signature verification (team $TEAM_ID) - download discarded." >&2
       rm -rf "$tmp"; return 1
     fi
     if ! { mkdir -p "$CACHE_ROOT/$version" \
@@ -264,24 +329,24 @@ if [ "$MODE" = "cache" ]; then
   SYSTEM_BIN="$SYSTEM_APP/Contents/MacOS/vusb"
   if [ -x "$SYSTEM_BIN" ]; then
     # (a) A system install wins: never unpack a second copy next to it.
+    # Used at any version, like the kobiton CLI's cache fallback: drift is a warning.
     INSTALLED="$(version_token "$SYSTEM_BIN")"
     VUSB="$SYSTEM_BIN"
-    if [ "$INSTALLED" = "$PIN" ]; then
-      OUTCOME="no action needed"
-    else
-      echo "virtualUSB ${INSTALLED:-(unknown version)} is installed in $SYSTEM_APP; this plugin pins $PIN. Update or remove that install (virtualUSB 1 and 2 cannot coexist, and uninstalling leaves the daemon behind - remove it too), then re-run this preflight." >&2
-      OUTCOME="handed off to human"
-    fi
-  elif [ -x "$PINNED_CLIENT" ]; then
-    # (c) Cache hit: no network.
-    INSTALLED="$(version_token "$PINNED_CLIENT")"
+    [ "$INSTALLED" = "$PIN" ] || drift_warning "$INSTALLED" "$SYSTEM_APP"
+    OUTCOME="no action needed"
+  elif bundle_ok "$PINNED_CLIENT" "$PIN"; then
+    # (c) Cache hit, re-verified (signature + version): no network.
+    INSTALLED="$PIN"
     VUSB="$PINNED_CLIENT"
     OUTCOME="no action needed"
-  elif [ -z "$(newest_cached)" ] && pgrep -x dcb >/dev/null 2>&1; then
-    # (b) A daemon of unknown origin is running, with no known client anywhere.
+  elif [ -z "$(newest_cached)" ] && pgrep -x dcb >/dev/null 2>&1 && [ "$(running_dcb_version)" != "$PIN" ]; then
+    # (b) A daemon of another origin is running, with no known client anywhere.
     echo "virtualUSB client: an unknown virtualUSB daemon (dcb) is running, and no virtualUSB.app was found in $SYSTEM_APP or under $CACHE_ROOT. It may belong to another virtualUSB install (virtualUSB 1 and 2 cannot coexist). Quit that virtualUSB app or uninstall the other client, then re-run this preflight." >&2
     OUTCOME="handed off to human"
   else
+    if [ -x "$PINNED_CLIENT" ]; then
+      echo "virtualUSB client: the cached build $PIN failed verification (signature or version); downloading it again." >&2
+    fi
     HAD_CACHE="$(newest_cached)"
     download_version "$PIN" && rc=0 || rc=$?   # capture without tripping set -e
     case $rc in
@@ -320,10 +385,10 @@ else
   # Windows: the client is installed by the human via the .msi; this script
   # only makes the verified installer available and reports drift.
   if [ -x "$WIN_EXE" ]; then
+    # Used at any version, like the macOS system install: drift is a warning.
     INSTALLED="$(version_token "$WIN_EXE")"
     VUSB="$WIN_EXE"
-  fi
-  if [ "$INSTALLED" = "$PIN" ]; then
+    [ "$INSTALLED" = "$PIN" ] || drift_warning "$INSTALLED" "C:\\Program Files\\virtualUSB"
     OUTCOME="no action needed"
   else
     if [ -f "$PINNED_CLIENT" ]; then
@@ -333,11 +398,7 @@ else
     fi
     case $rc in
       0)
-        if [ -n "$INSTALLED" ]; then
-          echo "virtualUSB $INSTALLED is installed; this plugin pins $PIN." >&2
-        else
-          echo "virtualUSB is not installed on this machine." >&2
-        fi
+        echo "virtualUSB is not installed on this machine." >&2
         windows_handoff_steps "$PINNED_CLIENT"
         OUTCOME="handed off to human"
         ;;
@@ -352,6 +413,15 @@ else
         ;;
       1) exit 1 ;;
     esac
+  fi
+fi
+
+# A running daemon must belong to the client in use: two virtualUSB installs cannot coexist.
+if [ "$MODE" = "cache" ] && [ "$OUTCOME" != "handed off to human" ] && [ -n "$INSTALLED" ]; then
+  DCB_VERSION="$(running_dcb_version)"
+  if [ -n "$DCB_VERSION" ] && [ "$DCB_VERSION" != "$INSTALLED" ]; then
+    echo "virtualUSB client: a virtualUSB daemon from another install is running (dcb $DCB_VERSION), but this machine's client is virtualUSB $INSTALLED - virtualUSB 1 and 2 cannot coexist. Quit that virtualUSB app or uninstall the other client, then re-run this preflight." >&2
+    OUTCOME="handed off to human"
   fi
 fi
 

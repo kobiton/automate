@@ -70,7 +70,9 @@ tools:
             When true, list only private devices whose host machine can
             serve virtualUSB: adds `virtual_usb_ready` per device, returns
             ready devices only unless `udid` is given (then the device is
-            returned flagged, with `virtual_usb_reason` when not ready), and
+            returned flagged, with `virtual_usb_reason` when not ready, and
+            whatever its online state - check `is_online` - unless `available`
+            is passed explicitly), and
             always echoes `applied_filters` including `virtualUsb: true`.
             `deviceGroup` must be PRIVATE or omitted. Organization admins can
             call `listHostingMachines` with the same `udid` to see the
