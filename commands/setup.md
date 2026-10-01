@@ -145,4 +145,4 @@ If the Step 0 sanity-check reported `MISSING`, also append:
 
 ## Note: earlier setups
 
-Plugin versions before 1.13.0 passed the API key through the conversation during setup, so transcripts of those setup sessions contain the full key. If such a transcript was ever shared, exported, or synced, rotate that API key in the Kobiton portal (**Settings > API Keys**) and run `/automate:setup` again.
+Plugin versions before 1.14.0 passed the API key through the conversation during setup, so transcripts of those setup sessions contain the full key. If such a transcript was ever shared, exported, or synced, rotate that API key in the Kobiton portal (**Settings > API Keys**) and run `/automate:setup` again.

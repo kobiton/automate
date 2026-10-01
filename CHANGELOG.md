@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.13.0 - 2026-09-29
+## 1.14.0 - 2026-10-02
 
 ### Changed: `/automate:setup` keeps your API key out of the assistant
 
@@ -23,6 +23,35 @@ Every place setup shows an API key now shows only its last 4 characters (`…abc
 ### Upgrade note
 
 Older plugin versions can no longer complete setup: `getCredential` now asks them to update. Credentials files written earlier keep working. Transcripts of setup sessions from earlier versions contain the full API key; if you shared one, rotate that key in the Kobiton portal (**Settings > API Keys**) and run `/automate:setup` again.
+
+## 1.13.0 - 2026-09-23
+
+### Added: debug-device-over-vusb skill
+
+A sixth skill, `debug-device-over-vusb`, attaches a real Kobiton device to the user's own machine over virtualUSB so it shows up in local `adb` (Android) or Xcode (iOS), then drives the familiar debug loop from plain language — install a local build, reproduce the problem, capture logcat / device logs and screenshots — and always disconnects. It targets private devices only, found with the new `listDevices` filter below, and never calls `reserveDevice` / `terminateReservation`: `vusb connect --udid` books the device itself and `vusb disconnect --udid` is the release.
+
+- **Pinned client, installed on first use.** The plugin pins one virtualUSB client build in `skills/debug-device-over-vusb/VUSB_VERSION`. `scripts/vusb-preflight.sh` (Step 1 of the skill — deliberately *not* run by the SessionStart hook or `/automate:setup`, so users who never invoke the skill download nothing) fetches that build from `https://public.kobiton.download/virtualusb/<version>/`, verifies its published sha256 and, on macOS, Kobiton's Developer ID signature on the package and the unpacked bundle (re-checked, with the version, on every cache hit), and on macOS unpacks the whole `virtualUSB.app` bundle into `~/.kobiton/vusb/<version>/` — the `.pkg` is universal, so Intel and Apple Silicon Macs both run it from the cache. On Windows the verified `.msi` is cached and the exact install steps (UAC, then `vusb setup-adb` in an administrator terminal) are handed to the user. Linux hosts are redirected. A cache hit performs no network I/O; a checksum mismatch discards the download and leaves any existing cache untouched; an existing `/Applications/virtualUSB.app` (or Windows install) at another version is used as-is with a drift warning instead of unpacking a second copy, and a running virtualUSB daemon whose version differs from the client in use stops the preflight (virtualUSB 1 and 2 cannot coexist). Output is a machine-readable `key=value` contract ending in `outcome=` (`no action needed` | `installed` | `updated` | `handed off to human` | `redirected (limitation)`).
+- **`~/.kobiton/bin/vusb` wrapper.** `scripts/vusb.sh` resolves the client by absolute path (cached pin → system install at the pin → newest cached with a drift warning) and, on `login` without `--apikey`, injects `--apibaseurl`, `--username` and `--apikey` from `~/.kobiton/.credentials` — the API key never enters the transcript. Every other subcommand passes through verbatim.
+- **References.** `references/limitations.md` is the pre-connect gate (iOS 17.0–17.3, iOS on a Windows host, Linux, public devices, device in use, `adb reverse`, coexisting versions, API-key-only sign-in, daemon left behind by uninstall); `references/error-map.md` maps each client message to a plain-language meaning and next step; `references/cli-reference.md` documents the command surface, the `status` output shapes to parse (its exit code is not a reliable signal), and the preflight contract.
+- **`/automate:doctor` Check 6 — vUSB client (pinned vs installed; pin published).** Reports the pin, the installed client's version and whether the pinned folder is still published, in both the Markdown and TOML command files. No network request unless a client is present, then at most one HEAD; a machine without the client gets a skipped row, never a failure. The summary now counts six checks.
+- **Docs.** README Skills table and platform note, `CLAUDE.md` routing / skills / compatibility-matrix rows and an accurate list of the skill test suites, and an `AGENTS.md` section for non-Claude hosts.
+
+### Changed: listDevices virtualUsb filter
+
+`listDevices` gains an optional boolean `virtualUsb` (no default). With `virtualUsb: true` the result is private devices only, each carrying `virtual_usb_ready`; ready devices only unless `udid` is given, in which case the named device is returned flagged with a `virtual_usb_reason` when it is not ready (or a top-level `virtual_usb_reason` when the UDID is unknown, public, or outside the caller's access). `applied_filters` is always present on this path — including `virtualUsb: true` and a non-empty list. `deviceGroup` must be `PRIVATE` or omitted; `CLOUD` and `ALL` are rejected. Callers that never pass `virtualUsb` see exactly the previous behaviour. The description now points organization admins at `listHostingMachines` for the reason a device is not ready.
+
+### New tool: listHostingMachines
+
+`listHostingMachines` is a new read-only tool for organization admins that lists the organization's host machines with their virtualUSB configuration (`enabled`, `network_routing`, `ip_address_configured`, `provisioning_status`) and a `virtual_usb_status` of `state` (`DISABLED`, `NO_NETWORK_ROUTE`, `ROUTING_PROVISIONING`, `ROUTING_PROVISIONING_FAILED` or `CONFIGURED`), `message` and `next_step`. The response carries a top-level `sku_active`, plus a `sku_note` when the organization lacks the virtualUSB add-on. An optional `udid` narrows the list to the host machine of one private device; when that device or its host is not visible to the caller, `machines` is empty and `reason` says why. A `udid` lookup also adds `device` (`udid`, `state`, `is_online`, `is_hidden`) to the machine; when the device is hidden or `UNPLUGGED` there, that machine is not where the device is connected and `reason` says so, so the skill never offers to configure it. Machines whose devices are all hidden in Portal → Device Management are left out, as the portal does, and `total_machines` counts only the machines shown. An optional `machineId` returns only that host machine (combinable with `udid`), and results page by cursor: machines come back in ascending id order with `total_machines` (all matching machines) and `next_after_id`, which is passed as `afterId` for the next page (null on the last page). Each machine also carries `max_parallel_tests` (`mode`, `limit`). `host_name` is null for Kobiton-hosted machines, IP addresses are never returned, and non-admins get the server's permission error unchanged. The `debug-device-over-vusb` skill calls it for a not-ready device when the user is an admin (or asks why), relays the status, and stops. The tool count goes from 39 to 40.
+
+### New tool: configureHostingMachine
+
+`configureHostingMachine` is a new tool for organization admins that changes the settings of one host machine (`machineId`, the `id` from `listHostingMachines`). Pass at least one of two sections; both are applied together in one save:
+
+- `virtualUsb: {enabled, networkRouting?, ipAddress?}` — `enabled: true` needs `networkRouting`: `KOBITON` for Kobiton-managed routing, or `SELF_MANAGED` with the machine's `ipAddress`; `enabled: false` takes no routing and no address. virtualUSB settings need the organization's virtualUSB add-on.
+- `maxParallelTests: {mode, limit?}` — `UNLIMITED`, or `CUSTOM` with a `limit` of 1–999; caps how many of the machine's devices can be in use at the same time.
+
+A request that matches the current configuration changes nothing (`changed: false`). It returns `changed` and the `machine` in the `listHostingMachines` shape (now including `max_parallel_tests`), plus `sku_active` / `sku_note`. IP addresses are never returned. Session behaviour matches the Kobiton portal: turning virtualUSB off on, or moving off Kobiton-managed routing from, a Kobiton-routed machine ends the active virtualUSB sessions on its devices; turning virtualUSB off on a self-managed machine does not currently disconnect clients that are already connected; entering Kobiton-managed routing starts provisioning (`ROUTING_PROVISIONING`). The tool is annotated destructive for that reason, and its description tells the agent to confirm the exact change with the user first. The `debug-device-over-vusb` skill only offers to enable virtualUSB for an admin whose device's host is `DISABLED` or `NO_NETWORK_ROUTE`, after confirming the exact change; it never turns virtualUSB off, never moves a machine off Kobiton-managed routing and never changes max parallel tests. The tool count goes from 40 to 41.
 
 ## 1.12.0 - 2026-08-26
 
