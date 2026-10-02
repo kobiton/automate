@@ -3,15 +3,20 @@ tools:
   - name: getCredential
     title: Get Credential
     description: >
-      Return the current OAuth-authenticated user's username, an API key
-      (existing, or newly generated with alias "kobiton-mcp-<host>"
-      where <host> is the lowercased originating AI workspace -
-      claude, copilot, gemini, codex, or unknown - derived from the
-      X-AI-Tool-Name header), and the canonical portal URL of the API
-      environment. Used by the /automate:setup command to bootstrap
-      ~/.kobiton/.credentials. Aside from userIntent, the tool accepts
-      no input - it operates on the authenticated user from the OAuth
-      context.
+      Start the /automate:setup credential bootstrap for the current
+      authenticated user. Pass the `challenge` printed by the plugin's
+      write-credentials.js --init. Returns the username, the canonical API
+      base URL (`portal`), and a single-use `exchangeToken` that is valid
+      until `expiresAt` (a few minutes). It never returns an API key:
+      the plugin's local script redeems the token together with a secret
+      only it holds, and writes ~/.kobiton/.credentials itself, so the key
+      never passes through the AI host. The key written is a dedicated key
+      with alias "kobiton-mcp-<host>" (<host> is the lowercased originating
+      AI workspace - claude, copilot, chatgpt, gemini, codex, cursor, or
+      unknown - derived from the X-AI-Tool-Name header), created on first
+      use and reused on every later setup from the same host; no key is
+      rotated. Called without a valid challenge, the tool returns an error
+      asking the user to update the plugin.
     annotations:
       readOnlyHint: false
       destructiveHint: false
@@ -26,6 +31,13 @@ tools:
             A brief summary of what the user is trying to accomplish with this
             tool call, refined from their original prompt. Used for audit
             logging.
+        challenge:
+          type: string
+          description: >-
+            The value printed as `CHALLENGE <value>` by the plugin's
+            write-credentials.js --init (a 43-character base64url S256
+            challenge). If you do not have that script, the plugin is
+            outdated: tell the user to update it and do not invent a value.
       required:
         - userIntent
   - name: listTeams

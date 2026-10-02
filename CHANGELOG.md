@@ -1,5 +1,29 @@
 # Changelog
 
+## 1.14.0 - 2026-10-02
+
+### Changed: `/automate:setup` keeps your API key out of the assistant
+
+Setup now works like a PKCE exchange:
+
+- The new `scripts/write-credentials.js --init` creates a secret on disk and prints only its challenge.
+- `getCredential` trades the challenge for a single-use setup token that expires within minutes.
+- The script redeems the token together with the secret directly against the Kobiton API and writes `~/.kobiton/.credentials` itself.
+
+The conversation only ever sees the challenge, the token, and the last 4 characters of the key. The script sends the token only to `https` Kobiton API hosts, unless you add your own host to `KOBITON_SETUP_TRUSTED_HOSTS`.
+
+### Changed: setup writes a dedicated, reused API key
+
+Setup now writes a key named `kobiton-mcp-<host>` (for example `kobiton-mcp-claude`) instead of your first API key. It is created the first time and reused on every later setup from the same assistant. No key is ever rotated. Setup now also works under API key auth.
+
+### Changed: one masking format
+
+Every place setup shows an API key now shows only its last 4 characters (`…abcd`). Previously the existing-profile check showed the first and last 4 characters and the confirmation summary showed the first 8.
+
+### Upgrade note
+
+Older plugin versions can no longer complete setup: `getCredential` now asks them to update. Credentials files written earlier keep working. Transcripts of setup sessions from earlier versions contain the full API key; if you shared one, rotate that key in the Kobiton portal (**Settings > API Keys**) and run `/automate:setup` again.
+
 ## 1.13.0 - 2026-09-23
 
 ### Added: debug-device-over-vusb skill

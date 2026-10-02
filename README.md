@@ -273,7 +273,7 @@ For CI/CD pipelines or headless environments that cannot open a browser, use API
 
 > **Note:** OAuth and API key auth cannot coexist in a single `.mcp.json` (the API key config sets an `Authorization` header that OAuth must not have). To switch, replace `.mcp.json` with the appropriate format from `.mcp.apikey-example.json`.
 >
-> **`/automate:setup` does not work under API key auth.** It fetches your credentials through an *OAuth-authenticated* MCP session to write `~/.kobiton/.credentials`. Per the [skill compatibility matrix](CLAUDE.md#skill-compatibility-matrix), three skills read that file directly and have no MCP fallback, so they are unavailable on API key auth: `run-interactive-session`, `drive-automation-session`, and `monitor-test-run`. The MCP tools, `run-automation-suite` (your script carries its own credentials), and `create-test-run` (pure MCP) are unaffected.
+> **`/automate:setup` works under both OAuth and API key auth.** Either way it writes the dedicated `kobiton-mcp-<host>` key to `~/.kobiton/.credentials`, not the key in your `KOBITON_AUTH` header. Per the [skill compatibility matrix](CLAUDE.md#skill-compatibility-matrix), three skills read that file directly and have no MCP fallback: `run-interactive-session`, `drive-automation-session`, and `monitor-test-run`. Run setup once before using them. The MCP tools, `run-automation-suite` (your script carries its own credentials), and `create-test-run` (pure MCP) don't need the file.
 >
 > **Gemini CLI:** API key auth requires editing `gemini-extension.json` instead of `.mcp.json`. Add a `headers` block under `mcpServers.kobiton` with `"Authorization": "${KOBITON_AUTH}"`.
 >
@@ -304,7 +304,9 @@ After installation, run setup to fetch your credentials and write them to `~/.ko
 /automate:setup
 ```
 
-The plugin uses your already-authenticated MCP session (OAuth) to fetch your username and API key - no manual file editing required.
+The plugin uses your already-authenticated MCP session to start setup, then a bundled local script fetches your API key directly from Kobiton and writes the file - no manual file editing required. The API key never passes through the AI assistant: the conversation only sees a single-use setup token that expires within minutes and the last 4 characters of the key. Setup uses a dedicated API key named `kobiton-mcp-<host>` (for example `kobiton-mcp-claude`), created the first time and reused on every later setup from the same assistant.
+
+> **Set up with a plugin version before 1.14.0?** Those versions passed the API key through the conversation, so the transcript of that setup session contains the full key. If you ever shared, exported, or synced such a transcript, rotate that key in the Kobiton portal (**Settings > API Keys**) and run `/automate:setup` again.
 
 To verify everything is wired correctly, run the diagnostic:
 
@@ -466,7 +468,7 @@ Every step above uses only what this plugin ships: the app tools (`uploadAppToSt
 
 | Tool | Description |
 |------|-------------|
-| `getCredential` | Return the authenticated user's username, API key, and portal URL — backs `/automate:setup` |
+| `getCredential` | Return a single-use setup token (never the API key) that the local setup script redeems to write `~/.kobiton/.credentials` — backs `/automate:setup` |
 | `listTeams` | List the teams the calling user belongs to (for team-scoped test-management calls) |
 | `getOrgSettings` | Return your organization's feature flags and preferences (e.g. live remediation) — read up front by `create-test-run` and `monitor-test-run` |
 
@@ -487,7 +489,7 @@ Every step above uses only what this plugin ships: the app tools (`uploadAppToSt
 
 | Command | Description |
 |---------|-------------|
-| `/automate:setup` | Fetch credentials from the authenticated MCP server and write them to `~/.kobiton/.credentials` |
+| `/automate:setup` | Write your Kobiton credentials to `~/.kobiton/.credentials` without passing the API key through the assistant |
 | `/automate:doctor` | Read-only diagnostic for CLI installation, credentials file, active profile, required fields, CLI version drift, and the virtualUSB client pin |
 
 On Cursor (CLI and IDE) these register without the `automate:` prefix — as `/setup` and `/doctor`, distinguishable from Cursor's built-ins by the Kobiton description.
