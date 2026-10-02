@@ -43,7 +43,7 @@ All steps below run the bundled script. This file (`setup.md`) lives at `<plugin
 node <plugin-root>/scripts/write-credentials.js --init
 ```
 
-It prints one line, `CHALLENGE <challenge>`. Keep `<challenge>` for Step 2. The matching secret stays in a private file on disk that only the script reads.
+It prints one line, `CHALLENGE <challenge>`. Keep `<challenge>` for Step 2. Each run replaces the previous setup secret, so always pass the challenge from the most recent `--init`. The matching secret stays in a private file on disk that only the script reads.
 
 ## Step 2: Request a setup token via MCP
 
@@ -128,8 +128,8 @@ Windows note: POSIX file modes don't map onto NTFS ACLs, so the file may report 
 
 If it prints `ERROR <CODE> <message>`:
 
-- **`HTTP_400`** (the token is invalid, expired, or already used): start again from Step 1 — a token works only once and only for a few minutes.
-- **`HTTP_429`**: too many attempts; wait a minute, then start again from Step 1.
+- **`HTTP_400`**: the token expired (it lasts only a few minutes), was already used, or doesn't match the latest `--init`. Run Steps 1 and 2 again **without asking the user anything** (keep the profile name, overwrite choice and confirmation already given), then retry this step with the new token. If that also fails with `HTTP_400`, stop and show the message.
+- **`HTTP_429`**, **`HTTP_503`** or **`REQUEST_FAILED`**: wait about a minute, then retry this exact command (same token); the script keeps the setup secret for this retry. If the retry returns `HTTP_400`, follow the `HTTP_400` rule.
 - **`UNTRUSTED_PORTAL`**: the `portal` value is not a Kobiton API host. Stop and show the message to the user; do not retry with a different URL.
 - **Anything else**: show the message to the user and stop.
 

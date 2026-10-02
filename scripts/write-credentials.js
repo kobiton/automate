@@ -46,9 +46,10 @@ export function s256(verifier) {
   return createHash('sha256').update(verifier).digest('base64url')
 }
 
-// Only Kobiton API hosts receive the token + verifier. The portal value comes
-// from the MCP tool result via the AI host, so a prompt-injected URL must not
-// be able to redirect the exchange. Self-hosted deployments list their API
+// Only Kobiton API hosts (api.kobiton.com, api-<env>.kobiton.com) receive the
+// token + verifier. The portal value comes from the MCP tool result via the AI
+// host, so a prompt-injected URL must not be able to redirect the exchange, not
+// even to another kobiton.com subdomain. Self-hosted deployments list their API
 // host(s) in KOBITON_SETUP_TRUSTED_HOSTS (comma-separated).
 export function isTrustedPortal(portal, env = process.env) {
   let u
@@ -60,7 +61,7 @@ export function isTrustedPortal(portal, env = process.env) {
   if (u.protocol !== 'https:') return false
   const extra = (env.KOBITON_SETUP_TRUSTED_HOSTS || '')
     .split(',').map((h) => h.trim().toLowerCase()).filter(Boolean)
-  return host === 'kobiton.com' || host.endsWith('.kobiton.com') || extra.includes(host)
+  return host === 'api.kobiton.com' || /^api-[a-z0-9-]+\.kobiton\.com$/.test(host) || extra.includes(host)
 }
 
 // The credentials file is INI-ish: `[profile]` headers followed by KEY=value
@@ -214,9 +215,11 @@ async function redeem({token, portal, profile, overwrite}) {
   if (!verifier) fatal('NO_PENDING_SETUP', 'the pending setup file is unreadable; run --init again')
 
   const res = await postJson(portal, REDEEM_PATH, {exchangeToken: token, verifier})
-  // The token is consumed on the first attempt either way, so the verifier is
-  // useless from here on.
-  rmSync(PENDING_FILE, {force: true})
+  // The server consumes the token on any redeem it processes (2xx or 400), so
+  // the verifier is useless from then on. Keep it for a retry when the request
+  // never reached redeem: network error, rate limit (429) or outage (5xx).
+  const tokenSpent = !res.error && (res.status === 400 || (res.status >= 200 && res.status < 300))
+  if (tokenSpent) rmSync(PENDING_FILE, {force: true})
   if (res.error) fatal('REQUEST_FAILED', res.error)
   if (res.status < 200 || res.status >= 300) {
     fatal(`HTTP_${res.status}`, errorMessageOf(res.data) || 'redeem failed')

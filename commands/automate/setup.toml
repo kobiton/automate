@@ -27,7 +27,7 @@ The steps below use your bash tool to run the bundled script at `$HOME/.gemini/e
 node $HOME/.gemini/extensions/kobiton-automate/scripts/write-credentials.js --init
 ```
 
-It prints one line, `CHALLENGE <challenge>`. Keep `<challenge>` for Step 2.
+It prints one line, `CHALLENGE <challenge>`. Keep `<challenge>` for Step 2. Each run replaces the previous setup secret, so always pass the challenge from the most recent `--init`.
 
 ## Step 2: Request a setup token via the `kobiton` MCP server
 
@@ -60,7 +60,7 @@ node $HOME/.gemini/extensions/kobiton-automate/scripts/write-credentials.js --to
 
 Substitute `<exchangeToken>` and `<portal>` from Step 2, keeping the `=` form (a token can begin with `-`). The script redeems the token directly with Kobiton, writes `[default]` atomically with mode 0600 (other profiles are preserved; on Windows, POSIX modes don't map to NTFS ACLs, so 644 may be reported — informational), and prints `WROTE default (key …<last4>)`.
 
-If it prints `ERROR HTTP_400` (token invalid, expired, or already used) or `ERROR HTTP_429` (too many attempts), start again from Step 1 (after a minute for 429). For `ERROR UNTRUSTED_PORTAL` or any other error, show the message to the user and stop.
+If it prints `ERROR HTTP_400` (the token expired, was already used, or doesn't match the latest `--init`), run Steps 1 and 2 again without asking the user anything, then retry Step 4 with the new token; if that also fails with `HTTP_400`, stop and show the message. If it prints `ERROR HTTP_429`, `ERROR HTTP_503` or `ERROR REQUEST_FAILED`, wait about a minute and retry the exact same command (the script keeps the setup secret for this retry). For `ERROR UNTRUSTED_PORTAL` or any other error, show the message to the user and stop.
 
 ## Step 5: Confirm to the user
 

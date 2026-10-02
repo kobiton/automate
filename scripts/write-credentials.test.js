@@ -158,6 +158,40 @@ describe('write-credentials.js --token', () => {
     expect(existsSync(credsFile)).toBe(false)
   })
 
+  it.each([429, 503])('keeps the verifier for a retry after HTTP %i', async (status) => {
+    state.reply = {status, body: {error: {message: 'retry later', code: status}}}
+    await initChallenge()
+
+    const r = await run(['--token=t', `--portal=${portal}`, '--profile=default'])
+
+    expect(r.code).toBe(1)
+    expect(r.stdout).toMatch(new RegExp(`^ERROR HTTP_${status}`))
+    expect(existsSync(join(dir, '.setup-pending'))).toBe(true)
+
+    state.reply = {status: 200, body: {username: 'jane', apiKey: API_KEY, portal: 'https://api.kobiton.com'}}
+    const retry = await run(['--token=t', `--portal=${portal}`, '--profile=default'])
+    expect(retry.stdout).toBe('WROTE default (key …wxyz)\n')
+  })
+
+  it('keeps the verifier when the request never reaches the server', async () => {
+    await initChallenge()
+
+    const r = await run(['--token=t', '--portal=http://127.0.0.1:1', '--profile=default'])
+
+    expect(r.code).toBe(1)
+    expect(r.stdout).toMatch(/^ERROR REQUEST_FAILED/)
+    expect(existsSync(join(dir, '.setup-pending'))).toBe(true)
+  })
+
+  it('drops the verifier once the server rejects the token', async () => {
+    state.reply = {status: 400, body: {error: {message: 'The setup token is invalid, expired, or already used. Run /automate:setup again.', code: 400}}}
+    await initChallenge()
+
+    await run(['--token=t', `--portal=${portal}`, '--profile=default'])
+
+    expect(existsSync(join(dir, '.setup-pending'))).toBe(false)
+  })
+
   it('asks for --init when there is no pending setup', async () => {
     const r = await run(['--token', 't', '--portal', portal, '--profile', 'default'])
 
@@ -196,6 +230,11 @@ describe('helpers', () => {
   it('trusts https Kobiton API hosts only', () => {
     expect(isTrustedPortal('https://api.kobiton.com', {})).toBe(true)
     expect(isTrustedPortal('https://api-test.kobiton.com', {})).toBe(true)
+    expect(isTrustedPortal('https://api-test-blue.kobiton.com', {})).toBe(true)
+    expect(isTrustedPortal('https://kobiton.com', {})).toBe(false)
+    expect(isTrustedPortal('https://docs.kobiton.com', {})).toBe(false)
+    expect(isTrustedPortal('https://portal.kobiton.com', {})).toBe(false)
+    expect(isTrustedPortal('https://api.evil.kobiton.com', {})).toBe(false)
     expect(isTrustedPortal('http://api.kobiton.com', {})).toBe(false)
     expect(isTrustedPortal('https://kobiton.com.evil.example', {})).toBe(false)
     expect(isTrustedPortal('https://evilkobiton.com', {})).toBe(false)
