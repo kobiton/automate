@@ -258,14 +258,16 @@ export ITER=$((ITER + 1))
 
 # Pick ONE of the three. Credentials inherit from env (Step 1).
 
-# Branch A: observe — captures BOTH iter-N.xml and iter-N.png by default.
-#   Native overlays / OS dialogs only show in the PNG (the webview source
-#   XML doesn't see them). --xml-only skips the screenshot to save tokens
-#   when you trust the XML is complete; --png-only skips the source when
-#   you're verifying layout / image rendering only.
+# Branch A: observe — by default writes iter-N.xml (the lean view: only the
+#   elements you can target, with their bounds), iter-N.full.xml (the raw
+#   /source) and iter-N.png. Read iter-N.xml; open iter-N.full.xml or the
+#   PNG only as references/observe.md describes.
+#   --xml-only captures the source but no screenshot; --png-only captures the
+#   screenshot but no source (no XML files); --full writes the unfiltered
+#   tree to iter-N.xml (stripped webview DOM, raw native tree).
 node "$SKILL_DIR/scripts/appium.js" screen \
   --session-id "$SESSION_ID" --session-dir "$SESSION_DIR"
-# Stdout: {"hash":"<sha256>","xmlBytes":N,"pngBytes":M}
+# Stdout: {"hash":"<sha256>","mode":"lean","xmlBytes":N,"fullXmlBytes":F,"pngBytes":M}
 # Track the hash across turns in your conversation context — repetition is a
 # signal, never a forced stop. See references/loop-discipline.md "Stuck patterns".
 
@@ -319,9 +321,9 @@ The host is responsible for tracking which `iter-K.xml` represents the current s
 
 #### Building act calls from the XML
 
-When the chosen branch is `act`, the argv body is constructed from the most recent `iter-K.xml` — selectors come from attributes you can see in the XML, not from guesses. See `references/endpoint-reference.md` "Building Appium calls from the observed XML" for the find-element → element-id workflow, selector-strategy preference order (accessibility id > id > relative xpath > css selector > class name), and the coordinates-from-bounds fallback for gestures with no element target.
+When the chosen branch is `act`, the argv body is constructed from the most recent `iter-K.xml` — selectors come from attributes you can see in the lean view, not from guesses or positions. `references/observe.md` is the read rule: the lean `iter-K.xml` is the default read, and `iter-K.full.xml` is the escape hatch (positional XPath needed, an expected element missing from the lean view, or `no such element` twice in a row). See `references/endpoint-reference.md` "Building Appium calls from the observed XML" for the find-element → element-id workflow, selector-strategy preference order (accessibility id > id > relative xpath > css selector > class name), and the coordinates-from-bounds fallback for gestures with no element target.
 
-The full loop discipline (artifact paths, error feedback, termination conditions) lives in `references/loop-discipline.md`. The endpoint catalog (allowlisted vs not, helpers vs generic) lives in `references/endpoint-reference.md`.
+The full loop discipline (artifact paths, error feedback, termination conditions) lives in `references/loop-discipline.md`. The endpoint catalog (allowlisted vs not, helpers vs generic) lives in `references/endpoint-reference.md`. What the lean view keeps and when to open the full source lives in `references/observe.md`.
 
 ### 5. Cleanup
 
@@ -356,7 +358,7 @@ The only hard programmatic stop is `MAX_ITERS=100` (override per session), which
 | `No credentials available...` | No `~/.kobiton/.credentials` (an authenticated MCP connection does not substitute — `appium.js` only reads the file) | Run `/automate:setup`, which uses the MCP connection to fetch and write the file |
 | `iter-N.error.json` has `status: 401` on session create | Credentials stale | Re-run `/automate:setup` to refresh `~/.kobiton/.credentials`; check the portal URL |
 | `iter-N.error.json` has a platform-cap message on session create | `newCommandTimeout: 1800` rejected by Kobiton | Lower the timeout in `references/capabilities.md` |
-| `iter-N.error.json` body has `value.error: "no such element"` | Selector matched nothing | Re-plan next turn with a different strategy / selector |
+| `iter-N.error.json` body has `value.error: "no such element"` | Selector matched nothing | Re-plan next turn with a different strategy / selector; after two misses in a row, open `iter-N.full.xml` (`references/observe.md`) |
 | `iter-N.error.json` body has `value.error: "invalid session id"` | Kobiton platform-side session ended | Emit `control --blocked` (or just let MAX_ITERS catch it); trap cleans up |
 
 ## Notes

@@ -13,6 +13,7 @@ description: >-
 allowed-tools: >-
   Read, Edit,
   Bash(~/.kobiton/bin/kobiton:*),
+  Bash(node:*),
   Bash(mkdir:*), Bash(date:*), Bash(base64:*), Bash(echo:*),
   Bash(cat:*), Bash(grep:*), Bash(head:*), Bash(tail:*),
   Bash(jq:*), Bash(xmllint:*),
@@ -185,11 +186,15 @@ Ensure the artifacts directory exists first (idempotent, safe to repeat):
 
 Then use the `Read` tool on the saved file to display it inline, and report the file path to the user.
 
-**Page source.** The CLI emits raw XML (Android UIAutomator2) or hierarchy markup (iOS XCUITest) on stdout:
+**Page source.** The CLI emits raw XML (Android UIAutomator2) or hierarchy markup (iOS XCUITest) on stdout. Save it as the full source, then write the lean view next to it with the shared filter that ships with the sibling `drive-automation-session` skill (`$SKILL_DIR` is this skill's directory, the one holding this SKILL.md - the same sibling-path pattern the plugin's other skills use for `../run-automation-suite/scripts/`):
 
-    $KOBITON_BIN wd get source > .kobiton/sessions/<session-id>/source-$(date +%s).xml
+    TS=$(date +%s)
+    $KOBITON_BIN wd get source > .kobiton/sessions/<session-id>/source-$TS.full.xml
+    node "$SKILL_DIR/../drive-automation-session/scripts/ui-tree.js" \
+      .kobiton/sessions/<session-id>/source-$TS.full.xml \
+      > .kobiton/sessions/<session-id>/source-$TS.xml
 
-Read the saved file for element inspection, or use `grep` / `xmllint` to extract specific nodes (see [Example 3](#example-3-inspection-only---dump-page-source-list-clickable-elements-android)).
+Run all three lines in one Bash call so `TS` is shared. `Read` the lean `source-<ts>.xml` for element inspection - it keeps every element you can target (ids, accessibility labels, text, clickable / scrollable flags) with its bounds, and its tag names match the live tree. The `.full.xml` file is the escape hatch: open it, or `grep` it for one element, only in the cases [`observe.md`](../drive-automation-session/references/observe.md#when-to-open-the-full-source) lists (an index-based XPath is unavoidable, an expected element is missing from the lean view, or a selector missed twice in a row). Build selectors from identifying attributes, never from position ([`observe.md` § Selector rule](../drive-automation-session/references/observe.md#selector-rule)).
 
 ### 5. End the session
 
@@ -398,7 +403,8 @@ For the full per-command table (response on stdout, exact parsing recipe per com
 After (and during) a session, the workspace and home directory contain:
 
 - **`.kobiton/sessions/<session-id>/screenshot-<unix-ts>.png`** - every screenshot captured during the session, named by Unix timestamp so they sort chronologically.
-- **`.kobiton/sessions/<session-id>/source-<unix-ts>.xml`** - every page-source dump captured during the session.
+- **`.kobiton/sessions/<session-id>/source-<unix-ts>.full.xml`** - every raw page-source dump captured during the session.
+- **`.kobiton/sessions/<session-id>/source-<unix-ts>.xml`** - the lean view of each dump (the file to read).
 - **`~/.kobiton/.session`** - the JWT for the most recently created session, written by `session create` whether or not `--hide` is passed. The CLI uses this implicitly; treat it as opaque and never read it into chat. It's overwritten by the next `session create`.
 
 The Kobiton portal also hosts a live session view at:
@@ -414,7 +420,7 @@ Where `<portal-base>` is derived from the `KOBITON_PORTAL` value in the active p
 - **`wd` errors exit 0**: WebDriver failures (e.g. no such element) return exit code 0 with a JSON error body - check the response JSON, not `$?`. A bounded `device log` exiting 124 (`timeout`) or 142 (perl-alarm) is the bound firing, not a failure.
 - **Session create failed**: device may be offline, already reserved, or the UDID is wrong - verify availability with the `listDevices` MCP tool before retrying.
 - **Session expired / auth error mid-flow**: `session ping` fails or a command returns auth error - offer to create a new session.
-- **Element not found**: suggest getting page source first (`wd get source`) to inspect the UI hierarchy, then try a different locator strategy (xpath instead of id, or vice versa).
+- **Element not found**: capture the page source (Step 4) and read the lean view to inspect the UI hierarchy, then try a different locator strategy (xpath instead of id, or vice versa). After a second miss on the same target, open the `.full.xml` per [`observe.md`](../drive-automation-session/references/observe.md#when-to-open-the-full-source).
 - **Stale element reference** after navigation: re-find the element on the new screen; element IDs do not survive page transitions.
 - **Binary not found**: no cached CLI build exists under `~/.kobiton/cli/` - run `/automate:setup` (or re-open the session so the SessionStart hook downloads the pinned build). If the platform is unsupported (Intel Mac, non-x64), recommend `run-automation-suite` or the MCP tools instead.
 - **Checksum mismatch during install**: the download was corrupted or tampered with - the installer discards it and keeps any existing cache. Retry `/automate:setup`; if it persists, report it on the plugin repo.
@@ -505,21 +511,23 @@ The skill walks through:
 
 Assumes a session is already active (run `session ping` first; if expired, create a new one).
 
-1. Dump the source - ensure the artifacts directory exists first:
+1. Dump the source and write its lean view - ensure the artifacts directory exists first:
 
        mkdir -p .kobiton/sessions/12345
+       TS=$(date +%s)
        ~/.kobiton/bin/kobiton wd get source \
-         > .kobiton/sessions/12345/source-$(date +%s).xml
+         > .kobiton/sessions/12345/source-$TS.full.xml
+       node "$SKILL_DIR/../drive-automation-session/scripts/ui-tree.js" \
+         .kobiton/sessions/12345/source-$TS.full.xml \
+         > .kobiton/sessions/12345/source-$TS.xml
 
-2. Extract clickable nodes - quick `grep` pass:
+2. Read the lean `source-<ts>.xml` - every clickable element is in it with `clickable="true"`, its `resource-id` / `content-desc` / `text` and its `bounds`. On a long screen, a quick filter of the lean file is enough:
 
-       grep -oE 'clickable="true"[^/]{0,200}resource-id="[^"]+"' \
-         .kobiton/sessions/12345/source-*.xml \
-         | head -20
+       grep 'clickable="true"' .kobiton/sessions/12345/source-<ts>.xml | head -20
 
-   For a structured pass, use `xmllint --xpath '//*[@clickable="true"]/@resource-id' .kobiton/sessions/12345/source-*.xml` (Android) or an equivalent XPath for the iOS hierarchy markup.
+   The lean view is all this question needs. Reach for the full file only for the [`observe.md`](../drive-automation-session/references/observe.md#when-to-open-the-full-source) cases - for example a targeted structured query such as `xmllint --xpath '//*[@clickable="true"]/@resource-id' .kobiton/sessions/12345/source-<ts>.full.xml` (Android) when you need an attribute the lean view leaves out.
 
-3. Report a deduplicated list of resource IDs (or fall back to `content-desc` / `text` for nodes that have no `resource-id`), and the path to the full XML for further inspection.
+3. Report a deduplicated list of resource IDs (or fall back to `content-desc` / `text` for nodes that have no `resource-id`), and the paths to both files - the user asked to keep the page source for later grepping, and `source-<ts>.full.xml` is the complete one.
 
 ## Resources
 

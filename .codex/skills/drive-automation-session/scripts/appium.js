@@ -13,6 +13,7 @@ import {join} from 'node:path'
 import {homedir} from 'node:os'
 import {URL} from 'node:url'
 import {stripWebviewDom} from './strip-webview-dom.js'
+import {detectKind, leanTree} from './ui-tree.js'
 
 // Stashed by main() so fail() can find the artifact base without re-parsing argv.
 let currentFlags = null
@@ -219,9 +220,11 @@ async function cmdScreen(target, flags) {
   const sessionId = getFlag(flags, 'session-id')
   const xmlOnly = Boolean(flags['xml-only'])
   const pngOnly = Boolean(flags['png-only'])
+  const full = Boolean(flags['full'])
   if (xmlOnly && pngOnly) fail(1, 'bad-input', '--xml-only and --png-only are mutually exclusive')
   const captureXml = !pngOnly
   const capturePng = !xmlOnly  // default: capture BOTH; native overlays / dialogs (e.g. Chrome's "notifications" welcome) only show in the screenshot
+  const mode = full ? 'full' : 'lean'
 
   const base = artifactBase(flags)
   if (!base) fail(1, 'bad-input', 'screen requires --session-dir and ITER (it writes iter-N.xml / iter-N.png)')
@@ -229,10 +232,12 @@ async function cmdScreen(target, flags) {
   const auditArgs = ['screen', '--session-id', sessionId]
   if (xmlOnly) auditArgs.push('--xml-only')
   if (pngOnly) auditArgs.push('--png-only')
+  if (full) auditArgs.push('--full')
   persistRequest(base, auditArgs)
 
   const hash = createHash('sha256')
   let xmlSize = 0
+  let fullXmlSize = 0
   let pngSize = 0
 
   if (captureXml) {
@@ -241,22 +246,20 @@ async function cmdScreen(target, flags) {
       emitResponse(srcRes, base)
       return
     }
-    let srcXml
-    try { srcXml = JSON.parse(srcRes.body.toString('utf8')).value || '' }
+    let rawXml
+    try { rawXml = JSON.parse(srcRes.body.toString('utf8')).value || '' }
     catch (err) { softFail(base, 'parse', `source response was not JSON: ${err.message}`) }
-    // Webview detection: looks for `<html` in the first 200 bytes, not strictly
-    // at position 0 — some Appium drivers prepend an XML declaration or DOCTYPE.
-    // Native trees (`<hierarchy>`, `<XCUIElementTypeApplication>`, `<SCREEN>`)
-    // never carry `<html` near the start. See references/endpoint-reference.md
-    // "Web sessions" for the strip rationale + iter-N.full.xml escape hatch.
-    const isWebview = /<html[\s>]/i.test(srcXml.slice(0, 200))
-    if (isWebview) {
-      writeFileSync(`${base}.full.xml`, srcXml)
-      srcXml = stripWebviewDom(srcXml)
-    }
-    writeFileSync(`${base}.xml`, srcXml)
-    hash.update(srcXml)
-    xmlSize = Buffer.byteLength(srcXml)
+    // iter-N.full.xml is always the raw /source body (the escape hatch);
+    // iter-N.xml is the lean view (ui-tree.js), or with --full the stripped
+    // webview DOM / raw native tree. See references/observe.md.
+    writeFileSync(`${base}.full.xml`, rawXml)
+    let xml
+    if (full) xml = detectKind(rawXml) === 'webview' ? stripWebviewDom(rawXml) : rawXml
+    else xml = leanTree(rawXml).lean
+    writeFileSync(`${base}.xml`, xml)
+    hash.update(xml)
+    xmlSize = Buffer.byteLength(xml)
+    fullXmlSize = Buffer.byteLength(rawXml)
   }
 
   if (capturePng) {
@@ -275,7 +278,7 @@ async function cmdScreen(target, flags) {
   }
 
   const digest = hash.digest('hex')
-  const out = {hash: digest, xmlBytes: xmlSize, pngBytes: pngSize}
+  const out = {hash: digest, mode, xmlBytes: xmlSize, fullXmlBytes: fullXmlSize, pngBytes: pngSize}
   process.stdout.write(JSON.stringify(out) + '\n')
   persistResponse(base, JSON.stringify(out))
 }
@@ -406,6 +409,7 @@ async function main() {
       // screen helper
       'xml-only':           {type: 'boolean'},
       'png-only':           {type: 'boolean'},
+      'full':              {type: 'boolean'},
       // actions helper
       'type':              {type: 'string'},
       'x':                 {type: 'string'},

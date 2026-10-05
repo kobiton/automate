@@ -11,7 +11,7 @@ Two ways to call:
 
 ## Building Appium calls from the observed XML
 
-Every Appium call that targets an element follows the same workflow: **observe → read the XML → build a selector from the XML → find element → use the returned element id in the interaction call**. Selectors are **not invented**; they come from attributes you can see in `iter-K.xml`. Inventing a selector (guessing an id or class name that "should" exist) is the most common cause of `no such element` errors.
+Every Appium call that targets an element follows the same workflow: **observe → read the XML → build a selector from the XML → find element → use the returned element id in the interaction call**. Selectors are **not invented**; they come from attributes you can see in `iter-K.xml` (the lean view — `observe.md` says what it keeps and when to open `iter-K.full.xml`). Inventing a selector (guessing an id or class name that "should" exist) is the most common cause of `no such element` errors.
 
 ### Selector strategies, in preference order
 
@@ -50,17 +50,10 @@ The element id is only valid **for the current screen state**. After the screen 
 
 ### Example: tap by accessibility id
 
-XML excerpt (from `iter-3.xml`):
+Lean-view excerpt (from `iter-3.xml`):
 
 ```xml
-<android.widget.ImageButton
-    index="2"
-    text=""
-    resource-id="com.example.app:id/settings_btn"
-    content-desc="Open Settings"
-    class="android.widget.ImageButton"
-    clickable="true"
-    bounds="[864,1872][1008,2016]" />
+<android.widget.ImageButton resource-id="com.example.app:id/settings_btn" content-desc="Open Settings" clickable="true" bounds="[864,1872][1008,2016]" />
 ```
 
 Build the selector (prefer `accessibility id` because `content-desc` is meaningful):
@@ -82,14 +75,10 @@ The same strategy works on iOS — the accessibility label is the `name` attribu
 
 ### Example: tap by relative xpath
 
-XML has no `content-desc`, no useful `resource-id`, but a unique `text`:
+The element has no `content-desc` or `resource-id` (the lean view omits empty attributes), but a unique `text`:
 
 ```xml
-<android.widget.Button
-    text="Continue"
-    resource-id=""
-    class="android.widget.Button"
-    bounds="[100,1800][620,1920]" />
+<android.widget.Button text="Continue" clickable="true" bounds="[100,1800][620,1920]" />
 ```
 
 ```bash
@@ -98,15 +87,12 @@ node appium.js --method POST --url /session/$SID/element \
   --session-dir $DIR
 ```
 
-If two buttons share `text="Continue"`, narrow with a parent / sibling predicate from the XML — not by adding index unless that's the only thing distinguishing them. Index in xpath is the structural-change foot-gun the warning above is about.
+If two buttons share `text="Continue"`, narrow with an ancestor predicate from the XML joined by `//` (`//*[@resource-id='com.example.app:id/dialog']//android.widget.Button[@text='Continue']`) — not by adding an index. Index in xpath is the structural-change foot-gun the warning above is about; if an index really is the only distinguishing feature, take it from `iter-K.full.xml`, not from the lean view.
 
 ### Example: type into a text field by resource-id
 
 ```xml
-<android.widget.EditText
-    resource-id="com.example.app:id/email_input"
-    text=""
-    bounds="[60,820][1020,940]" />
+<android.widget.EditText resource-id="com.example.app:id/email_input" clickable="true" bounds="[60,820][1020,940]" />
 ```
 
 ```bash
@@ -228,16 +214,17 @@ The `screen` helper combines `/source` and `/screenshot` into one call, writes b
 `screen` is one of three branches the host can pick per turn (the others are `act` and `control` — see `loop-discipline.md`). Use it when the screen state has likely changed (after a successful act, at session start, or to verify mid-flow). Skip it on a turn that's retrying after a failed act — the previous `iter-K.xml` / `iter-K.png` is still current.
 
 ```
-node appium.js screen --session-id <id> --session-dir <d> [--xml-only | --png-only]
+node appium.js screen --session-id <id> --session-dir <d> [--xml-only | --png-only] [--full]
 ```
 
-(The iter number comes from the `ITER` env var the SKILL.md loop exports once per turn — no per-call `--iter` flag.)
+(The iter number comes from the `ITER` env var the SKILL.md loop exports once per turn; an explicit `--iter N` overrides it.)
 
-- **Default: captures BOTH** — writes `<d>/iter-NNN.xml` AND `<d>/iter-NNN.png` (base64-decoded PNG).
-- `--xml-only`: skips the screenshot. Use when you trust the source XML is complete (e.g., known-stable native screen) and want to save tokens.
-- `--png-only`: skips the source. Use for visual-only verification turns (animation completion, image rendering).
-- Emits a single JSON line on stdout: `{"hash": "<sha256>", "xmlBytes": N, "pngBytes": M}`. Track the hash in your conversation context across turns — repetition is a signal, never a forced stop.
-- **Why both by default:** native overlays (Chrome's "notifications" welcome card, OS-level permission prompts, system dialogs) are NOT in the webview source XML. PNG-by-default catches that class of failure — see `loop-discipline.md` "Why PNG is captured by default".
+- **Default:** writes `<d>/iter-NNN.xml` (the lean view), `<d>/iter-NNN.full.xml` (the raw `/source` body) and `<d>/iter-NNN.png` (base64-decoded screenshot). `observe.md` says which to read.
+- `--xml-only`: captures the source (both XML files) and no screenshot.
+- `--png-only`: captures the screenshot and no source — no XML files are written.
+- `--full`: `iter-NNN.xml` holds the unfiltered tree (stripped webview DOM, raw native source) instead of the lean view. Combines with `--xml-only`.
+- Emits a single JSON line on stdout: `{"hash": "<sha256>", "mode": "lean"|"full", "xmlBytes": N, "fullXmlBytes": F, "pngBytes": M}`. The hash covers `iter-NNN.xml` plus the PNG. Track it in your conversation context across turns — repetition is a signal, never a forced stop.
+- **Why the PNG is captured by default:** native overlays (Chrome's "notifications" welcome card, OS-level permission prompts, system dialogs) are NOT in the webview source XML — see `loop-discipline.md` "Why PNG is captured by default".
 
 ### Control without an Appium call
 
@@ -261,15 +248,8 @@ Writes `<d>/iter-NNN.control.json` (iter from `ITER` env var). No HTTP request. 
 
 ### Reading the captured DOM
 
-`iter-N.xml` is what you read. For webview sessions it is the **stripped DOM** — `<script>` / `<style>` / `<head>` / `<noscript>` blocks and `<img src="data:...base64,...">` blobs removed, attribute lists pruned to the ones an agent actually needs to drive (text, ids, names, classes, `aria-*`, `role`, `href`, `data-testid`, form-control attrs, ...). On the pilot YouTube run a 558KB raw body shrank to ~50KB — small enough to `Read` whole.
-
-**Prefer `Read iter-N.xml` over `grep > probe.txt`.** Grepping into a workspace file used to be the only option when the raw DOM was too big to load; with the stripped DOM the standard Read tool handles the file in one shot. The shell pipeline (auto-backgrounding, file write, separate Read) is what made the first pilot drift past 19 minutes.
-
-**Selector rule for stripped DOMs:** anchor relative xpath on stable attributes — `@aria-label`, `@id`, `@name`, `@href`, `@data-testid`, `@role`, `@class` — never on positional indices (`[3]`, `:nth-child`) or wrapper tag chains. Stripped tags collapse adjacent siblings, so any selector that counts position or threads through generic wrapper `<div>` / `<span>` is brittle.
-
-**Escape hatch — `iter-N.full.xml`.** The raw `/source` body is also persisted on every webview turn. Open it only when a selector built from `iter-N.xml` returns `no such element` repeatedly but the target is visible in `iter-N.png` — that's the signal that the identifying attribute was in the strip list. Find the real attribute in the full DOM, build the selector against it, and the next turn's selectors go back to reading the stripped file.
-
-Native sessions (`UiAutomator2` / `XCUITest`) write `iter-N.xml` as the raw source unchanged — no `iter-N.full.xml` is created, no strip happens. Detection is automatic from the source's leading token (`<html...` → strip; anything else → passthrough).
+For webview and browser sessions the lean `iter-N.xml` is the stripped DOM and `iter-N.full.xml` the raw page source; `observe.md` covers what the strip keeps, the selector rule and when to open the full source.
+In web context, anchor CSS selectors and relative xpath on `@aria-label`, `@id`, `@name`, `@href`, `@data-testid`, `@role` or `@class` — never on positional indices (`[3]`, `:nth-child`): the strip removes whole tags, so positions in the stripped DOM don't match the live page.
 
 ### Driving the page
 

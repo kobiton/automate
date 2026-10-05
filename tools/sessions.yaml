@@ -63,6 +63,16 @@ tools:
       Get detailed information about a specific test session including commands
       executed, device info, desired capabilities, metadata, and test results.
       `video_url` may be null; there is no separate `has_video` indicator.
+      `scan_status` reports whether the background validation scans that run
+      after a session ends have settled, one entry per scan type —
+      `accessibility`, `crash`, `response_time` and `flex_correct` — each
+      `complete` (no more findings of that type will arrive), `in_progress`
+      (findings may still be arriving) or `not_applicable` (that scan does not
+      apply to this session, e.g. Flex Correct was not requested, or no result
+      ever arrived long after the session ended). Findings can keep arriving for
+      several minutes after a session ends, so before treating a validation
+      list as final, poll getSession until the relevant type is no longer
+      `in_progress`.
     annotations:
       readOnlyHint: true
       destructiveHint: false
@@ -141,11 +151,12 @@ tools:
         limit:
           type: integer
           description: >-
-            Maximum number of events to return (default 50, max 200). Useful on
-            the first poll against a session where the human has been
-            interacting before you started — pages forward by re-calling with
-            the newest seen timestamp as sinceTimestamp.
-          default: 50
+            Maximum number of events to return (default 10, max 20; larger
+            values are reduced to 20). When a call returns `limit` events, more
+            may be buffered — page forward by calling again with the newest
+            event's timestamp as `sinceTimestamp` until a call returns fewer
+            than `limit`.
+          default: 10
       required:
         - userIntent
         - sessionId
@@ -311,8 +322,10 @@ tools:
       Results are paged: each call returns at most `limit` items (default 10,
       max 20) plus `page`, `total_pages` and `total_items`; pass `offset` to
       page forward. A session with no findings of this type returns
-      `total_items: 0` and an empty `items` array — that is a normal answer,
-      not an error.
+      `total_items: 0` and an empty `items` array. While the session's
+      validation scan is still running, an empty or short result may be
+      partial — confirm with getSession that `scan_status.accessibility` is no longer
+      `in_progress` before treating it as final.
     annotations:
       readOnlyHint: true
       destructiveHint: false
@@ -385,8 +398,13 @@ tools:
       Results are paged: each call returns at most `limit` items (default 10,
       max 20) plus `page`, `total_pages` and `total_items`; pass `offset` to
       page forward. A session with no findings of this type returns
-      `total_items: 0` and an empty `items` array — that is a normal answer,
-      not an error.
+      `total_items: 0` and an empty `items` array. While the session's
+      validation scan is still running, an empty or short result may be
+      partial — confirm with getSession that `scan_status.crash` is no longer
+      `in_progress` before treating it as final.
+      The response also carries `pending_count`, the number of crash logs
+      still being processed; they are not in `items` yet, so when
+      `pending_count` is above 0 the list is partial — call again later.
     annotations:
       readOnlyHint: true
       destructiveHint: false
@@ -431,8 +449,10 @@ tools:
       Results are paged: each call returns at most `limit` items (default 10,
       max 20) plus `page`, `total_pages` and `total_items`; pass `offset` to
       page forward. A session with no findings of this type returns
-      `total_items: 0` and an empty `items` array — that is a normal answer,
-      not an error.
+      `total_items: 0` and an empty `items` array. While the session's
+      validation scan is still running, an empty or short result may be
+      partial — confirm with getSession that `scan_status.response_time` is no longer
+      `in_progress` before treating it as final.
     annotations:
       readOnlyHint: true
       destructiveHint: false
@@ -476,8 +496,13 @@ tools:
       Results are paged: each call returns at most `limit` items (default 10,
       max 20) plus `page`, `total_pages` and `total_items`; pass `offset` to
       page forward. A session with no findings of this type returns
-      `total_items: 0` and an empty `items` array — that is a normal answer,
-      not an error.
+      `total_items: 0` and an empty `items` array. These findings come from
+      test-run executions, and while an execution is still being scanned an
+      empty or short result may be partial — confirm with getTestRun that
+      `is_processing` is false (each execution's
+      `accessibility_scanning_status`, `crash_scanning_status` and
+      `network_payload_scanning_status` show which scans are still running)
+      before treating it as final.
     annotations:
       readOnlyHint: true
       destructiveHint: false
@@ -517,8 +542,13 @@ tools:
       Results are paged: each call returns at most `limit` items (default 10,
       max 20) plus `page`, `total_pages` and `total_items`; pass `offset` to
       page forward. A session with no findings of this type returns
-      `total_items: 0` and an empty `items` array — that is a normal answer,
-      not an error.
+      `total_items: 0` and an empty `items` array. These findings come from
+      test-run executions, and while an execution is still being scanned an
+      empty or short result may be partial — confirm with getTestRun that
+      `is_processing` is false (each execution's
+      `accessibility_scanning_status`, `crash_scanning_status` and
+      `network_payload_scanning_status` show which scans are still running)
+      before treating it as final.
     annotations:
       readOnlyHint: true
       destructiveHint: false
@@ -562,8 +592,10 @@ tools:
       Results are paged: each call returns at most `limit` items (default 10,
       max 20) plus `page`, `total_pages` and `total_items`; pass `offset` to
       page forward. A session with no findings of this type returns
-      `total_items: 0` and an empty `items` array — that is a normal answer,
-      not an error.
+      `total_items: 0` and an empty `items` array. While the session's
+      validation scan is still running, an empty or short result may be
+      partial — confirm with getSession that `scan_status.flex_correct` is no longer
+      `in_progress` before treating it as final.
     annotations:
       readOnlyHint: true
       destructiveHint: false
@@ -609,10 +641,13 @@ tools:
       to a handful of distinct issue kinds, so the summary answers in a fraction
       of the size. Use listAccessibilityValidations afterwards to look at
       individual findings. A session with no findings returns zero totals and
-      empty breakdowns with a null last-validation timestamp — that is a normal
-      answer, not an error. The timestamp is also how you tell a still-arriving
-      result set from a settled one: findings can keep landing for several
-      minutes after a session ends.
+      empty breakdowns with a null last-validation timestamp. Findings can keep
+      arriving for several minutes after a session ends, so while the
+      session's validation scan is still running the counts may be partial:
+      `scan_complete` is true when no more accessibility findings will arrive
+      (the same signal as getSession `scan_status.accessibility`), and false
+      while they may still be arriving — call again later before treating
+      zero or low counts as final.
     annotations:
       readOnlyHint: true
       destructiveHint: false

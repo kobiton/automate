@@ -4,11 +4,11 @@ The skill is turn-based. Each turn, the AI host increments `ITER` and runs **exa
 
 ## One branch per turn
 
-The host exports `ITER` once per turn (`export ITER=$((ITER + 1))`). Every `appium.js` invocation in that turn reads it from env — no `--iter` flag on individual calls.
+The host exports `ITER` once per turn (`export ITER=$((ITER + 1))`). Every `appium.js` invocation in that turn reads it from env; an explicit `--iter N` on a call overrides it, but the loop doesn't need one.
 
 | Branch | Command | Effect |
 |---|---|---|
-| **screen** | `node appium.js screen --session-id <id> --session-dir <d>` [`--xml-only` \| `--png-only`] | Default writes BOTH `iter-<N>.xml` and `iter-<N>.png`. Emits `{hash, xmlBytes, pngBytes}` on stdout. |
+| **screen** | `node appium.js screen --session-id <id> --session-dir <d>` [`--xml-only` \| `--png-only`] [`--full`] | Default writes the lean `iter-<N>.xml`, the raw `iter-<N>.full.xml` and `iter-<N>.png`. Emits `{hash, mode, xmlBytes, fullXmlBytes, pngBytes}` on stdout. What to read is in `observe.md`. |
 | **act** | `node appium.js <argv> --session-dir <d>` | Issues the Appium call. Writes `iter-<N>.request.json` + either `iter-<N>.response.json` (success) or `iter-<N>.error.json` (any failure: Appium error, network, parse, usage). |
 | **control** | `node appium.js control --done\|--blocked --reason "..." --session-dir <d>` | Writes `iter-<N>.control.json`; no HTTP call. Signals the host to end the cycle. |
 
@@ -20,7 +20,7 @@ Native overlays (Chrome's "notifications" welcome card, OS-level permission prom
 
 The first pilot run hit exactly this: it opened Chrome, captured `about:blank` XML, and tried to navigate without seeing the "Chrome notifications make things easier — Continue / No thanks" welcome card. PNG-by-default catches that class of failure on iteration 1.
 
-Use `--xml-only` when you trust the source XML is complete (e.g., known-stable native screens where you're just confirming a hash change) and want to save tokens. Use `--png-only` for verification turns where layout is the only signal that matters (e.g., confirming an animation finished, checking image rendering).
+`--xml-only` captures the source and no screenshot — for turns where nothing can be drawn over the source (e.g., confirming a hash change on a known-stable native screen). `--png-only` captures the screenshot and no source — for verification turns where layout is the only signal that matters (e.g., confirming an animation finished, checking image rendering). Capturing a file and reading it are separate choices: `observe.md` says when the screenshot and the full source are worth reading.
 
 ## Branch decision guide
 
@@ -30,7 +30,7 @@ Pick the next turn's branch based on what just happened:
 |---|---|---|
 | `screen` just ran | **act** | You have a fresh observation; decide what to do. |
 | `act` succeeded | **screen** | The screen probably changed; observe before the next decision. |
-| `act` returned `no such element` / `invalid selector` / `invalid argument` / bad-input | **act** (again, with a corrected call) | The action didn't fire, so the screen didn't change. The previous `iter-K.xml` is still current — re-read it from disk if needed; don't burn an ITER on a fresh `screen`. |
+| `act` returned `no such element` / `invalid selector` / `invalid argument` / bad-input | **act** (again, with a corrected call) | The action didn't fire, so the screen didn't change. The previous `iter-K.xml` is still current — re-read it from disk if needed; don't burn an ITER on a fresh `screen`. A second `no such element` on the same target is the cue to open `iter-K.full.xml` (`observe.md`). |
 | `act` returned `stale element reference` | **screen** | The element id is from a prior state; you need fresh element ids from a new observation. |
 | `act` returned HTTP 5xx / network timeout | **act** (retry the same call) | Transient failure; retry once. If it fails twice, `control --blocked`. |
 | Goal reached | **control --done** | End the cycle cleanly. |
@@ -45,8 +45,8 @@ For how to actually construct the `act` call body from the observed XML — sele
 ```
 .kobiton/sessions/<session-id>/
   caps.json                            ← desired caps used to open the session
-  iter-001.xml                         ← page source (stripped on webview turns; raw on native)
-  iter-001.full.xml                    ← only on webview turns — raw /source for selector escape hatch
+  iter-001.xml                         ← lean view of the page source (unfiltered with `--full`); see observe.md
+  iter-001.full.xml                    ← raw /source — the escape hatch; written whenever the source is captured
   iter-001.png                         ← skipped only when `--xml-only` is passed
   iter-001.request.json                ← {argv: [...]} — what the host invoked
   iter-001.response.json               ← raw Appium response on success
@@ -92,8 +92,9 @@ You tapped an xpath, got `no such element`. You try the same xpath again, same e
 iter 5: actions --session-id S --type touch ...  → "no such element"
 iter 6: actions --session-id S --type touch ...  → "no such element"
        (same argv, same error)
-Decision: don't repeat a third time. Either re-read iter-6.xml for a better
-selector, or control --blocked with reason "selector missed twice; need user".
+Decision: don't repeat a third time. Open iter-6.full.xml for the element's
+real attributes (observe.md) and build a different selector, or control
+--blocked with reason "selector missed twice; need user".
 ```
 
 #### 2. Screen oscillation (A → B → A)
@@ -208,7 +209,7 @@ The host detects failure by checking whether `iter-<N>.error.json` exists in the
 
 These are the classic W3C error values where the right move is usually a re-plan (different selector, refreshed source, slight timing adjustment):
 
-- **`no such element`** — selector didn't match. Re-read the updated `iter-<N>.xml`, try a different strategy (xpath → accessibility id, or vice versa) or a more specific value. If repeated on a webview turn AND the target is clearly visible in `iter-<N>.png`, the identifying attribute may have been stripped from the DOM — open `iter-<N>.full.xml` (raw `/source`) for that turn, find the real attribute, build the selector against it. The next turn's selectors go back to `iter-<N>.xml`.
+- **`no such element`** — selector didn't match. Re-read the current `iter-<N>.xml`, try a different strategy (xpath → accessibility id, or vice versa) or a more specific value. If it misses twice in a row, or the target is visible in `iter-<N>.png` but not in the lean view, open `iter-<N>.full.xml` per `observe.md`, find the real attribute, and build the selector against it. The next turn's selectors go back to the lean view.
 - **`stale element reference`** — element id is from a prior screen state. Re-find the element from the current source.
 - **`invalid selector`** — XPath / accessibility-id syntax is wrong. Fix the syntax.
 - **`invalid argument`** — usually the body shape doesn't match what Appium expects for that endpoint. Re-read Appium docs and correct the body.

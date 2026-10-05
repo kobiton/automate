@@ -75,7 +75,9 @@ tools:
           default: 1
         rowsPerPage:
           type: integer
-          description: Rows per page (max 20)
+          description: >-
+            Rows per page (default 10, max 20; larger values are reduced to
+            20)
           default: 10
       required:
         - userIntent
@@ -382,7 +384,9 @@ tools:
           default: 1
         rowsPerPage:
           type: integer
-          description: Rows per page (max 20)
+          description: >-
+            Rows per page (default 10, max 20; larger values are reduced to
+            20)
           default: 10
         sortBy:
           type: string
@@ -404,7 +408,12 @@ tools:
     title: Get Test Run
     description: >
       Get detailed information about a specific test run including its sessions,
-      executions, and current status.
+      executions, and current status. Validation scans keep running after an
+      execution finishes: each execution carries `accessibility_scanning_status`,
+      `crash_scanning_status` and `network_payload_scanning_status`, and the
+      run's `is_processing` stays true while any of them is still running —
+      wait for it to turn false before treating the run's validation findings
+      as final.
     annotations:
       readOnlyHint: true
       destructiveHint: false
@@ -495,7 +504,9 @@ tools:
           default: 1
         rowsPerPage:
           type: integer
-          description: Rows per page (max 20)
+          description: >-
+            Rows per page (default 10, max 20; larger values are reduced to
+            20)
           default: 10
       required:
         - userIntent

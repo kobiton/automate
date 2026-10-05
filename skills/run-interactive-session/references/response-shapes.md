@@ -13,7 +13,7 @@ Most WebDriver endpoints return a JSON envelope `{"value": <result>}`. A few com
 | `wd get element/<id>/text`, `wd get url`, `wd get orientation` | JSON `{"value":"<string>"}` | `.value` is the requested string |
 | `wd get window/rect` | JSON `{"value":{"width":<n>,"height":<n>,"x":<n>,"y":<n>}}` | Use `.value.width` etc. |
 | `wd get screenshot` | Base64-encoded PNG (CLI unwraps the WebDriver JSON for you) | Pipe through `base64 -d` straight into a `.png` file |
-| `wd get source` | Raw XML / hierarchy markup (CLI unwraps the WebDriver JSON for you) | Redirect straight into a `.xml` file |
+| `wd get source` | Raw XML / hierarchy markup (CLI unwraps the WebDriver JSON for you) | Redirect straight into a `source-<ts>.full.xml` file, then write and read the lean view (SKILL.md Step 4) |
 
 ## Session lifecycle
 

@@ -227,13 +227,27 @@ describe('appium.js credentials', () => {
 })
 
 describe('appium.js screen helper', () => {
+  const NATIVE = [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<hierarchy index="0" class="hierarchy" rotation="0" width="1080" height="2400">',
+    '  <android.widget.FrameLayout index="0" package="com.example" class="android.widget.FrameLayout" text="" resource-id="" clickable="false" enabled="true" bounds="[0,0][1080,2400]">',
+    '    <android.widget.Button index="0" package="com.example" class="android.widget.Button" text="OK" content-desc="confirm" resource-id="com.example:id/ok" clickable="true" enabled="true" focusable="true" bounds="[100,1800][620,1920]" />',
+    '  </android.widget.FrameLayout>',
+    '</hierarchy>'
+  ].join('\n')
+  const NATIVE_LEAN = [
+    '<hierarchy>',
+    '  <android.widget.Button text="OK" content-desc="confirm" resource-id="com.example:id/ok" clickable="true" bounds="[100,1800][620,1920]" />',
+    '</hierarchy>',
+    ''
+  ].join('\n')
+
   it('default: captures BOTH XML and PNG (so native overlays show up)', async () => {
-    const xml = '<hierarchy><node/></hierarchy>'
     const pngB64 = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).toString('base64')
     let callIdx = 0
     reset(() => {
       callIdx += 1
-      if (callIdx === 1) return {status: 200, body: {value: xml}}
+      if (callIdx === 1) return {status: 200, body: {value: NATIVE}}
       return {status: 200, body: {value: pngB64}}
     })
     const dir = makeSessionDir()
@@ -243,31 +257,47 @@ describe('appium.js screen helper', () => {
     expect(state.hits[0].path).toBe('/wd/hub/session/sess-s/source')
     expect(state.hits[1].path).toBe('/wd/hub/session/sess-s/screenshot')
     expect(existsSync(join(dir, 'iter-001.xml'))).toBe(true)
+    expect(existsSync(join(dir, 'iter-001.full.xml'))).toBe(true)
     expect(existsSync(join(dir, 'iter-001.png'))).toBe(true)
-    expect(readFileSync(join(dir, 'iter-001.xml'), 'utf8')).toBe(xml)
     const stdout = JSON.parse(r.stdout)
-    const expected = createHash('sha256').update(xml).update(Buffer.from(pngB64, 'base64')).digest('hex')
+    // Hash covers what the host reads (the lean iter-N.xml) plus the PNG.
+    const expected = createHash('sha256').update(NATIVE_LEAN).update(Buffer.from(pngB64, 'base64')).digest('hex')
     expect(stdout.hash).toBe(expected)
-    expect(stdout.xmlBytes).toBeGreaterThan(0)
+    expect(stdout.mode).toBe('lean')
+    expect(stdout.xmlBytes).toBe(Buffer.byteLength(NATIVE_LEAN))
+    expect(stdout.fullXmlBytes).toBe(Buffer.byteLength(NATIVE))
     expect(stdout.pngBytes).toBeGreaterThan(0)
+    expect(JSON.parse(readFileSync(join(dir, 'iter-001.response.json'), 'utf8'))).toEqual(stdout)
+  })
+
+  it('native source: iter-N.xml is the lean view; iter-N.full.xml is the raw /source', async () => {
+    reset(() => ({status: 200, body: {value: NATIVE}}))
+    const dir = makeSessionDir()
+    const r = await runWithCreds(['screen', '--session-id', 'sess-nv', '--session-dir', dir, '--iter', '6', '--xml-only'])
+    expect(r.ok).toBe(true)
+    expect(readFileSync(join(dir, 'iter-006.xml'), 'utf8')).toBe(NATIVE_LEAN)
+    expect(readFileSync(join(dir, 'iter-006.full.xml'), 'utf8')).toBe(NATIVE)
+    const stdout = JSON.parse(r.stdout)
+    expect(stdout.hash).toBe(createHash('sha256').update(NATIVE_LEAN).digest('hex'))
+    expect(stdout.mode).toBe('lean')
   })
 
   it('--xml-only: skips screenshot; only /source is hit', async () => {
-    const xml = '<hierarchy/>'
-    reset(() => ({status: 200, body: {value: xml}}))
+    reset(() => ({status: 200, body: {value: NATIVE}}))
     const dir = makeSessionDir()
     const r = await runWithCreds(['screen', '--session-id', 'sess-x', '--session-dir', dir, '--iter', '2', '--xml-only'])
     expect(r.ok).toBe(true)
     expect(state.hits).toHaveLength(1)
     expect(state.hits[0].path).toBe('/wd/hub/session/sess-x/source')
     expect(existsSync(join(dir, 'iter-002.xml'))).toBe(true)
+    expect(existsSync(join(dir, 'iter-002.full.xml'))).toBe(true)
     expect(existsSync(join(dir, 'iter-002.png'))).toBe(false)
     const stdout = JSON.parse(r.stdout)
     expect(stdout.pngBytes).toBe(0)
-    expect(stdout.hash).toBe(createHash('sha256').update(xml).digest('hex'))
+    expect(stdout.hash).toBe(createHash('sha256').update(NATIVE_LEAN).digest('hex'))
   })
 
-  it('--png-only: skips source; only /screenshot is hit', async () => {
+  it('--png-only: skips source; only /screenshot is hit and no XML is written', async () => {
     const pngB64 = Buffer.from([0x89, 0x50, 0x4e, 0x47]).toString('base64')
     reset(() => ({status: 200, body: {value: pngB64}}))
     const dir = makeSessionDir()
@@ -276,9 +306,11 @@ describe('appium.js screen helper', () => {
     expect(state.hits).toHaveLength(1)
     expect(state.hits[0].path).toBe('/wd/hub/session/sess-p/screenshot')
     expect(existsSync(join(dir, 'iter-003.xml'))).toBe(false)
+    expect(existsSync(join(dir, 'iter-003.full.xml'))).toBe(false)
     expect(existsSync(join(dir, 'iter-003.png'))).toBe(true)
     const stdout = JSON.parse(r.stdout)
     expect(stdout.xmlBytes).toBe(0)
+    expect(stdout.fullXmlBytes).toBe(0)
     expect(stdout.pngBytes).toBeGreaterThan(0)
   })
 
@@ -289,6 +321,49 @@ describe('appium.js screen helper', () => {
     expect(r.stderr).toContain('mutually exclusive')
   })
 
+  it('--full on a native screen writes the raw tree to iter-N.xml (the pre-lean behaviour)', async () => {
+    reset(() => ({status: 200, body: {value: NATIVE}}))
+    const dir = makeSessionDir()
+    const r = await runWithCreds(['screen', '--session-id', 'sess-fn', '--session-dir', dir, '--iter', '13', '--full', '--xml-only'])
+    expect(r.ok).toBe(true)
+    expect(readFileSync(join(dir, 'iter-013.xml'), 'utf8')).toBe(NATIVE)
+    expect(readFileSync(join(dir, 'iter-013.full.xml'), 'utf8')).toBe(NATIVE)
+    const stdout = JSON.parse(r.stdout)
+    expect(stdout.mode).toBe('full')
+    expect(stdout.hash).toBe(createHash('sha256').update(NATIVE).digest('hex'))
+    expect(stdout.xmlBytes).toBe(stdout.fullXmlBytes)
+    const req = JSON.parse(readFileSync(join(dir, 'iter-013.request.json'), 'utf8'))
+    expect(req.argv).toContain('--full')
+  })
+
+  it('--full on a webview screen writes the stripped DOM to iter-N.xml (same as the lean view)', async () => {
+    const raw = '<html><head><script>noise()</script></head><body><div role="button" aria-label="Search" jsdata="x">icon</div></body></html>'
+    reset(() => ({status: 200, body: {value: raw}}))
+    const dir = makeSessionDir()
+    const r = await runWithCreds(['screen', '--session-id', 'sess-fw', '--session-dir', dir, '--iter', '14', '--full', '--xml-only'])
+    expect(r.ok).toBe(true)
+    const stripped = readFileSync(join(dir, 'iter-014.xml'), 'utf8')
+    expect(stripped).not.toContain('<script')
+    expect(stripped).toContain('aria-label="Search"')
+    expect(readFileSync(join(dir, 'iter-014.full.xml'), 'utf8')).toBe(raw)
+    expect(JSON.parse(r.stdout).mode).toBe('full')
+  })
+
+  it('--full combined with the default capture still writes the PNG', async () => {
+    const pngB64 = Buffer.from([0x89, 0x50, 0x4e, 0x47]).toString('base64')
+    let callIdx = 0
+    reset(() => {
+      callIdx += 1
+      return callIdx === 1 ? {status: 200, body: {value: NATIVE}} : {status: 200, body: {value: pngB64}}
+    })
+    const dir = makeSessionDir()
+    const r = await runWithCreds(['screen', '--session-id', 'sess-fp', '--session-dir', dir, '--iter', '15', '--full'])
+    expect(r.ok).toBe(true)
+    expect(state.hits).toHaveLength(2)
+    expect(existsSync(join(dir, 'iter-015.png'))).toBe(true)
+    expect(readFileSync(join(dir, 'iter-015.xml'), 'utf8')).toBe(NATIVE)
+  })
+
   it('persists iter-N.request.json with the audit argv', async () => {
     reset(() => ({status: 200, body: {value: '<y/>'}}))
     const dir = makeSessionDir()
@@ -296,6 +371,7 @@ describe('appium.js screen helper', () => {
     const req = JSON.parse(readFileSync(join(dir, 'iter-002.request.json'), 'utf8'))
     expect(req.argv).toContain('screen')
     expect(req.argv).toContain('sess-rq')
+    expect(req.argv).not.toContain('--full')
   })
 
   it('requires --session-dir AND ITER (stderr names --session-dir; exit 0)', async () => {
@@ -323,27 +399,16 @@ describe('appium.js screen helper', () => {
     const stdout = JSON.parse(r.stdout)
     expect(stdout.hash).toBe(createHash('sha256').update(stripped).digest('hex'))
     expect(stdout.xmlBytes).toBe(Buffer.byteLength(stripped))
-  })
-
-  it('native source: writes iter-N.xml only (raw); no iter-N.full.xml', async () => {
-    const raw = '<hierarchy><android.widget.Button text="OK" content-desc="confirm"/></hierarchy>'
-    reset(() => ({status: 200, body: {value: raw}}))
-    const dir = makeSessionDir()
-    const r = await runWithCreds(['screen', '--session-id', 'sess-nv', '--session-dir', dir, '--iter', '6', '--xml-only'])
-    expect(r.ok).toBe(true)
-    expect(existsSync(join(dir, 'iter-006.xml'))).toBe(true)
-    expect(existsSync(join(dir, 'iter-006.full.xml'))).toBe(false)
-    expect(readFileSync(join(dir, 'iter-006.xml'), 'utf8')).toBe(raw)
-    const stdout = JSON.parse(r.stdout)
-    expect(stdout.hash).toBe(createHash('sha256').update(raw).digest('hex'))
+    expect(stdout.fullXmlBytes).toBe(Buffer.byteLength(raw))
+    expect(stdout.mode).toBe('lean')
   })
 
   it('webview detection is leading-whitespace tolerant and case-insensitive', async () => {
-    const raw = '\n  <HTML><body><div>hi</div></body></HTML>'
+    const raw = '\n  <HTML><body><div jsdata="x">hi</div></body></HTML>'
     reset(() => ({status: 200, body: {value: raw}}))
     const dir = makeSessionDir()
     await runWithCreds(['screen', '--session-id', 'sess-ws', '--session-dir', dir, '--iter', '7', '--xml-only'])
-    expect(existsSync(join(dir, 'iter-007.full.xml'))).toBe(true)
+    expect(readFileSync(join(dir, 'iter-007.xml'), 'utf8')).not.toContain('jsdata=')
   })
 
   it('webview detection accepts an XML declaration before <html (chromedriver path)', async () => {
@@ -355,7 +420,6 @@ describe('appium.js screen helper', () => {
     const dir = makeSessionDir()
     const r = await runWithCreds(['screen', '--session-id', 'sess-xml', '--session-dir', dir, '--iter', '8', '--xml-only'])
     expect(r.ok).toBe(true)
-    expect(existsSync(join(dir, 'iter-008.full.xml'))).toBe(true)
     const stripped = readFileSync(join(dir, 'iter-008.xml'), 'utf8')
     expect(stripped).not.toContain('jsdata=') // strip actually ran
   })
@@ -365,7 +429,6 @@ describe('appium.js screen helper', () => {
     reset(() => ({status: 200, body: {value: raw}}))
     const dir = makeSessionDir()
     await runWithCreds(['screen', '--session-id', 'sess-dt', '--session-dir', dir, '--iter', '9', '--xml-only'])
-    expect(existsSync(join(dir, 'iter-009.full.xml'))).toBe(true)
     expect(readFileSync(join(dir, 'iter-009.xml'), 'utf8')).not.toContain('jsdata=')
   })
 
@@ -374,25 +437,40 @@ describe('appium.js screen helper', () => {
     reset(() => ({status: 200, body: {value: raw}}))
     const dir = makeSessionDir()
     await runWithCreds(['screen', '--session-id', 'sess-bom', '--session-dir', dir, '--iter', '10', '--xml-only'])
-    expect(existsSync(join(dir, 'iter-010.full.xml'))).toBe(true)
+    expect(readFileSync(join(dir, 'iter-010.xml'), 'utf8')).not.toContain('jsdata=')
   })
 
-  it('native UiAutomator2 source is NOT misclassified as webview', async () => {
+  it('native UiAutomator2 source is NOT misclassified as webview (gets the native lean view)', async () => {
     const raw = '<hierarchy><android.widget.FrameLayout text=""><android.widget.Button text="OK"/></android.widget.FrameLayout></hierarchy>'
     reset(() => ({status: 200, body: {value: raw}}))
     const dir = makeSessionDir()
     await runWithCreds(['screen', '--session-id', 'sess-ua2', '--session-dir', dir, '--iter', '11', '--xml-only'])
-    expect(existsSync(join(dir, 'iter-011.xml'))).toBe(true)
-    expect(existsSync(join(dir, 'iter-011.full.xml'))).toBe(false)
+    expect(readFileSync(join(dir, 'iter-011.xml'), 'utf8')).toBe('<hierarchy>\n  <android.widget.Button text="OK" />\n</hierarchy>\n')
+    expect(readFileSync(join(dir, 'iter-011.full.xml'), 'utf8')).toBe(raw)
   })
 
-  it('native XCUITest source is NOT misclassified as webview', async () => {
-    const raw = '<SCREEN><XCUIElementTypeApplication name="App"><XCUIElementTypeButton name="OK"/></XCUIElementTypeApplication></SCREEN>'
+  it('native XCUITest source is NOT misclassified as webview (gets the native lean view)', async () => {
+    const raw = '<SCREEN><XCUIElementTypeApplication name="App"><XCUIElementTypeOther accessible="false"><XCUIElementTypeButton name="OK"/></XCUIElementTypeOther></XCUIElementTypeApplication></SCREEN>'
     reset(() => ({status: 200, body: {value: raw}}))
     const dir = makeSessionDir()
     await runWithCreds(['screen', '--session-id', 'sess-xc', '--session-dir', dir, '--iter', '12', '--xml-only'])
-    expect(existsSync(join(dir, 'iter-012.xml'))).toBe(true)
-    expect(existsSync(join(dir, 'iter-012.full.xml'))).toBe(false)
+    expect(readFileSync(join(dir, 'iter-012.xml'), 'utf8')).toBe([
+      '<SCREEN>',
+      '  <XCUIElementTypeApplication name="App">',
+      '    <XCUIElementTypeButton name="OK" />',
+      '  </XCUIElementTypeApplication>',
+      '</SCREEN>',
+      ''
+    ].join('\n'))
+    expect(readFileSync(join(dir, 'iter-012.full.xml'), 'utf8')).toBe(raw)
+  })
+
+  it('unrecognised source passes through to iter-N.xml unchanged', async () => {
+    const raw = '<root><child a="1"/></root>'
+    reset(() => ({status: 200, body: {value: raw}}))
+    const dir = makeSessionDir()
+    await runWithCreds(['screen', '--session-id', 'sess-un', '--session-dir', dir, '--iter', '16', '--xml-only'])
+    expect(readFileSync(join(dir, 'iter-016.xml'), 'utf8')).toBe(raw)
   })
 })
 
