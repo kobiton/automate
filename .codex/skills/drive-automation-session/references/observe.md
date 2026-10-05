@@ -24,6 +24,7 @@ Source that is none of the three kinds passes through unchanged.
 ## Selector rule
 
 Build selectors from identifying attributes you can see in the lean view: `accessibility id` (`content-desc` / `name`), `id` (`resource-id`), or relative xpath on `text` / `label` / `value` / `aria-label`.
+Decode XML entities in the value first: the lean view shows `Date &amp; Time`, the selector value is `Date & Time`.
 Never build a selector from position — no `[3]`, `:nth-child`, or absolute paths through wrapper elements.
 The lean view drops wrappers (native) and whole tags (webview), so a positional path read from it does not match the live tree.
 For the same reason, join xpath steps with `//` (descendant), not `/` (child): an element's parent in the lean view may be a grandparent in the live tree.
