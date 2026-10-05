@@ -224,11 +224,10 @@ async function redeem({token, portal, profile, overwrite}) {
   if (res.status < 200 || res.status >= 300) {
     fatal(`HTTP_${res.status}`, errorMessageOf(res.data) || 'redeem failed')
   }
-  const {username, apiKey, portal: apiBase} = res.data || {}
-  if (!username || !apiKey || !apiBase) fatal('BAD_RESPONSE', 'redeem response is missing fields')
-  if (!isTrustedPortal(apiBase)) fatal('UNTRUSTED_PORTAL', `redeem returned a non-Kobiton API host: ${apiBase}`)
+  const {username, apiKey} = res.data || {}
+  if (!username || !apiKey) fatal('BAD_RESPONSE', 'redeem response is missing fields')
 
-  writeProfile(profile, {username, apiKey, portal: apiBase})
+  writeProfile(profile, {username, apiKey, portal: new URL(portal).origin})
   emit(`WROTE ${profile} (key ${maskKey(apiKey)})`)
 }
 
