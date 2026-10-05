@@ -32,7 +32,8 @@ compatibility: >-
   is published) - there, use run-automation-suite or
   drive-automation-session, or the Kobiton MCP tools directly.
   Requires local file access for the cached binary and
-  ~/.kobiton/.credentials. Run /automate:setup once before first use
+  ~/.kobiton/.credentials, and Node 18+ for the lean page-source view
+  (shared with drive-automation-session). Run /automate:setup once before first use
   to install the CLI wrapper and write credentials.
 tags: [mobile, testing, interactive, webdriver, devices, kobiton]
 ---
@@ -52,6 +53,7 @@ Use this skill whenever the user wants to interact with a mobile device on Kobit
 Before invoking this skill, ensure:
 
 - **Kobiton CLI wrapper** - `~/.kobiton/bin/kobiton` (a symlink to this plugin's `run.sh` wrapper on macOS/Linux, a bash exec-shim on Windows) must exist and resolve to an executable. Claude Code and Codex CLI both recreate it automatically via a bundled SessionStart hook; on Codex, the user trusts the hook once via `/hooks` after install. `/automate:setup` re-installs the wrapper on demand on any host. GitHub Copilot CLI and Gemini CLI load `/automate:setup` (Copilot via Claude-format `.md`, Gemini via bundled TOML at `commands/automate/setup.toml`) but have no SessionStart hook - run `/automate:setup` once after install. The CLI binary itself is **downloaded, not bundled**: the install script fetches the build pinned in `CLI_VERSION` (sha256-verified) into `~/.kobiton/cli/` on first run. `run.sh` reports a missing binary or missing credentials with the right remedy, so surface its error rather than pre-flighting your own checks.
+- **Node 18+** - the page-source step writes its lean view with the sibling `drive-automation-session` skill's `scripts/ui-tree.js`. Without Node, read the saved full source instead (see `../drive-automation-session/references/observe.md`).
 - **Credentials file** - `~/.kobiton/.credentials` must contain a valid INI-formatted profile with `KOBITON_USER`, `KOBITON_API_KEY`, and `KOBITON_PORTAL`. Created by `/automate:setup`. The active profile is `$KOBITON_PROFILE` if set, otherwise `default`.
 - **Kobiton MCP connection** - useful for `listDevices` / `getDeviceStatus` calls when picking a device. Default `api.kobiton.com/mcp`; check `.mcp.json` for the configured endpoint.
 - **Kobiton account** - credentials with device access for the target platform (Android / iOS) and remaining session quota.
