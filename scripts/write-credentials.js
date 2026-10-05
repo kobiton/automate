@@ -227,9 +227,6 @@ async function redeem({token, portal, profile, overwrite}) {
   const {username, apiKey} = res.data || {}
   if (!username || !apiKey) fatal('BAD_RESPONSE', 'redeem response is missing fields')
 
-  // KOBITON_PORTAL is the API base the caller passed: the canonical URL getCredential returned,
-  // already trust-checked above. The redeem response's own `portal` can be a deployment-specific
-  // host, which must not be pinned into the user's credentials file.
   writeProfile(profile, {username, apiKey, portal: new URL(portal).origin})
   emit(`WROTE ${profile} (key ${maskKey(apiKey)})`)
 }
