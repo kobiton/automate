@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.14.1 - 2026-10-05
+
+### Fixed: `/automate:setup` writes the canonical API URL
+
+Setup in 1.14.0 could write a deployment-specific API host (for example `https://api-prod-blue.kobiton.com`) to `KOBITON_PORTAL` instead of `https://api.kobiton.com`. The setup script now writes the API URL that `getCredential` returned, the same host it redeems the setup token against. If you ran setup with 1.14.0, run `/automate:setup` again to switch your profile to the canonical URL; the existing profile keeps working in the meantime.
+
 ## 1.14.0 - 2026-10-02
 
 ### Changed: `/automate:setup` keeps your API key out of the assistant
