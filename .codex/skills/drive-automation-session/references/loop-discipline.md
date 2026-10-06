@@ -167,11 +167,11 @@ When you emit `control --blocked`, post one concise line in the conversation: `I
 
 The cycle ends when **any one** of these is true:
 
-- AI host runs `node appium.js control --done --reason "..."`. Reason is appended to `session.log`; the trap ends the WebDriver session.
+- AI host runs `node appium.js control --done --reason "..."`. The reason is saved in `control-<ts>.json`; the trap ends the WebDriver session.
 - User issues a stop command (or Ctrl-C). The trap cleans up.
-- Kobiton platform-side session termination. The next `appium.js` call returns exit 3 with `error: session-not-found` or `error: invalid session id`. The trap cleans up (no-op since the session is already gone).
+- Kobiton platform-side session termination. The next `appium.js` call fails with `invalid session id` (stderr and `error-<ts>.json`; the exit code stays 0). The trap cleans up (no-op since the session is already gone).
 
-There is no arbitrary action-count cap. There is no wall-clock cap inside this skill. The platform-side session-duration cap (set by the org plan; not configurable here) is the absolute ceiling.
+The only action-count cap is the `MAX_ITERS` safety net ([Iteration ceiling](#iteration-ceiling)). There is no wall-clock cap inside this skill. The platform-side session-duration cap (set by the org plan; not configurable here) is the absolute ceiling.
 
 ## Try/finally cleanup contract
 
