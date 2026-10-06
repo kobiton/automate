@@ -33,7 +33,7 @@ describe('@kobiton/mcp-tools package', () => {
   })
 
   it('has a version the publish workflow accepts', () => {
-    expect(() => distTagFor(pkg.version, 'main')).not.toThrow()
+    expect(() => distTagFor(pkg.version, 'refs/heads/main')).not.toThrow()
   })
 
   it('builds the shipped catalog from tools/*.yaml at pack time', () => {

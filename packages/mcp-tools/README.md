@@ -30,6 +30,6 @@ Pre-release versions are for testing a catalog change before it merges.
 ## Releasing
 
 1. Bump `version` in `packages/mcp-tools/package.json` in the same pull request as any change under `tools/`; CI fails a `tools/` change without a version bump.
-2. After the pull request merges to `main`, the `Publish MCP tools` workflow publishes the new version.
-   A version that is already published is skipped.
+2. After the pull request merges to `main`, the `Publish MCP tools` workflow publishes the new version through npm trusted publishing.
+   A push that leaves the version unchanged publishes nothing.
 3. For a pre-release, set a `X.Y.Z-<channel>.N` version on your branch and run the workflow manually on that branch.

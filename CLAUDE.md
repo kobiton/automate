@@ -122,7 +122,7 @@ All five tool YAMLs set the full annotation block (`readOnlyHint`, `destructiveH
 `@kobiton/mcp-tools` ships one file, `tool-definitions.yaml`, built from `tools/*.yaml` by its `prepack` script (gitignored, never committed). It has no JavaScript entry and no dependencies; consumers resolve `@kobiton/mcp-tools/tool-definitions.yaml` by path and pin an exact version. Its `version` is independent of the plugin version.
 
 - Any change under `tools/` bumps `packages/mcp-tools/package.json` `version` in the same PR — CI fails otherwise.
-- `.github/workflows/publish-mcp-tools.yml` publishes it: on push to `main` for a stable `X.Y.Z` (dist-tag `latest`), or by a manual run on a branch for a pre-release `X.Y.Z-<channel>.N` (dist-tag `<channel>`, via `scripts/mcp-tools-dist-tag.js`). A stable version off `main` fails; an already-published version is skipped. The workflow never runs on pull requests.
+- `.github/workflows/publish-mcp-tools.yml` publishes it: on push to `main` for a stable `X.Y.Z` (dist-tag `latest`), or by a manual run on a branch for a pre-release `X.Y.Z-<channel>.N` (dist-tag `<channel>`, via `scripts/mcp-tools-dist-tag.js`). A stable version off `main` fails; a push to `main` publishes only when it changed the version. A credential-free `build` job installs, tests and packs; the `publish` job (environment `npm-publish`) publishes that tarball with npm trusted publishing (OIDC) and `--ignore-scripts` — no npm token is stored. The workflow never runs on pull requests.
 
 ## Cross-tool surface
 

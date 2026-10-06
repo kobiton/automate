@@ -2,7 +2,11 @@ name: Publish MCP tools
 
 # Publishes packages/mcp-tools to npm. Stable versions publish from main after merge;
 # pre-release versions (X.Y.Z-<channel>.N) publish by running this workflow manually on a branch.
-# Never triggered by pull requests, so the npm token is not exposed to forks.
+# Never triggered by pull requests.
+#
+# The build job installs, tests and packs with no credentials. The publish job only downloads the
+# packed tarball and publishes it with npm trusted publishing (OIDC) — no long-lived npm token,
+# no checkout, no dependency install, no lifecycle scripts.
 on:
   push:
     branches: [main]
@@ -20,11 +24,16 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  publish:
+  build:
     runs-on: ubuntu-latest
-    environment: npm-publish
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      tag: ${{ steps.release.outputs.tag }}
+      publish: ${{ steps.changed.outputs.publish }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - uses: pnpm/action-setup@v4
         with:
@@ -34,8 +43,6 @@ jobs:
         with:
           node-version: 20
           cache: pnpm
-          registry-url: https://registry.npmjs.org
-          scope: '@kobiton'
 
       - run: pnpm install --frozen-lockfile
 
@@ -50,26 +57,91 @@ jobs:
         run: |
           version=$(node -p "require('./packages/mcp-tools/package.json').version")
           tag=$(node scripts/mcp-tools-dist-tag.js)
+          if [ -z "$tag" ]; then
+            echo "::error::no dist-tag resolved for $version"
+            exit 1
+          fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
-      - name: Check whether the version is already published
-        id: published
+      # A restricted package can't be looked up without a token, so a push publishes only when it
+      # changed the version; a manual run always publishes (npm rejects an existing version)
+      - name: Decide whether to publish
+        id: changed
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_REGISTRY_AUTH_TOKEN }}
+          BEFORE: ${{ github.event.before }}
           VERSION: ${{ steps.release.outputs.version }}
         run: |
-          if npm view "@kobiton/mcp-tools@$VERSION" version >/dev/null 2>&1; then
-            echo "exists=true" >> "$GITHUB_OUTPUT"
-            echo "::notice::@kobiton/mcp-tools@$VERSION is already published; skipping"
+          if [ "$GITHUB_EVENT_NAME" != "push" ]; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git fetch --no-tags --depth=1 origin "$BEFORE" 2>/dev/null || true
+          before_version=$(git show "$BEFORE:packages/mcp-tools/package.json" 2>/dev/null \
+            | node -p 'JSON.parse(require("fs").readFileSync(0, "utf8")).version' 2>/dev/null || true)
+          if [ "$before_version" = "$VERSION" ]; then
+            # e.g. two merged PRs bumped to the same version: the second one's tool changes would never ship
+            if ! git diff --quiet "$BEFORE" HEAD -- tools/; then
+              echo "::error::tools/ changed in this push but packages/mcp-tools is still at $VERSION; bump the version so the change is published"
+              exit 1
+            fi
+            echo "::notice::packages/mcp-tools is still at $VERSION; nothing to publish"
+            echo "publish=false" >> "$GITHUB_OUTPUT"
           else
-            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "publish=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Publish
-        if: steps.published.outputs.exists == 'false'
+      - name: Check package contents
         working-directory: packages/mcp-tools
+        run: |
+          npm pack --dry-run --json 2>/dev/null | sed -n '/^\[/,$p' > "$RUNNER_TEMP/pack.json"
+          node -e '
+            const [{files}] = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))
+            const paths = files.map((f) => f.path).sort().join(", ")
+            if (paths !== "README.md, package.json, tool-definitions.yaml") {
+              console.error(`unexpected package contents: ${paths}`)
+              process.exit(1)
+            }
+          ' "$RUNNER_TEMP/pack.json"
+
+      - name: Pack
+        if: steps.changed.outputs.publish == 'true'
+        working-directory: packages/mcp-tools
+        run: |
+          mkdir -p "$RUNNER_TEMP/package"
+          npm pack --pack-destination "$RUNNER_TEMP/package"
+
+      - uses: actions/upload-artifact@v4
+        if: steps.changed.outputs.publish == 'true'
+        with:
+          name: mcp-tools-package
+          path: ${{ runner.temp }}/package/*.tgz
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    needs: build
+    if: needs.build.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    environment: npm-publish
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: mcp-tools-package
+          path: package
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      # Trusted publishing needs npm 11.5.1 or later
+      - run: npm install -g npm@11.6.2
+
+      - name: Publish
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_REGISTRY_AUTH_TOKEN }}
-          TAG: ${{ steps.release.outputs.tag }}
-        run: npm publish --tag "$TAG" --access restricted
+          TAG: ${{ needs.build.outputs.tag }}
+        run: npm publish package/*.tgz --tag "$TAG" --access restricted --ignore-scripts

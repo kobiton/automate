@@ -1,5 +1,6 @@
-import {readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync} from 'node:fs'
+import {readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, realpathSync} from 'node:fs'
 import {dirname, join, resolve} from 'node:path'
+import {fileURLToPath} from 'node:url'
 import {load, dump} from 'js-yaml'
 
 export function buildToolDefinitions(rootDir) {
@@ -48,7 +49,8 @@ export function resolveOutputPath(args, rootDir, cwd) {
 }
 
 // CLI runner
-const isMainModule = import.meta.url === `file://${process.argv[1]}`
+// Compare real paths: a symlinked invocation path (e.g. packages/mcp-tools prepack) must still build
+const isMainModule = Boolean(process.argv[1]) && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))
 if (isMainModule) {
   const ROOT = resolve(import.meta.dirname, '..')
   const outputPath = resolveOutputPath(process.argv.slice(2), ROOT, process.cwd())
