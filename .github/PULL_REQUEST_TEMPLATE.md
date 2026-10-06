@@ -20,6 +20,7 @@ Brief description of what this PR does.
 - [ ] `pnpm run validate` passes
 - [ ] `pnpm test` passes
 - [ ] New tools have `title`, `annotations` (`readOnlyHint`, `destructiveHint`), and `inputSchema`
+- [ ] `packages/mcp-tools` version bumped (if `tools/` changed)
 - [ ] New skills have YAML frontmatter with `name` and `description`
 - [ ] CHANGELOG.md updated (if user-facing change)
 - [ ] README.md updated (if adding tools/skills)

@@ -52,16 +52,19 @@ pnpm exec vitest run scripts/validate.test.js
 pnpm exec vitest run skills/run-automation-suite/scripts/render-capabilities.test.js
 ```
 
-CI runs `pnpm install --frozen-lockfile && pnpm run validate && pnpm test` on every push/PR to `main` (`.github/workflows/ci.yml`). A second workflow runs CodeQL (`.github/workflows/codeql.yml`). No lint step.
+CI runs `pnpm install --frozen-lockfile && pnpm run validate && pnpm test` on every push/PR to `main` (`.github/workflows/ci.yml`), then checks the `packages/mcp-tools` pack contents and, on PRs, that a `tools/` change bumps the package version. CodeQL runs in `.github/workflows/codeql.yml`; `.github/workflows/publish-mcp-tools.yml` publishes the catalog package (see Tool catalog package). No lint step.
 
-**Test files** — four build-script suites under `scripts/` plus one suite per bundled skill runtime under `skills/*/scripts/`. The `.codex/` mirror copies of the skill tests are excluded by `vitest.config.js` (`exclude: ['.codex/**']`) so the same suites don't run twice.
+**Test files** — six suites under `scripts/`, one package suite under `packages/mcp-tools/`, plus one suite per bundled skill runtime under `skills/*/scripts/`. The `.codex/` mirror copies of the skill tests are excluded by `vitest.config.js` (`exclude: ['.codex/**']`) so the same suites don't run twice.
 
 | File | Covers |
 |---|---|
 | `scripts/validate.test.js` | structural validation across manifests, tool YAMLs, skill frontmatter, README tool parity |
-| `scripts/build-tool-definitions.test.js` | tool-definition YAML concatenation |
+| `scripts/build-tool-definitions.test.js` | tool-definition YAML concatenation, `--out` path resolution |
+| `scripts/mcp-tools-dist-tag.test.js` | npm dist-tag for a `packages/mcp-tools` version; stable versions only from `main` |
+| `packages/mcp-tools/package.test.js` | catalog package shape (`files`, `exports`, no dependencies) and that its pack-time build equals a fresh build of `tools/*.yaml` |
 | `scripts/sync-codex-artifacts.test.js` | `.codex/` mirror sync + `--check` parity |
 | `scripts/sync-version.test.js` | version field sync across host manifests + `CHANGELOG.md` top-entry match |
+| `scripts/write-credentials.test.js` | `/automate:setup` credential script: `--init` challenge, `--token` redemption and file write, `--show-profile`, helpers |
 | `skills/run-automation-suite/scripts/render-capabilities.test.js` | Appium capability renderer |
 | `skills/run-automation-suite/scripts/chromeless-launcher.test.js` | chromeless-launcher dispatcher: argument parsing, per-OS shim layout (forces an unsupported `OSTYPE` to exit before touching Chrome) |
 | `skills/drive-automation-session/scripts/appium.test.js` | `node:https` Appium client: request shaping, credentials loading, error envelopes |
@@ -73,7 +76,7 @@ When adding a new tool YAML or skill that hits a new validation path, extend `se
 
 ## Architecture
 
-Hosts (Claude Code, Copilot CLI, Gemini CLI, Codex CLI, Cursor CLI) read a host-specific MCP config from this repo, then open an MCP connection to `https://api.kobiton.com/mcp` where the actual tools live. **This repo ships manifests, schemas, skills, slash commands, and one SessionStart hook — none of the tool logic is local.** `tools/*.yaml` are the public input-shape contract Kobiton publishes to S3 as `dist/tool-definitions.yaml`; the running MCP server owns the canonical schema. A YAML edit here affects the published contract on next maintainer release; it does not change server behavior.
+Hosts (Claude Code, Copilot CLI, Gemini CLI, Codex CLI, Cursor CLI) read a host-specific MCP config from this repo, then open an MCP connection to `https://api.kobiton.com/mcp` where the actual tools live. **This repo ships manifests, schemas, skills, slash commands, and one SessionStart hook — none of the tool logic is local.** `tools/*.yaml` are the source of the tool catalog the MCP server serves and validates tool arguments against: they are published as the `@kobiton/mcp-tools` package (`packages/mcp-tools/`), so a YAML edit reaches users once a new package version is published and the server deploys it.
 
 There is no local way to test that a new tool YAML matches a deployed server-side tool. Schema changes are validated structurally by `pnpm run validate`; functional verification happens after Kobiton deploys the corresponding server change. Coordinate via an issue before adding new tool YAMLs.
 
@@ -108,11 +111,18 @@ All five tool YAMLs set the full annotation block (`readOnlyHint`, `destructiveH
 
 `pnpm run build` runs three sub-steps. Each has a corresponding `--check` mode wired into `pnpm run validate`:
 
-1. `build:tools` (`scripts/build-tool-definitions.js`) — concatenates `tools/*.yaml` into `dist/tool-definitions.yaml`. Kobiton publishes this artifact to S3; gitignored locally.
+1. `build:tools` (`scripts/build-tool-definitions.js`) — concatenates `tools/*.yaml` into `dist/tool-definitions.yaml` (gitignored). `--out <path>` writes the catalog elsewhere; `packages/mcp-tools` uses it to build its `tool-definitions.yaml` at pack time.
 2. `build:codex` (`scripts/sync-codex-artifacts.js`) — mirrors `skills/`, `assets/`, `scripts/`, `hooks/` into `.codex/`. Codex CLI's plugin installer silently skips symlinks, so the mirror must ship real files. **`.cursor/mcp.json` is NOT mirrored** — Cursor reads MCP config natively at install time.
 3. `build:version` (`scripts/sync-version.js`) — writes `package.json`'s `version` into every host manifest (`.claude-plugin/plugin.json`, `.codex/.codex-plugin/plugin.json`, `.cursor-plugin/plugin.json`, `gemini-extension.json`, plus the plugin entry in both `.claude-plugin/marketplace.json` and `.cursor-plugin/marketplace.json`) and verifies the top `## X.Y.Z` entry in `CHANGELOG.md` matches.
 
 `package.json` is the single source of truth for `version`; never hand-edit a manifest's `version` field. `dist/` is gitignored.
+
+### Tool catalog package (`packages/mcp-tools`)
+
+`@kobiton/mcp-tools` ships one file, `tool-definitions.yaml`, built from `tools/*.yaml` by its `prepack` script (gitignored, never committed). It has no JavaScript entry and no dependencies; consumers resolve `@kobiton/mcp-tools/tool-definitions.yaml` by path and pin an exact version. Its `version` is independent of the plugin version.
+
+- Any change under `tools/` bumps `packages/mcp-tools/package.json` `version` in the same PR — CI fails otherwise.
+- `.github/workflows/publish-mcp-tools.yml` publishes it: on push to `main` for a stable `X.Y.Z` (dist-tag `latest`), or by a manual run on a branch for a pre-release `X.Y.Z-<channel>.N` (dist-tag `<channel>`, via `scripts/mcp-tools-dist-tag.js`). A stable version off `main` fails; an already-published version is skipped. The workflow never runs on pull requests.
 
 ## Cross-tool surface
 
@@ -171,7 +181,7 @@ When modifying `scripts/install-cli.sh` (or adding any new script that hooks inv
 
 ## Tool schema conventions
 
-`scripts/validate.js` auto-discovers tool YAMLs. To add a tool: drop a YAML in `tools/`, add its row to the README `## Tools` table and bump the "N MCP tools" count (validate fails otherwise), and run `pnpm run validate`. No `validate.js` edit required.
+`scripts/validate.js` auto-discovers tool YAMLs. To add a tool: drop a YAML in `tools/`, add its row to the README `## Tools` table and bump the "N MCP tools" count (validate fails otherwise), bump `version` in `packages/mcp-tools/package.json` (CI fails otherwise), and run `pnpm run validate`. No `validate.js` edit required.
 
 **Annotation hints currently in use** — pattern by tool verb (matches the as-of-today YAML, not aspiration):
 
@@ -210,6 +220,7 @@ Skill directories under `skills/` are auto-discovered. To add a skill:
 
 - `.codex/**` — regenerated by `pnpm run build:codex`
 - `dist/**` — build output, gitignored
+- `packages/mcp-tools/tool-definitions.yaml` — built at pack time, gitignored
 - `CHANGELOG.md` — maintainer-managed at release cut
 - Every host manifest's `version` field — `pnpm run build:version` propagates from `package.json`
 

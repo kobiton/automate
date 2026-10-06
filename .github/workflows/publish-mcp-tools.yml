@@ -1,0 +1,75 @@
+name: Publish MCP tools
+
+# Publishes packages/mcp-tools to npm. Stable versions publish from main after merge;
+# pre-release versions (X.Y.Z-<channel>.N) publish by running this workflow manually on a branch.
+# Never triggered by pull requests, so the npm token is not exposed to forks.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/**'
+      - 'packages/mcp-tools/**'
+      - 'scripts/build-tool-definitions.js'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-mcp-tools-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: npm-publish
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+          scope: '@kobiton'
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Validate plugin structure
+        run: pnpm run validate
+
+      - name: Run tests
+        run: pnpm test
+
+      - name: Resolve version and dist-tag
+        id: release
+        run: |
+          version=$(node -p "require('./packages/mcp-tools/package.json').version")
+          tag=$(node scripts/mcp-tools-dist-tag.js)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Check whether the version is already published
+        id: published
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_REGISTRY_AUTH_TOKEN }}
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          if npm view "@kobiton/mcp-tools@$VERSION" version >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::@kobiton/mcp-tools@$VERSION is already published; skipping"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish
+        if: steps.published.outputs.exists == 'false'
+        working-directory: packages/mcp-tools
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_REGISTRY_AUTH_TOKEN }}
+          TAG: ${{ steps.release.outputs.tag }}
+        run: npm publish --tag "$TAG" --access restricted
