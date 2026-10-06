@@ -16,6 +16,7 @@ allowed-tools: >-
   Bash(node:*),
   Bash(bash:*), Bash(pwsh:*),
   Bash(mkdir:*), Bash(mv:*), Bash(date:*), Bash(echo:*), Bash(printf:*),
+  Bash(ls:*), Bash(tail:*), Bash(wc:*),
   Bash(jq:*),
   Bash(open:*), Bash(xdg-open:*)
 version: 1.0.0
@@ -56,7 +57,7 @@ This skill complements — and does NOT replace — `run-interactive-session`. T
 
 ## Prerequisites
 
-**Runs on any OS, but needs two things from the host:** a persistent local filesystem — the observe-decide-act loop passes state between turns through `iter-N.*.json` files, so that file handoff *is* the loop — and `~/.kobiton/.credentials`, which `scripts/appium.js` reads directly (see below). A host with a filesystem but no way to run `/automate:setup` still can't finish; route those users to `create-test-run`. Node.js 18+; no native binary (`scripts/appium.js` uses `node:https`). See the Skill compatibility matrix in `CLAUDE.md`.
+**Runs on any OS, but needs two things from the host:** a persistent local filesystem — the observe-decide-act loop passes state between turns through the timestamped artifact files under `.kobiton/sessions/<session-id>/`, so that file handoff *is* the loop — and `~/.kobiton/.credentials`, which `scripts/appium.js` reads directly (see below). A host with a filesystem but no way to run `/automate:setup` still can't finish; route those users to `create-test-run`. Node.js 18+; no native binary (`scripts/appium.js` uses `node:https`). See the Skill compatibility matrix in `CLAUDE.md`.
 
 - **Credentials available.** `scripts/appium.js` reads `~/.kobiton/.credentials` (written by `/automate:setup`) directly on every invocation and stops with `no-credentials` if it's missing — this file is **required**, not a fallback, and the script never calls the MCP `getCredential` tool. Reading it directly is deliberate: credentials never pass through argv, env, or the host transcript.
 - **A device.** Either the user provides one (UDID, deviceName, platformVersion) or the skill helps pick + reserve one (see Step 0 below).
@@ -112,7 +113,7 @@ Remember the choice; act on it in Step 3 right after the session is created. Do 
 | `automationName` | recommended | `UiAutomator2` (Android) or `XCUITest` (iOS) |
 | `app` OR `browserName` | yes | `kobiton-store:vXXXXX` for app testing, browser name for web testing |
 | `testingType` | no | `app` (default) or `web` |
-| `MAX_ITERS` | no | env var override; default 100. Hard ceiling on iteration count — pure safety net against runaway cycles, not a stuck-detection mechanism. |
+| `MAX_ITERS` | no | env var override; default 100. Hard ceiling on iteration count (counted from the `request-<ts>.json` files on disk) — pure safety net against runaway cycles, not a stuck-detection mechanism. |
 
 ## Steps
 
@@ -243,38 +244,41 @@ If neither path is available, the URL is already on stdout from the `printf` abo
 
 ### 4. Per-turn iteration pattern (three branches)
 
-There is no Bash `while`. The skill is **turn-based**: each turn, you (the AI host) increment `ITER` and pick **exactly one** of three branches:
+There is no Bash `while`. The skill is **turn-based**: each turn, you (the AI host) pick **exactly one** of three branches:
 
 | Branch | Command | When to pick |
 |---|---|---|
 | **screen** | `node appium.js screen --session-id $SID --session-dir $DIR` | The screen state has likely changed (after a successful act, or at session start, or to verify mid-flow). |
-| **act** | `node appium.js <argv> --session-dir $DIR` | You know what to do based on the most recent `iter-K.xml` you observed. |
+| **act** | `node appium.js <argv> --session-dir $DIR` | You know what to do based on the most recent `source-<ts>.xml` you observed. |
 | **control** | `node appium.js control --done\|--blocked --reason "..." --session-dir $DIR` | Goal reached, or you're genuinely stuck. Ends the cycle. |
 
-Each branch consumes one ITER. The script always exits 0; the host detects failures by checking whether `iter-N.error.json` was written.
+Each call names everything it writes with one timestamp `<ts>` (epoch seconds; the next free second when two calls share one), the same `<kind>-<ts>.<ext>` scheme `run-interactive-session` uses.
+The script always exits 0; a call failed when it printed to stderr (it also wrote `error-<ts>.json`).
 
 ```bash
-export ITER=$((ITER + 1))
+# Pick ONE of the three. Credentials come from ~/.kobiton/.credentials (Step 1).
 
-# Pick ONE of the three. Credentials inherit from env (Step 1).
-
-# Branch A: observe — by default writes iter-N.xml (the lean view: only the
-#   elements you can target, with their bounds), iter-N.full.xml (the raw
-#   /source) and iter-N.png. Read iter-N.xml; open iter-N.full.xml or the
-#   PNG only as references/observe.md describes.
+# Branch A: observe — by default writes source-<ts>.xml (the lean view: only
+#   the elements you can target, with their bounds), source-<ts>.full.xml (the
+#   raw /source) and screenshot-<ts>.png. Read source-<ts>.xml; open the full
+#   source or the screenshot only as references/webdriver.md § Observe says.
 #   --xml-only captures the source but no screenshot; --png-only captures the
 #   screenshot but no source (no XML files); --full writes the unfiltered
-#   tree to iter-N.xml (stripped webview DOM, raw native tree).
+#   tree to source-<ts>.xml (stripped webview DOM, raw native tree).
 node "$SKILL_DIR/scripts/appium.js" screen \
   --session-id "$SESSION_ID" --session-dir "$SESSION_DIR"
-# Stdout: {"hash":"<sha256>","mode":"lean","xmlBytes":N,"fullXmlBytes":F,"pngBytes":M}
-# Track the hash across turns in your conversation context — repetition is a
-# signal, never a forced stop. See references/loop-discipline.md "Stuck patterns".
+# Stdout: {"ts":T,"source":"source-T.xml","fullSource":"source-T.full.xml",
+#          "screenshot":"screenshot-T.png","hash":"<sha256>","mode":"lean",
+#          "xmlBytes":N,"fullXmlBytes":F,"pngBytes":M}
+# The names are relative to $SESSION_DIR. Track the hash across turns in your
+# conversation context — repetition is a signal, never a forced stop. See
+# references/loop-discipline.md "Stuck patterns".
 
-# Branch B: act — execute an Appium call. Writes iter-N.request.json + either
-#   iter-N.response.json (success) or iter-N.error.json (any failure). The
-#   error file contains the raw Appium body or {error, message} for usage
-#   errors; the host reads it to decide what to do next turn.
+# Branch B: act — execute an Appium call. On success stdout is the raw
+#   WebDriver response body (pipe it to jq, e.g. for an element id); on any
+#   failure stdout is empty and stderr carries the raw Appium body, or
+#   {error, message} for usage errors. The same content is saved as
+#   request-<ts>.json + response-<ts>.json or error-<ts>.json.
 node "$SKILL_DIR/scripts/appium.js" <YOUR-ARGV> --session-dir "$SESSION_DIR"
 # Examples of <YOUR-ARGV>:
 #   --method POST --url /session/$SESSION_ID/element --req-body '{"using":"xpath","value":"//Button"}'
@@ -282,25 +286,30 @@ node "$SKILL_DIR/scripts/appium.js" <YOUR-ARGV> --session-dir "$SESSION_DIR"
 #   touch-perform --session-id $SESSION_ID --steps @/tmp/steps.json
 #   --method POST --url /session/$SESSION_ID/element/$EL_ID/clear --req-body '{}'
 
-# Branch C: end the cycle.
+# Branch C: end the cycle. Writes control-<ts>.json; stdout {"ts":T,"control":"DONE","reason":"..."}.
 node "$SKILL_DIR/scripts/appium.js" control \
   --done --reason "Settings reached and Bluetooth toggled" \
   --session-dir "$SESSION_DIR"
 # OR --blocked --reason "Two modals stacked; cannot dismiss"
 
-# ---- Per-turn bookkeeping (runs after the chosen branch) ----
+# ---- Per-turn bookkeeping (after a screen or act turn) ----
 
-# Log failures so session.log has a timeline. appium.js writes iter-N.error.json
+# Every screen / act call writes one request-<ts>.json and timestamps increase
+# in call order: the last one is this turn's, their count is the turn count.
+LAST=$(ls "$SESSION_DIR"/request-*.json | tail -1)
+TS=${LAST##*request-}; TS=${TS%.json}
+TURNS=$(ls "$SESSION_DIR"/request-*.json | wc -l)
+
+# Log failures so session.log has a timeline. appium.js writes error-<ts>.json
 # on any failure — Appium HTTP error, network blip, usage error like missing
-# flag or malformed JSON. The host reads the file next turn and re-plans.
-ITER_PAD=$(printf '%03d' "$ITER")
-if [ -f "$SESSION_DIR/iter-$ITER_PAD.error.json" ]; then
-  printf 'iter=%d error\n' "$ITER" >> "$SESSION_DIR/session.log"
+# flag or malformed JSON. The host reads the error and re-plans next turn.
+if [ -f "$SESSION_DIR/error-$TS.json" ]; then
+  printf 'ts=%s error\n' "$TS" >> "$SESSION_DIR/session.log"
 fi
 
 # Iteration ceiling — safety net only. Not a stuck-detection mechanism.
-if [ "$ITER" -ge "${MAX_ITERS:-100}" ]; then
-  printf 'iter=%d max-iters-reached limit=%d\n' "$ITER" "${MAX_ITERS:-100}" >> "$SESSION_DIR/session.log"
+if [ "$TURNS" -ge "${MAX_ITERS:-100}" ]; then
+  printf 'ts=%s max-iters-reached turns=%d limit=%d\n' "$TS" "$TURNS" "${MAX_ITERS:-100}" >> "$SESSION_DIR/session.log"
   exit 0
 fi
 ```
@@ -311,19 +320,20 @@ What to pick next turn depends on what just happened:
 
 - **Successful act** → next turn `screen` (the screen probably changed).
 - **`screen` just ran** → next turn `act` (you have a fresh observation).
-- **`act` returned `no such element` / `invalid selector` / `bad-input`** → next turn `act` again with a corrected call. The screen didn't change (the action didn't fire), so the most recent `iter-K.xml` is still valid; re-read it from disk if you need to, but don't burn an ITER on a fresh `screen`.
+- **`act` returned `no such element` / `invalid selector` / `bad-input`** → next turn `act` again with a corrected call. The screen didn't change (the action didn't fire), so the most recent `source-<ts>.xml` is still valid; re-read it from disk if you need to, but don't burn a turn on a fresh `screen`.
 - **`act` returned `stale element reference`** → next turn `screen` (the element id is from a prior state; you need a fresh observation to get current element ids).
 - **`act` returned HTTP 5xx / network timeout** → next turn `act` again with the same call (retry). If it fails twice, `control --blocked`.
 - **Goal reached** → `control --done`.
 - **Genuinely stuck** (per the patterns in `loop-discipline.md` "Stuck patterns") → `control --blocked`.
 
-The host is responsible for tracking which `iter-K.xml` represents the current screen state. After a successful act, the previous `iter-K.xml` is stale until the next `screen`. After a failed act, the previous `iter-K.xml` is still current.
+The host is responsible for tracking which `source-<ts>.xml` represents the current screen state — `screen` prints its name. After a successful act, the previous `source-<ts>.xml` is stale until the next `screen`. After a failed act, it is still current.
 
 #### Building act calls from the XML
 
-When the chosen branch is `act`, the argv body is constructed from the most recent `iter-K.xml` — selectors come from attributes you can see in the lean view, not from guesses or positions. `references/observe.md` is the read rule: the lean `iter-K.xml` is the default read, and `iter-K.full.xml` is the escape hatch (positional XPath needed, an expected element missing from the lean view, or `no such element` twice in a row). See `references/endpoint-reference.md` "Building Appium calls from the observed XML" for the find-element → element-id workflow, selector-strategy preference order (accessibility id > id > relative xpath > css selector > class name), and the coordinates-from-bounds fallback for gestures with no element target.
+When the chosen branch is `act`, build the call from the most recent `source-<ts>.xml`.
+`references/webdriver.md` — shared with `run-interactive-session` — holds every operation's `<path>` and body, the selector rules, the find-then-act workflow, the coordinates fallback, what to observe and the response and error shapes.
 
-The full loop discipline (artifact paths, error feedback, termination conditions) lives in `references/loop-discipline.md`. The endpoint catalog (allowlisted vs not, helpers vs generic) lives in `references/endpoint-reference.md`. What the lean view keeps and when to open the full source lives in `references/observe.md`.
+The full loop discipline (artifact paths, error feedback, termination conditions) lives in `references/loop-discipline.md`. How `appium.js` sends a call, its helpers and which endpoints the scriptless capture records live in `references/endpoint-reference.md`.
 
 ### 5. Cleanup
 
@@ -343,7 +353,7 @@ Emit the session id back to the caller. The session is now consumable by:
 
 ## Endpoint reference
 
-See `references/endpoint-reference.md` for the full Appium endpoint catalog — allowlisted (capturable by `saveTestCase`) vs not, helpers (`actions`, `touch-perform`) vs generic mode. The AI host picks endpoints from that table when emitting `iter-N.call.json`.
+See `references/webdriver.md` for the operations catalog (`<path>` and body for each) and `references/endpoint-reference.md` for what is allowlisted (capturable by `saveTestCase`) vs not, and the helpers (`actions`, `touch-perform`) vs generic mode.
 
 ## Stuck patterns — host decides when to pause
 
@@ -356,10 +366,10 @@ The only hard programmatic stop is `MAX_ITERS=100` (override per session), which
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
 | `No credentials available...` | No `~/.kobiton/.credentials` (an authenticated MCP connection does not substitute — `appium.js` only reads the file) | Run `/automate:setup`, which uses the MCP connection to fetch and write the file |
-| `iter-N.error.json` has `status: 401` on session create | Credentials stale | Re-run `/automate:setup` to refresh `~/.kobiton/.credentials`; check the portal URL |
-| `iter-N.error.json` has a platform-cap message on session create | `newCommandTimeout: 1800` rejected by Kobiton | Lower the timeout in `references/capabilities.md` |
-| `iter-N.error.json` body has `value.error: "no such element"` | Selector matched nothing | Re-plan next turn with a different strategy / selector; after two misses in a row, open `iter-N.full.xml` (`references/observe.md`) |
-| `iter-N.error.json` body has `value.error: "invalid session id"` | Kobiton platform-side session ended | Emit `control --blocked` (or just let MAX_ITERS catch it); trap cleans up |
+| Session create prints `{"status":401}` on stderr | Credentials stale | Re-run `/automate:setup` to refresh `~/.kobiton/.credentials`; check the portal URL |
+| Session create prints a platform-cap message on stderr | `newCommandTimeout: 1800` rejected by Kobiton | Lower the timeout in `references/capabilities.md` |
+| stderr / `error-<ts>.json` body has `value.error: "no such element"` | Selector matched nothing | Re-plan next turn with a different strategy / selector; after two misses in a row, open the latest `source-<ts>.full.xml` (`references/webdriver.md` § Observe) |
+| stderr / `error-<ts>.json` body has `value.error: "invalid session id"` | Kobiton platform-side session ended | Emit `control --blocked` (or just let MAX_ITERS catch it); trap cleans up |
 
 ## Notes
 

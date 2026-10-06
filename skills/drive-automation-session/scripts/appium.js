@@ -1,10 +1,10 @@
 // Appium / WebDriver HTTP client for the drive-automation-session skill.
 // One script, generic mode + four helpers (`screen`, `actions`, `touch-perform`,
 // `control`). Always exits 0; failures are surfaced via stderr and (when
-// --session-dir is set) iter-NNN.error.json. Full subcommand catalog and the
+// --session-dir is set) error-<ts>.json. Full subcommand catalog and the
 // host's error-handling contract live in SKILL.md and references/.
 
-import {readFileSync, writeFileSync, mkdirSync, existsSync} from 'node:fs'
+import {readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync} from 'node:fs'
 import {parseArgs} from 'node:util'
 import {createHash} from 'node:crypto'
 import {request as httpsRequest} from 'node:https'
@@ -15,20 +15,20 @@ import {URL} from 'node:url'
 import {stripWebviewDom} from './strip-webview-dom.js'
 import {detectKind, leanTree} from './ui-tree.js'
 
-// Stashed by main() so fail() can find the artifact base without re-parsing argv.
+// Stashed by main() so fail() can find the session artifacts without re-parsing argv.
 let currentFlags = null
 
-// `explicitBase`, when provided, wins over the currentFlags-derived path — so a
-// caller that already resolved the artifact base (e.g. softFail in cmdScreen)
-// still writes the error file even if currentFlags isn't set yet.
-function fail(_unusedCode, error, message, explicitBase) {
+// `explicitArtifacts`, when provided, wins over the currentFlags-derived one —
+// so a caller that already resolved it (e.g. softFail in cmdScreen) still
+// writes the error file even if currentFlags isn't set yet.
+function fail(_unusedCode, error, message, explicitArtifacts) {
   process.stderr.write(JSON.stringify({error, message}) + '\n')
-  const base = explicitBase ?? (currentFlags ? artifactBase(currentFlags) : null)
-  if (base) persistError(base, 0, JSON.stringify({error, message}))
+  const artifacts = explicitArtifacts ?? (currentFlags ? sessionArtifacts(currentFlags) : null)
+  if (artifacts) persistError(artifacts, 0, JSON.stringify({error, message}))
   process.exit(0)
 }
 
-const softFail = (base, error, message) => fail(0, error, message, base)
+const softFail = (artifacts, error, message) => fail(0, error, message, artifacts)
 
 function getFlag(flags, name) {
   if (flags[name] == null) fail(1, 'bad-input', `--${name} is required`)
@@ -151,48 +151,61 @@ function hubFetch(target, method, url, body) {
   })
 }
 
-// Iter value comes from --iter or the ITER env var the SKILL.md loop exports.
-function artifactBase(flags) {
-  if (!flags['session-dir']) return null
-  const iterRaw = flags['iter'] ?? process.env.ITER
-  if (iterRaw == null || iterRaw === '') return null
-  const iterStr = String(iterRaw).padStart(3, '0')
-  mkdirSync(flags['session-dir'], {recursive: true})
-  return join(flags['session-dir'], `iter-${iterStr}`)
+// Every artifact one invocation writes is named `<kind>-<ts>.<ext>`, with one
+// timestamp ts (epoch seconds) per invocation. When ts is already taken in the
+// session dir (two calls within a second), the next free second is used, so
+// names stay unique and sort in call order. Memoized: fail() and the command
+// must agree on ts.
+let artifactsMemo
+function sessionArtifacts(flags) {
+  if (artifactsMemo !== undefined) return artifactsMemo
+  const dir = flags['session-dir']
+  if (!dir) return (artifactsMemo = null)
+  mkdirSync(dir, {recursive: true})
+  const taken = new Set()
+  for (const name of readdirSync(dir)) {
+    const m = name.match(/^[a-z]+-(\d+)\./)
+    if (m) taken.add(Number(m[1]))
+  }
+  let ts = Math.floor(Date.now() / 1000)
+  while (taken.has(ts)) ts += 1
+  const name = (kind, ext) => `${kind}-${ts}.${ext}`
+  artifactsMemo = {ts, name, path: (kind, ext) => join(dir, name(kind, ext))}
+  return artifactsMemo
 }
 
-function persistRequest(base, argv) {
-  if (!base) return
-  writeFileSync(`${base}.request.json`, JSON.stringify({argv}, null, 2) + '\n')
+function persistRequest(artifacts, argv) {
+  if (!artifacts) return
+  writeFileSync(artifacts.path('request', 'json'), JSON.stringify({argv}, null, 2) + '\n')
 }
 
-function persistResponse(base, bodyStr) {
-  if (!base) return
-  writeFileSync(`${base}.response.json`, bodyStr.endsWith('\n') ? bodyStr : bodyStr + '\n')
+function persistResponse(artifacts, bodyStr) {
+  if (!artifacts) return
+  writeFileSync(artifacts.path('response', 'json'), bodyStr.endsWith('\n') ? bodyStr : bodyStr + '\n')
 }
 
-function persistError(base, status, bodyStr) {
-  if (!base) return
+function persistError(artifacts, status, bodyStr) {
+  if (!artifacts) return
   const content = JSON.stringify({status}) + '\n' + (bodyStr || '')
-  writeFileSync(`${base}.error.json`, content.endsWith('\n') ? content : content + '\n')
+  writeFileSync(artifacts.path('error', 'json'), content.endsWith('\n') ? content : content + '\n')
 }
 
-function emitResponse(res, base, {treat404AsSuccess = false} = {}) {
+function emitResponse(res, artifacts, {treat404AsSuccess = false} = {}) {
   if (treat404AsSuccess && res.status === 404) {
     // DELETE /session/{id} → 404 is idempotent success (session already ended).
     process.stdout.write('\n')
-    persistResponse(base, '')
+    persistResponse(artifacts, '')
     return
   }
   const raw = res.body.toString('utf8')
   if (res.status >= 400) {
     process.stderr.write(JSON.stringify({status: res.status}) + '\n')
     if (raw) process.stderr.write(raw + (raw.endsWith('\n') ? '' : '\n'))
-    persistError(base, res.status, raw)
+    persistError(artifacts, res.status, raw)
     return
   }
   process.stdout.write(raw + '\n')
-  persistResponse(base, raw)
+  persistResponse(artifacts, raw)
 }
 
 // ---- Generic mode ----------------------------------------------------------
@@ -201,8 +214,8 @@ async function cmdGeneric(target, flags) {
   const method = getFlag(flags, 'method').toUpperCase()
   const url = getFlag(flags, 'url')
   let body = readBodyArg(flags['req-body'])
-  const base = artifactBase(flags)
-  persistRequest(base, ['--method', method, '--url', url, ...(flags['req-body'] != null ? ['--req-body', flags['req-body']] : [])])
+  const artifacts = sessionArtifacts(flags)
+  persistRequest(artifacts, ['--method', method, '--url', url, ...(flags['req-body'] != null ? ['--req-body', flags['req-body']] : [])])
   // POST /session: auto-wrap a flat caps body (the shape render-capabilities.js
   // emits) into the W3C envelope the hub requires. Pre-wrapped bodies are
   // left alone.
@@ -211,7 +224,7 @@ async function cmdGeneric(target, flags) {
   }
   const treat404AsSuccess = method === 'DELETE' && /\/session\/[^/]+\/?$/.test(url)
   const res = await hubFetch(target, method, url, body)
-  emitResponse(res, base, {treat404AsSuccess})
+  emitResponse(res, artifacts, {treat404AsSuccess})
 }
 
 // ---- `screen` helper -------------------------------------------------------
@@ -226,15 +239,16 @@ async function cmdScreen(target, flags) {
   const capturePng = !xmlOnly  // default: capture BOTH; native overlays / dialogs (e.g. Chrome's "notifications" welcome) only show in the screenshot
   const mode = full ? 'full' : 'lean'
 
-  const base = artifactBase(flags)
-  if (!base) fail(1, 'bad-input', 'screen requires --session-dir and ITER (it writes iter-N.xml / iter-N.png)')
+  const artifacts = sessionArtifacts(flags)
+  if (!artifacts) fail(1, 'bad-input', 'screen requires --session-dir (it writes source-<ts>.xml / screenshot-<ts>.png)')
 
   const auditArgs = ['screen', '--session-id', sessionId]
   if (xmlOnly) auditArgs.push('--xml-only')
   if (pngOnly) auditArgs.push('--png-only')
   if (full) auditArgs.push('--full')
-  persistRequest(base, auditArgs)
+  persistRequest(artifacts, auditArgs)
 
+  const out = {ts: artifacts.ts}
   const hash = createHash('sha256')
   let xmlSize = 0
   let fullXmlSize = 0
@@ -243,20 +257,22 @@ async function cmdScreen(target, flags) {
   if (captureXml) {
     const srcRes = await hubFetch(target, 'GET', `/session/${sessionId}/source`)
     if (srcRes.status >= 400) {
-      emitResponse(srcRes, base)
+      emitResponse(srcRes, artifacts)
       return
     }
     let rawXml
     try { rawXml = JSON.parse(srcRes.body.toString('utf8')).value || '' }
-    catch (err) { softFail(base, 'parse', `source response was not JSON: ${err.message}`) }
-    // iter-N.full.xml is always the raw /source body (the escape hatch);
-    // iter-N.xml is the lean view (ui-tree.js), or with --full the stripped
-    // webview DOM / raw native tree. See references/observe.md.
-    writeFileSync(`${base}.full.xml`, rawXml)
+    catch (err) { softFail(artifacts, 'parse', `source response was not JSON: ${err.message}`) }
+    // source-<ts>.full.xml is always the raw /source body (the escape hatch);
+    // source-<ts>.xml is the lean view (ui-tree.js), or with --full the
+    // stripped webview DOM / raw native tree. See references/webdriver.md.
+    writeFileSync(artifacts.path('source', 'full.xml'), rawXml)
     let xml
     if (full) xml = detectKind(rawXml) === 'webview' ? stripWebviewDom(rawXml) : rawXml
     else xml = leanTree(rawXml).lean
-    writeFileSync(`${base}.xml`, xml)
+    writeFileSync(artifacts.path('source', 'xml'), xml)
+    out.source = artifacts.name('source', 'xml')
+    out.fullSource = artifacts.name('source', 'full.xml')
     hash.update(xml)
     xmlSize = Buffer.byteLength(xml)
     fullXmlSize = Buffer.byteLength(rawXml)
@@ -265,22 +281,22 @@ async function cmdScreen(target, flags) {
   if (capturePng) {
     const shotRes = await hubFetch(target, 'GET', `/session/${sessionId}/screenshot`)
     if (shotRes.status >= 400) {
-      emitResponse(shotRes, base)
+      emitResponse(shotRes, artifacts)
       return
     }
     let b64
     try { b64 = JSON.parse(shotRes.body.toString('utf8')).value || '' }
-    catch (err) { softFail(base, 'parse', `screenshot response was not JSON: ${err.message}`) }
+    catch (err) { softFail(artifacts, 'parse', `screenshot response was not JSON: ${err.message}`) }
     const pngBuf = Buffer.from(b64, 'base64')
-    writeFileSync(`${base}.png`, pngBuf)
+    writeFileSync(artifacts.path('screenshot', 'png'), pngBuf)
+    out.screenshot = artifacts.name('screenshot', 'png')
     hash.update(pngBuf)
     pngSize = pngBuf.length
   }
 
-  const digest = hash.digest('hex')
-  const out = {hash: digest, mode, xmlBytes: xmlSize, fullXmlBytes: fullXmlSize, pngBytes: pngSize}
+  Object.assign(out, {hash: hash.digest('hex'), mode, xmlBytes: xmlSize, fullXmlBytes: fullXmlSize, pngBytes: pngSize})
   process.stdout.write(JSON.stringify(out) + '\n')
-  persistResponse(base, JSON.stringify(out))
+  persistResponse(artifacts, JSON.stringify(out))
 }
 
 // ---- `actions` helper ------------------------------------------------------
@@ -340,14 +356,14 @@ function actionsBody(flags) {
 async function cmdActions(target, flags) {
   const sessionId = getFlag(flags, 'session-id')
   const body = actionsBody(flags)
-  const base = artifactBase(flags)
+  const artifacts = sessionArtifacts(flags)
   const audit = ['actions', '--session-id', sessionId, '--type', flags['type']]
   for (const k of ['x', 'y', 'hold-ms', 'from-x', 'from-y', 'to-x', 'to-y', 'duration', 'key']) {
     if (flags[k] != null) audit.push(`--${k}`, String(flags[k]))
   }
-  persistRequest(base, audit)
+  persistRequest(artifacts, audit)
   const res = await hubFetch(target, 'POST', `/session/${sessionId}/actions`, body)
-  emitResponse(res, base)
+  emitResponse(res, artifacts)
 }
 
 // ---- `touch-perform` helper -----------------------------------------------
@@ -356,25 +372,25 @@ async function cmdTouchPerform(target, flags) {
   const sessionId = getFlag(flags, 'session-id')
   const steps = readBodyArg(getFlag(flags, 'steps'))
   if (!Array.isArray(steps)) fail(1, 'bad-input', '--steps must be a JSON array of {action, options} entries')
-  const base = artifactBase(flags)
-  persistRequest(base, ['touch-perform', '--session-id', sessionId, '--steps', String(flags['steps'])])
+  const artifacts = sessionArtifacts(flags)
+  persistRequest(artifacts, ['touch-perform', '--session-id', sessionId, '--steps', String(flags['steps'])])
   const res = await hubFetch(target, 'POST', `/session/${sessionId}/touch/perform`, {actions: steps})
-  emitResponse(res, base)
+  emitResponse(res, artifacts)
 }
 
 // ---- `control` helper ------------------------------------------------------
 
 async function cmdControl(target, flags) {
-  const base = artifactBase(flags)
-  if (!base) fail(1, 'bad-input', 'control requires --session-dir and --iter (it writes iter-N.control.json)')
+  const artifacts = sessionArtifacts(flags)
+  if (!artifacts) fail(1, 'bad-input', 'control requires --session-dir (it writes control-<ts>.json)')
   const reason = flags['reason'] || ''
   let kind = null
   if (flags['done']) kind = 'DONE'
   else if (flags['blocked']) kind = 'BLOCKED'
   else fail(1, 'bad-input', 'control requires either --done or --blocked')
   const payload = {control: kind, reason}
-  writeFileSync(`${base}.control.json`, JSON.stringify(payload, null, 2) + '\n')
-  process.stdout.write(JSON.stringify(payload) + '\n')
+  writeFileSync(artifacts.path('control', 'json'), JSON.stringify(payload, null, 2) + '\n')
+  process.stdout.write(JSON.stringify({ts: artifacts.ts, ...payload}) + '\n')
 }
 
 // ---- Dispatch --------------------------------------------------------------
@@ -399,7 +415,6 @@ async function main() {
       'hub-url':           {type: 'string'},
       // Persistence
       'session-dir':       {type: 'string'},
-      'iter':              {type: 'string'},
       // Generic mode
       'method':            {type: 'string'},
       'url':               {type: 'string'},
@@ -434,7 +449,7 @@ async function main() {
   currentFlags = flags
   // control doesn't need credentials, but every other path does.
   const target = helper === 'control' ? null : resolveTarget(flags)
-  const errBase = artifactBase(flags)
+  const errArtifacts = sessionArtifacts(flags)
   try {
     if (helper) {
       const fn = HELPERS[helper]
@@ -445,7 +460,7 @@ async function main() {
     }
   } catch (err) {
     const cls = err?.message === 'request timeout' ? 'request-timeout' : 'runtime'
-    softFail(errBase, cls, err?.message || String(err))
+    softFail(errArtifacts, cls, err?.message || String(err))
   }
 }
 

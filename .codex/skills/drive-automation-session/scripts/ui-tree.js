@@ -2,7 +2,7 @@
 // `screen` helper and run-interactive-session's page-source step). Node ESM,
 // no deps. The lean view keeps only the elements an agent can target or read
 // (ids, labels, text, interactive flags) with their bounds; the raw /source
-// stays on disk next to it as the escape hatch (see references/observe.md).
+// stays on disk next to it as the escape hatch (see references/webdriver.md).
 //
 // CLI: node ui-tree.js <source-file>   → lean view on stdout
 

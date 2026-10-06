@@ -8,19 +8,37 @@
 A new shared filter, `skills/drive-automation-session/scripts/ui-tree.js` (Node, no dependencies; `node ui-tree.js <source-file>` prints the lean view), keeps only the elements an agent can target or read — ids, accessibility labels, text, and clickable / scrollable / checkable flags — with their bounds, and preserves element tag names so selectors built from it resolve against the live session.
 Native UiAutomator2 and XCUITest trees are filtered for the first time; on representative settings screens the lean view is about 77% (Android) and 71% (iOS) smaller than the raw source.
 Webview pages keep the existing stripped DOM unchanged.
-A shared reference, `skills/drive-automation-session/references/observe.md`, carries the read rule for both skills: the lean view is the default read, the full source is the escape hatch (an unavoidable positional XPath, an expected element missing from the lean view, or `no such element` twice in a row), selectors come from identifying attributes rather than position, and the screenshot is read on demand.
+The shared WebDriver reference (below) carries the read rule for both skills: the lean view is the default read, the full source is the escape hatch (an unavoidable positional XPath, an expected element missing from the lean view, or `no such element` twice in a row), selectors come from identifying attributes rather than position, and the screenshot is read on demand.
 
 ### Changed: `screen` writes the lean view and always keeps the raw source
 
-In `drive-automation-session`, `screen` now writes the lean view to `iter-NNN.xml` and the raw `/source` body to `iter-NNN.full.xml` on every turn that captures the source (previously only on webview turns; native trees were written raw to `iter-NNN.xml`).
-The new `--full` flag restores the previous `iter-NNN.xml` (stripped webview DOM, raw native tree) and combines with `--xml-only`.
-The stdout / `iter-NNN.response.json` line adds `mode` (`lean` | `full`) and `fullXmlBytes`; the screen hash still covers `iter-NNN.xml` plus the screenshot.
+In `drive-automation-session`, `screen` now writes the lean view to `source-<ts>.xml` and the raw `/source` body to `source-<ts>.full.xml` on every turn that captures the source (previously only on webview turns; native trees were written raw to the XML file).
+The new `--full` flag restores the previous XML output (stripped webview DOM, raw native tree) and combines with `--xml-only`.
+The stdout / `response-<ts>.json` line adds `mode` (`lean` | `full`) and `fullXmlBytes`; the screen hash still covers `source-<ts>.xml` plus the screenshot.
 The `--xml-only` / `--png-only` docs now describe what each captures.
 
 ### Changed: `run-interactive-session` page source
 
 Step 4 saves `wd get source` to `source-<ts>.full.xml`, writes the lean view to `source-<ts>.xml` with the shared filter, and reads the lean file.
 The skill now allows `Bash(node:*)`.
+
+### Added: one WebDriver reference for both WebDriver skills
+
+`skills/drive-automation-session/references/webdriver.md` is now the single WebDriver reference for `drive-automation-session` and `run-interactive-session`.
+Both skills send the same W3C WebDriver / Appium calls — the CLI's `wd post <path> '<json>'` / `wd get <path>` is the same `POST` / `GET /session/{id}/<path>` that `appium.js` sends — so the reference describes each operation once, as a method, a path and a body, next to a short table of how each skill sends it.
+It covers the operations (the union of both skills' previous command tables), selector rules, the find-then-act workflow and the coordinates fallback, web content and context switching, what to observe (lean view, full source, screenshot), and the response and error shapes.
+`run-interactive-session` replaces its WebDriver command table, response-shape notes, web-content note and selector guidance with a short section that names its transport and links the reference; its `references/response-shapes.md` keeps only the two commands the CLI unwraps.
+`drive-automation-session`'s `references/endpoint-reference.md` keeps only what is specific to that skill: how `appium.js` sends a call and reports its result, the scriptless-capture allowlist, the helpers, the session lifecycle, the endpoints the capture doesn't record, and the loop-control sentinels.
+
+### Changed: `drive-automation-session` artifacts use timestamped names
+
+`drive-automation-session` now names its session artifacts the way `run-interactive-session` does: `<kind>-<ts>.<ext>` under `.kobiton/sessions/<session-id>/`, with `<ts>` the call's epoch seconds.
+Each `appium.js` call with `--session-dir` takes one timestamp, moving to the next free second when two calls land in the same second, so names stay unique and sort in call order.
+`screen` writes `source-<ts>.xml` (lean view), `source-<ts>.full.xml` (raw source) and `screenshot-<ts>.png`; every screen and act call writes `request-<ts>.json` and then `response-<ts>.json` or `error-<ts>.json`; `control` writes `control-<ts>.json`.
+These replace the `iter-NNN.*` files (`iter-NNN.xml`, `.full.xml`, `.png`, `.request.json`, `.response.json`, `.error.json`, `.control.json`).
+`screen`'s stdout line adds `ts` and the names of the files it wrote (`source`, `fullSource`, `screenshot`), and `control`'s stdout adds `ts`; an act call's stdout is still the raw WebDriver response body, and a failure still prints to stderr.
+The `--iter` flag and the `ITER` environment variable are removed: the `MAX_ITERS` ceiling counts the `request-<ts>.json` files on disk, and `session.log` lines carry `ts=` instead of `iter=`.
+The skill now allows `Bash(ls:*)`, `Bash(tail:*)` and `Bash(wc:*)` for that per-turn bookkeeping.
 
 ### Changed: validation reads say when a result may still be partial
 

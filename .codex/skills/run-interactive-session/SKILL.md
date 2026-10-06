@@ -53,7 +53,7 @@ Use this skill whenever the user wants to interact with a mobile device on Kobit
 Before invoking this skill, ensure:
 
 - **Kobiton CLI wrapper** - `~/.kobiton/bin/kobiton` (a symlink to this plugin's `run.sh` wrapper on macOS/Linux, a bash exec-shim on Windows) must exist and resolve to an executable. Claude Code and Codex CLI both recreate it automatically via a bundled SessionStart hook; on Codex, the user trusts the hook once via `/hooks` after install. `/automate:setup` re-installs the wrapper on demand on any host. GitHub Copilot CLI and Gemini CLI load `/automate:setup` (Copilot via Claude-format `.md`, Gemini via bundled TOML at `commands/automate/setup.toml`) but have no SessionStart hook - run `/automate:setup` once after install. The CLI binary itself is **downloaded, not bundled**: the install script fetches the build pinned in `CLI_VERSION` (sha256-verified) into `~/.kobiton/cli/` on first run. `run.sh` reports a missing binary or missing credentials with the right remedy, so surface its error rather than pre-flighting your own checks.
-- **Node 18+** - the page-source step writes its lean view with the sibling `drive-automation-session` skill's `scripts/ui-tree.js`. Without Node, read the saved full source instead (see `../drive-automation-session/references/observe.md`).
+- **Node 18+** - the page-source step writes its lean view with the sibling `drive-automation-session` skill's `scripts/ui-tree.js`. Without Node, read the saved full source instead (see [`webdriver.md` § Observe](../drive-automation-session/references/webdriver.md#observe)).
 - **Credentials file** - `~/.kobiton/.credentials` must contain a valid INI-formatted profile with `KOBITON_USER`, `KOBITON_API_KEY`, and `KOBITON_PORTAL`. Created by `/automate:setup`. The active profile is `$KOBITON_PROFILE` if set, otherwise `default`.
 - **Kobiton MCP connection** - useful for `listDevices` / `getDeviceStatus` calls when picking a device. Default `api.kobiton.com/mcp`; check `.mcp.json` for the configured endpoint.
 - **Kobiton account** - credentials with device access for the target platform (Android / iOS) and remaining session quota.
@@ -162,23 +162,24 @@ For each command:
 
 **Chaining.** Multi-step intents require chaining the output of one command into the next. Example - "find the Name field and type Hello":
 
-1. Find the element:
+1. Find the element and extract its ID with the shared extractor:
 
-       $KOBITON_BIN wd post element '{"using":"id","value":"com.app:id/etName"}'
-
-   The response is JSON; extract the element ID from the `value` field.
+       $KOBITON_BIN wd post element '{"using":"id","value":"com.app:id/etName"}' \
+         | jq -r '.value.ELEMENT // .value["element-6066-11e4-a52e-4f735466cecf"] // .value'
 
 2. Type into it (substituting the captured element ID):
 
        $KOBITON_BIN wd post element/<ELEMENT_ID>/value '{"text":"Hello"}'
 
-Always extract the element ID from the response before using it in subsequent commands. Element IDs **do not survive page transitions** - re-find on each new screen instead of caching.
+The find-then-act workflow, including why element IDs must be re-found after every screen change, is in [`webdriver.md`](../drive-automation-session/references/webdriver.md#find-an-element-then-act-on-it).
 
 ### 4. Capture artifacts
 
 Ensure the artifacts directory exists first (idempotent, safe to repeat):
 
     mkdir -p .kobiton/sessions/<session-id>
+
+Artifacts use the file names in [`webdriver.md` § Observe](../drive-automation-session/references/webdriver.md#observe) - `screenshot-<ts>.png`, `source-<ts>.full.xml` and `source-<ts>.xml`, with `<ts>` the epoch seconds of the capture - the same names `drive-automation-session` writes.
 
 **Screenshot.** The CLI emits the base64-encoded PNG directly on stdout; decode and save in one pipe:
 
@@ -196,7 +197,7 @@ Then use the `Read` tool on the saved file to display it inline, and report the 
       .kobiton/sessions/<session-id>/source-$TS.full.xml \
       > .kobiton/sessions/<session-id>/source-$TS.xml
 
-Run all three lines in one Bash call so `TS` is shared. `Read` the lean `source-<ts>.xml` for element inspection - it keeps every element you can target (ids, accessibility labels, text, clickable / scrollable flags) with its bounds, and its tag names match the live tree. The `.full.xml` file is the escape hatch: open it, or `grep` it for one element, only in the cases [`observe.md`](../drive-automation-session/references/observe.md#when-to-open-the-full-source) lists (an index-based XPath is unavoidable, an expected element is missing from the lean view, or a selector missed twice in a row). Build selectors from identifying attributes, never from position ([`observe.md` § Selector rule](../drive-automation-session/references/observe.md#selector-rule)).
+Run all three lines in one Bash call so `TS` is shared. `Read` the lean `source-<ts>.xml` for element inspection; open the `.full.xml` only in the cases [`webdriver.md`](../drive-automation-session/references/webdriver.md#when-to-open-the-full-source) lists, and build selectors by its [Selectors](../drive-automation-session/references/webdriver.md#selectors) rules.
 
 ### 5. End the session
 
@@ -210,29 +211,20 @@ This terminates the Kobiton-side session and frees the device. The local artifac
 
 ### WebDriver commands
 
-| Intent | Command |
-|--------|---------|
-| Find element by ID | `$KOBITON_BIN wd post element '{"using":"id","value":"<id>"}'` |
-| Find element by XPath | `$KOBITON_BIN wd post element '{"using":"xpath","value":"<xpath>"}'` |
-| Find element by class | `$KOBITON_BIN wd post element '{"using":"class name","value":"<class>"}'` |
-| Click element | `$KOBITON_BIN wd post element/<elementId>/click '{}'` |
-| Type text | `$KOBITON_BIN wd post element/<elementId>/value '{"text":"<text>"}'` |
-| Clear text | `$KOBITON_BIN wd post element/<elementId>/clear '{}'` |
-| Get element text | `$KOBITON_BIN wd get element/<elementId>/text` |
-| Get page source | `$KOBITON_BIN wd get source` |
-| Get orientation | `$KOBITON_BIN wd get orientation` |
-| Set orientation | `$KOBITON_BIN wd post orientation '{"orientation":"LANDSCAPE"}'` |
-| Get window size | `$KOBITON_BIN wd get window/rect` |
-| Take screenshot | `$KOBITON_BIN wd get screenshot` |
-| Accept alert | `$KOBITON_BIN wd post execute '{"script":"kobiton:alerthandler","args":{"auto":"accept"}}'` |
-| Dismiss alert | `$KOBITON_BIN wd post execute '{"script":"kobiton:alerthandler","args":{"auto":"dismiss"}}'` |
-| Go to URL | `$KOBITON_BIN wd post url '{"url":"<url>"}'` |
-| Get current URL | `$KOBITON_BIN wd get url` |
-| Swipe | `$KOBITON_BIN wd post actions '{"actions":[{"type":"pointer","id":"finger1","parameters":{"pointerType":"touch"},"actions":[{"type":"pointerMove","duration":0,"x":<startX>,"y":<startY>},{"type":"pointerDown","button":0},{"type":"pointerMove","duration":500,"x":<endX>,"y":<endY>},{"type":"pointerUp","button":0}]}]}'` |
-| Tap at coordinates | `$KOBITON_BIN wd post actions '{"actions":[{"type":"pointer","id":"finger1","parameters":{"pointerType":"touch"},"actions":[{"type":"pointerMove","duration":0,"x":<x>,"y":<y>},{"type":"pointerDown","button":0},{"type":"pointerUp","button":0}]}]}'` |
-| Press back (Android) | `$KOBITON_BIN wd post execute '{"script":"mobile: pressKey","args":{"keycode":4}}'` |
-| Press home (Android) | `$KOBITON_BIN wd post execute '{"script":"mobile: pressKey","args":{"keycode":3}}'` |
-| Ping session | `$KOBITON_BIN session ping` |
+`wd` sends a WebDriver call to the session created in Step 2:
+
+    $KOBITON_BIN wd post <path> '<json>'   # POST /session/<current-session>/<path>
+    $KOBITON_BIN wd get <path>             # GET  /session/<current-session>/<path>
+
+Every operation's `<path>` and body (find, click, type, clear, text, source, screenshot, window size, orientation, URL, alerts, back / home, swipe and tap), the selector rules, the find-then-act workflow and the response and error shapes live in the reference shared with `drive-automation-session`: [`$SKILL_DIR/../drive-automation-session/references/webdriver.md`](../drive-automation-session/references/webdriver.md).
+Read it before the first `wd` call in a session.
+For example, `wd post element '{"using":"accessibility id","value":"Open Settings"}'` finds an element and `wd get window/rect` returns the window size.
+
+CLI-specific behaviour:
+
+- `wd get source` and `wd get screenshot` print raw XML and base64 PNG (the CLI unwraps the envelope) - save them as in Step 4.
+- `wd` failures exit 0 (see Error Handling).
+- `$KOBITON_BIN wd --help` lists the subcommands; `$KOBITON_BIN session ping` checks the session is alive.
 
 ### adb-shell commands (Android only)
 
@@ -347,8 +339,6 @@ Never paste full dumpsys/logcat output to chat - surface a summary + the file pa
 
 - If the target is a known element ID -> WebDriver (`wd post element/<id>/click`, `.../value`).
 - If the target is a hardware key, a blind coordinate tap, or a system-level action -> `adb shell input` / `am` / `pm`.
-
-**Web content visibility differs by platform.** iOS exposes web page content to the automation hierarchy — `wd get source` on a Safari page includes the page's text, links, and buttons, so in-page elements (cookie dialogs, page buttons) are findable and clickable with native locators. Android's UiAutomator does **not** see inside a WebView: the same dialog that is clickable on iOS is invisible on Android — fall back to coordinate taps or handle it outside the WebView. Locator tip for iOS web content: when an `accessibility id` lookup misses (or an XPath by `@label` does), check `wd get source` for the element's actual `XCUIElementType` — web controls often surface as `Link` or `StaticText` rather than `Button`, and the type in your XPath must match.
 - For inspection (foreground app, processes, build props, settings) -> adb shell only; there is no WebDriver equivalent.
 
 Default: prefer adb-shell for system-level work, WebDriver for UI element-level work.
@@ -392,9 +382,7 @@ The skill produces two kinds of output: **per-command responses** that Claude pa
 
 The common parsing patterns:
 
-- **Most WebDriver responses** are JSON envelopes `{"value": <result>}`. Null/empty `.value` means success; a non-null `.value` is the result (string, rect object, script return).
-- **Find element** (`wd post element`) hides the element ID under `.value`, but the exact path varies (`.value.ELEMENT`, `.value["element-6066-11e4-a52e-4f735466cecf"]`, or a bare string). Use a tolerant extractor like `jq -r '.value.ELEMENT // .value["element-6066-11e4-a52e-4f735466cecf"] // .value'`.
-- **Screenshot and page source** (`wd get screenshot`, `wd get source`) are special-cased — the CLI unwraps the WebDriver JSON envelope and emits raw base64 PNG / raw XML on stdout. Pipe straight into a file.
+- **WebDriver (`wd`)** responses are the JSON envelopes described in [`webdriver.md` § Responses and errors](../drive-automation-session/references/webdriver.md#responses-and-errors), except `wd get screenshot` / `wd get source`, which the CLI unwraps into raw base64 PNG / raw XML on stdout - pipe those straight into a file.
 - **Session commands** mix text + exit code. `session create --hide` prints `Session <id> created for device <udid>.` (and, without `--hide`, an extra `Session token <jwt>` line - which is why the flag is mandatory); `session ping` prints `Session <id> pinged.` and signals liveness through exit code (0 = alive); `session list` prints a comma-separated table (`ID, State, Type, Device, Platform, Created, Ended`) followed by a footer - `Page N (M items), T total` when paged, `N of T sessions, P pages.` when `--all` spans several pages - or the single line `No sessions found.` when nothing matches.
 - **`device` / `file` / `app` / `test`** emit plain text and signal failure through exit code. Long-running ones (`test run`, `device forward`) should be launched with `run_in_background: true` and tailed.
 
@@ -404,10 +392,12 @@ For the full per-command table (response on stdout, exact parsing recipe per com
 
 After (and during) a session, the workspace and home directory contain:
 
-- **`.kobiton/sessions/<session-id>/screenshot-<unix-ts>.png`** - every screenshot captured during the session, named by Unix timestamp so they sort chronologically.
-- **`.kobiton/sessions/<session-id>/source-<unix-ts>.full.xml`** - every raw page-source dump captured during the session.
-- **`.kobiton/sessions/<session-id>/source-<unix-ts>.xml`** - the lean view of each dump (the file to read).
+- **`.kobiton/sessions/<session-id>/screenshot-<ts>.png`** - every screenshot captured during the session.
+- **`.kobiton/sessions/<session-id>/source-<ts>.full.xml`** - every raw page-source dump captured during the session.
+- **`.kobiton/sessions/<session-id>/source-<ts>.xml`** - the lean view of each dump (the file to read).
 - **`~/.kobiton/.session`** - the JWT for the most recently created session, written by `session create` whether or not `--hide` is passed. The CLI uses this implicitly; treat it as opaque and never read it into chat. It's overwritten by the next `session create`.
+
+`<ts>` is the capture's epoch seconds, so files sort chronologically; the kinds and names match [`webdriver.md` § Observe](../drive-automation-session/references/webdriver.md#observe).
 
 The Kobiton portal also hosts a live session view at:
 
@@ -422,8 +412,7 @@ Where `<portal-base>` is derived from the `KOBITON_PORTAL` value in the active p
 - **`wd` errors exit 0**: WebDriver failures (e.g. no such element) return exit code 0 with a JSON error body - check the response JSON, not `$?`. A bounded `device log` exiting 124 (`timeout`) or 142 (perl-alarm) is the bound firing, not a failure.
 - **Session create failed**: device may be offline, already reserved, or the UDID is wrong - verify availability with the `listDevices` MCP tool before retrying.
 - **Session expired / auth error mid-flow**: `session ping` fails or a command returns auth error - offer to create a new session.
-- **Element not found**: capture the page source (Step 4) and read the lean view to inspect the UI hierarchy, then try a different locator strategy (xpath instead of id, or vice versa). After a second miss on the same target, open the `.full.xml` per [`observe.md`](../drive-automation-session/references/observe.md#when-to-open-the-full-source).
-- **Stale element reference** after navigation: re-find the element on the new screen; element IDs do not survive page transitions.
+- **`no such element`, `stale element reference` and other WebDriver errors**: see [`webdriver.md` § Responses and errors](../drive-automation-session/references/webdriver.md#responses-and-errors) for the next move; capture the page source (Step 4) before re-planning a selector.
 - **Binary not found**: no cached CLI build exists under `~/.kobiton/cli/` - run `/automate:setup` (or re-open the session so the SessionStart hook downloads the pinned build). If the platform is unsupported (Intel Mac, non-x64), recommend `run-automation-suite` or the MCP tools instead.
 - **Checksum mismatch during install**: the download was corrupted or tampered with - the installer discards it and keeps any existing cache. Retry `/automate:setup`; if it persists, report it on the plugin repo.
 - **Version drift warning from `run.sh`**: the pinned build is not cached (usually pruned upstream) and a different cached build is being used - run `/automate:doctor` to see pinned vs installed vs latest, and update the automate plugin to its latest version (newer releases pin a validated build).
@@ -459,7 +448,7 @@ The skill walks through:
        ~/.kobiton/bin/kobiton wd post element \
          '{"using":"xpath","value":"//*[@text=\"Display\"]"}'
 
-   Response is a JSON envelope; extract the element ID from `.value` (see [`references/response-shapes.md`](references/response-shapes.md#webdriver-commands) for the exact extraction recipe).
+   Response is a JSON envelope; extract the element ID from `.value` with the extractor in [`webdriver.md` § Transports](../drive-automation-session/references/webdriver.md#transports).
 
 6. Click it (substituting the captured `ELEMENT_ID`):
 
@@ -527,7 +516,7 @@ Assumes a session is already active (run `session ping` first; if expired, creat
 
        grep 'clickable="true"' .kobiton/sessions/12345/source-<ts>.xml | head -20
 
-   The lean view is all this question needs. Reach for the full file only for the [`observe.md`](../drive-automation-session/references/observe.md#when-to-open-the-full-source) cases - for example a targeted structured query such as `xmllint --xpath '//*[@clickable="true"]/@resource-id' .kobiton/sessions/12345/source-<ts>.full.xml` (Android) when you need an attribute the lean view leaves out.
+   The lean view is all this question needs. Reach for the full file only for the [`webdriver.md`](../drive-automation-session/references/webdriver.md#when-to-open-the-full-source) cases - for example a targeted structured query such as `xmllint --xpath '//*[@clickable="true"]/@resource-id' .kobiton/sessions/12345/source-<ts>.full.xml` (Android) when you need an attribute the lean view leaves out.
 
 3. Report a deduplicated list of resource IDs (or fall back to `content-desc` / `text` for nodes that have no `resource-id`), and the paths to both files - the user asked to keep the page source for later grepping, and `source-<ts>.full.xml` is the complete one.
 
