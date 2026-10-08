@@ -64,7 +64,7 @@ CI runs `pnpm install --frozen-lockfile && pnpm run validate && pnpm test` on ev
 | `scripts/sync-version.test.js` | version field sync across host manifests + `CHANGELOG.md` top-entry match |
 | `skills/run-automation-suite/scripts/render-capabilities.test.js` | Appium capability renderer |
 | `skills/run-automation-suite/scripts/chromeless-launcher.test.js` | chromeless-launcher dispatcher: argument parsing, per-OS shim layout (forces an unsupported `OSTYPE` to exit before touching Chrome) |
-| `skills/drive-automation-session/scripts/appium.test.js` | `node:https` Appium client: request shaping, credentials loading, error envelopes |
+| `skills/drive-automation-session/scripts/appium.test.js` | `node:https` Appium client: request shaping, credentials loading, error envelopes, `screen`'s turn count and warning, `session.log` lines |
 | `skills/drive-automation-session/scripts/strip-webview-dom.test.js` | webview DOM reducer |
 | `skills/drive-automation-session/scripts/ui-tree.test.js` | shared lean UI-tree view: source-kind detection, native Android / iOS filter (size floor, every targetable element kept with bounds, hoisting, entity passthrough), webview delegation, CLI |
 | `skills/monitor-test-run/scripts/poll-test-run.test.js` | test-run poller: state-change emission, terminal detection, line protocol |

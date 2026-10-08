@@ -405,7 +405,8 @@ describe('appium.js screen helper', () => {
     expect(r.stdout).toBe('')
     expect(JSON.parse(r.stderr.trim().split('\n')[0]).status).toBe(404)
     const ts = soleTs(dir)
-    expect(readdirSync(dir).sort()).toEqual([`error-${ts}.json`, `request-${ts}.json`])
+    expect(readdirSync(dir).sort()).toEqual([`error-${ts}.json`, `request-${ts}.json`, 'session.log'])
+    expect(readFileSync(join(dir, 'session.log'), 'utf8')).toBe(`ts=${ts} error\n`)
   })
 
   it('requires --session-dir (stderr names --session-dir; exit 0)', async () => {
@@ -574,6 +575,132 @@ describe('appium.js persistence (--session-dir)', () => {
   })
 })
 
+describe('appium.js turn warning and session.log', () => {
+  // Stand-ins for earlier screen / act turns: request files stamped well in
+  // the past, so the call under test still takes the current second.
+  let seedBase = Math.floor(Date.now() / 1000) - 1_000_000
+  function seedTurns(dir, n) {
+    for (let i = 0; i < n; i += 1) {
+      seedBase += 1
+      writeFileSync(join(dir, `request-${seedBase}.json`), '{"argv":[]}\n')
+    }
+  }
+  const screen = (dir) => runWithCreds(['screen', '--session-id', 's', '--session-dir', dir, '--xml-only'])
+  const logPath = (dir) => join(dir, 'session.log')
+  const warningLines = (dir) => existsSync(logPath(dir))
+    ? readFileSync(logPath(dir), 'utf8').split('\n').filter((l) => l.endsWith(' warning'))
+    : []
+
+  it('screen stdout carries turns: the screen and act calls so far, this one included', async () => {
+    reset(() => ({status: 200, body: {value: '<x/>'}}))
+    const dir = makeSessionDir()
+    const first = JSON.parse((await screen(dir)).stdout)
+    expect(first.turns).toBe(1)
+    expect(first.warning).toBeUndefined()
+    await runWithCreds(['--method', 'POST', '--url', '/session/s/element', '--req-body', '{"using":"id","value":"a"}', '--session-dir', dir])
+    const third = JSON.parse((await screen(dir)).stdout)
+    expect(third.turns).toBe(3)
+    expect(JSON.parse(readFileSync(join(dir, `response-${third.ts}.json`), 'utf8'))).toEqual(third)
+    // Successful calls below the threshold write nothing to session.log.
+    expect(existsSync(logPath(dir))).toBe(false)
+  })
+
+  it('no warning at 99 turns', async () => {
+    reset(() => ({status: 200, body: {value: '<x/>'}}))
+    const dir = makeSessionDir()
+    seedTurns(dir, 98)
+    const r = await screen(dir)
+    const out = JSON.parse(r.stdout)
+    expect(out.turns).toBe(99)
+    expect(out.warning).toBeUndefined()
+    expect(existsSync(logPath(dir))).toBe(false)
+  })
+
+  it('warns at 100 turns on stdout only, and appends ts=<ts> turns=100 warning to session.log', async () => {
+    reset(() => ({status: 200, body: {value: '<x/>'}}))
+    const dir = makeSessionDir()
+    seedTurns(dir, 99)
+    const started = '2026-10-08T00:00:00Z session=s started intent=x\n'
+    writeFileSync(logPath(dir), started)
+    const r = await screen(dir)
+    expect(r.stderr).toBe('')
+    const out = JSON.parse(r.stdout)
+    expect(out.turns).toBe(100)
+    expect(out.warning).toBe('100 turns on this session — check whether the flow is progressing (references/loop-discipline.md, Stuck patterns) and end with control --blocked if it is not')
+    expect(JSON.parse(readFileSync(join(dir, `response-${out.ts}.json`), 'utf8'))).toEqual(out)
+    // Append-only: the host's lines stay.
+    expect(readFileSync(logPath(dir), 'utf8')).toBe(`${started}ts=${out.ts} turns=100 warning\n`)
+  })
+
+  it('warns at 125 turns when no warning for 125-149 is logged', async () => {
+    reset(() => ({status: 200, body: {value: '<x/>'}}))
+    const dir = makeSessionDir()
+    seedTurns(dir, 124)
+    writeFileSync(logPath(dir), 'ts=1 turns=100 warning\n')
+    const out = JSON.parse((await screen(dir)).stdout)
+    expect(out.turns).toBe(125)
+    expect(out.warning).toMatch(/^125 turns on this session/)
+    expect(warningLines(dir)).toEqual(['ts=1 turns=100 warning', `ts=${out.ts} turns=125 warning`])
+  })
+
+  it('warns once at 100, not on any screen call from 101 to 124, then again at 125', async () => {
+    reset(() => ({status: 200, body: {value: '<x/>'}}))
+    const dir = makeSessionDir()
+    seedTurns(dir, 99)
+    const seen = []
+    for (let turn = 100; turn <= 125; turn += 1) {
+      const r = await screen(dir)
+      expect(r.stderr).toBe('')
+      const out = JSON.parse(r.stdout)
+      expect(out.turns).toBe(turn)
+      if (out.warning) seen.push(out.turns)
+    }
+    expect(seen).toEqual([100, 125])
+    expect(warningLines(dir).map((l) => l.replace(/^ts=\d+ /, ''))).toEqual(['turns=100 warning', 'turns=125 warning'])
+  }, 60_000)
+
+  it('a threshold reached by an act call warns on the next screen call; act stdout is unchanged', async () => {
+    const body = {value: {ELEMENT: 'el-1'}}
+    reset((hit) => hit.path.endsWith('/source') ? {status: 200, body: {value: '<x/>'}} : {status: 200, body})
+    const dir = makeSessionDir()
+    seedTurns(dir, 98)
+    expect(JSON.parse((await screen(dir)).stdout).warning).toBeUndefined()   // turn 99
+    const act = await runWithCreds(['--method', 'POST', '--url', '/session/s/element', '--req-body', '{"using":"id","value":"a"}', '--session-dir', dir])   // turn 100
+    expect(act.stdout).toBe(JSON.stringify(body) + '\n')
+    expect(act.stderr).toBe('')
+    expect(warningLines(dir)).toEqual([])
+    const next = JSON.parse((await screen(dir)).stdout)   // turn 101
+    expect(next.turns).toBe(101)
+    expect(next.warning).toMatch(/^101 turns on this session/)
+    expect(warningLines(dir)).toEqual([`ts=${next.ts} turns=101 warning`])
+    const after = JSON.parse((await screen(dir)).stdout)   // turn 102
+    expect(after.warning).toBeUndefined()
+  })
+
+  it('a failed call appends ts=<ts> error to session.log after the host lines', async () => {
+    reset(() => ({status: 404, body: {value: {error: 'no such element'}}}))
+    const dir = makeSessionDir()
+    const started = '2026-10-08T00:00:00Z session=s started intent=x\n'
+    writeFileSync(logPath(dir), started)
+    await runWithCreds(['--method', 'POST', '--url', '/session/s/element', '--req-body', '{"using":"id","value":"a"}', '--session-dir', dir])
+    const ts = soleTs(dir)
+    expect(readFileSync(logPath(dir), 'utf8')).toBe(`${started}ts=${ts} error\n`)
+  })
+
+  it('a failed screen call at a threshold logs the error and leaves the warning for the next screen', async () => {
+    let fail = true
+    reset(() => fail ? {status: 500, body: {value: {error: 'unknown error'}}} : {status: 200, body: {value: '<x/>'}})
+    const dir = makeSessionDir()
+    seedTurns(dir, 99)
+    const r = await screen(dir)   // turn 100, fails
+    expect(r.stdout).toBe('')
+    expect(readFileSync(logPath(dir), 'utf8')).toMatch(/^ts=\d+ error\n$/)
+    fail = false
+    const out = JSON.parse((await screen(dir)).stdout)   // turn 101
+    expect(out.warning).toMatch(/^101 turns on this session/)
+  })
+})
+
 describe('appium.js actions helper', () => {
   it('--type touch builds W3C pointer sequence', async () => {
     reset(() => ({status: 200, body: {value: null}}))
@@ -661,7 +788,9 @@ describe('appium.js control helper', () => {
     const dir = makeSessionDir()
     const r = await runWithCreds(['control', '--reason', 'x', '--session-dir', dir])
     expect(r.ok).toBe(true)  // exit 0 always; host detects error via stderr / error-<ts>.json
-    expect(readdirSync(dir)).toEqual([`error-${soleTs(dir)}.json`])
+    const ts = soleTs(dir)
+    expect(readdirSync(dir).sort()).toEqual([`error-${ts}.json`, 'session.log'])
+    expect(readFileSync(join(dir, 'session.log'), 'utf8')).toBe(`ts=${ts} error\n`)
   })
 
   it('control without --session-dir is a usage error (exit 0)', async () => {

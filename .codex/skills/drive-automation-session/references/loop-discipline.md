@@ -8,8 +8,8 @@ Every `appium.js` call with `--session-dir` takes one timestamp `<ts>` (epoch se
 
 | Branch | Command | Effect |
 |---|---|---|
-| **screen** | `node appium.js screen --session-id <id> --session-dir <d>` [`--xml-only` \| `--png-only`] [`--full`] | Default writes the lean `source-<ts>.xml`, the raw `source-<ts>.full.xml` and `screenshot-<ts>.png`. Prints `{ts, source, fullSource, screenshot, hash, mode, xmlBytes, fullXmlBytes, pngBytes}` on stdout. What to read is in [`webdriver.md` § Observe](webdriver.md#observe). |
-| **act** | `node appium.js <argv> --session-dir <d>` | Issues the Appium call. Prints the raw response body on stdout (success) or `{status}` plus the body on stderr (any failure: Appium error, network, parse, usage). Writes `request-<ts>.json` + either `response-<ts>.json` or `error-<ts>.json` with the same content. |
+| **screen** | `node appium.js screen --session-id <id> --session-dir <d>` [`--xml-only` \| `--png-only`] [`--full`] | Default writes the lean `source-<ts>.xml`, the raw `source-<ts>.full.xml` and `screenshot-<ts>.png`. Prints `{ts, source, fullSource, screenshot, hash, mode, xmlBytes, fullXmlBytes, pngBytes, turns}` on stdout, plus `warning` on a [turn-warning](#turn-warning) call. What to read is in [`webdriver.md` § Observe](webdriver.md#observe). |
+| **act** | `node appium.js <argv> --session-dir <d>` | Issues the Appium call. Prints the raw response body on stdout (success) or `{status}` plus the body on stderr (any failure: Appium error, network, parse, usage). Writes `request-<ts>.json` + either `response-<ts>.json` or `error-<ts>.json` with the same content; a failure also appends `ts=<ts> error` to `session.log`. |
 | **control** | `node appium.js control --done\|--blocked --reason "..." --session-dir <d>` | Writes `control-<ts>.json` and prints it with `ts`; no HTTP call. Signals the host to end the cycle. |
 
 The host picks one branch per turn. The script always exits 0; a call failed when it printed to stderr (and wrote `error-<ts>.json`).
@@ -54,17 +54,22 @@ For how to construct the `act` call from the observed XML — selectors, the fin
   error-1759700004.json           ← the call's stderr on failure (line 1 = {status}; line 2+ = body)
   ...
   control-1759700031.json         ← only when the host emitted `control` (instead of an Appium call)
-  session.log                     ← human-readable timeline
+  session.log                     ← human-readable timeline: the host's start / end lines, appium.js's `ts=<ts> error` and `ts=<ts> turns=<n> warning` lines
 ```
 
 Every file one call writes shares its `<ts>`, and timestamps increase in call order.
 Workspace-relative, NOT `/tmp`, with the same `<kind>-<ts>.<ext>` names `run-interactive-session` uses, so post-session tooling (test-case authoring, video pickup) finds artifacts in the same place.
+Disk is not rotated (a 100-turn session is ~50MB worst case with screenshots); the workspace's per-session directory is the user's to clean up.
 
-## Iteration ceiling
+## Turn warning
 
-Hard cap at `MAX_ITERS=100` iterations per session, counted from disk: every `screen` and `act` call writes one `request-<ts>.json`, so their number is the turn count. When the count reaches the cap, end with `exit 0`; the trap cleans up. Override per session with `MAX_ITERS=<n>`. Disk is not rotated (a 100-turn session is ~50MB worst case with screenshots); the workspace's per-session directory is the user's to clean up.
+Every `screen` and `act` call writes one `request-<ts>.json`, so their number is the session's turn count; `screen` prints it as `turns`, this call included.
+From 100 turns, and again every 25 turns after (125, 150, …), `screen` also prints a `warning` and `appium.js` appends `ts=<ts> turns=<n> warning` to `session.log`.
+A threshold reached by an act call is reported on the next `screen`.
 
-This is a pure safety net against runaway cycles (host logic bugs, pathological flows). It is NOT the stuck-detection mechanism — see "Stuck patterns" below. Most real flows complete in 10-30 turns, well under the cap.
+On a warning, re-check the flow against "Stuck patterns" below: keep going if it is progressing, and end with `control --blocked` if it is not.
+The warning is a prompt, not a stop; most real flows complete in 10–30 turns.
+The platform's session-duration cap and `appium:newCommandTimeout` are the hard limits.
 
 ## Stuck patterns — host decides
 
@@ -73,6 +78,7 @@ The script does NOT enforce blocker thresholds. There is no `N_REPEAT`, no `N_UN
 What the script provides:
 
 - **`screen` prints `{ts, hash, …}`** on stdout. Track the hash across turns in your conversation context to detect repetition.
+- **`screen` prints `turns`**, and a `warning` from 100 turns ([Turn warning](#turn-warning)).
 - **`request-<ts>.json`** — every prior call's audit, available for re-reading.
 - **`error-<ts>.json`** — full raw Appium error from any recoverable failure.
 
@@ -171,7 +177,7 @@ The cycle ends when **any one** of these is true:
 - User issues a stop command (or Ctrl-C). The trap cleans up.
 - Kobiton platform-side session termination. The next `appium.js` call fails with `invalid session id` (stderr and `error-<ts>.json`; the exit code stays 0). The trap cleans up (no-op since the session is already gone).
 
-The only action-count cap is the `MAX_ITERS` safety net ([Iteration ceiling](#iteration-ceiling)). There is no wall-clock cap inside this skill. The platform-side session-duration cap (set by the org plan; not configurable here) is the absolute ceiling.
+There is no action-count or wall-clock cap inside this skill; the [turn warning](#turn-warning) is a prompt, not a stop. The platform-side session-duration cap (set by the org plan; not configurable here) is the hard limit.
 
 ## Try/finally cleanup contract
 
@@ -204,7 +210,7 @@ When a call fails, stdout is empty and stderr carries the error: `{status}` plus
 - **Line 1:** a `{status}` JSON summary (HTTP status code; `0` for runtime errors like timeout / parse / network).
 - **Line 2+:** the raw response body verbatim. For Appium HTTP errors this is typically `{value: {error, message, stacktrace}}`. For runtime errors (script never reached the server) it's the script's own `{error, message}` JSON. For non-Appium error pages (HTML, plaintext from a misconfigured proxy, etc.) it's whatever the server sent.
 
-The host detects failure by the call's stderr output (the per-turn bookkeeping in SKILL.md also checks for `error-<ts>.json`). Read it before emitting the next turn's call.
+The host detects failure by the call's stderr output; `appium.js` also writes `error-<ts>.json` and appends `ts=<ts> error` to `session.log`. Read the error before emitting the next turn's call.
 
 ### Re-plannable Appium errors (typically: continue, try again)
 

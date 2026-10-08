@@ -67,8 +67,9 @@ node appium.js screen --session-id $SID --session-dir $DIR [--xml-only | --png-o
 - `--png-only`: the screenshot only, no source files.
 - `--full`: `source-<ts>.xml` holds the unfiltered tree (stripped webview DOM, raw native source) instead of the lean view; combines with `--xml-only`.
 - Prints one JSON line, also saved as `response-<ts>.json`:
-  `{"ts":T,"source":"source-T.xml","fullSource":"source-T.full.xml","screenshot":"screenshot-T.png","hash":"<sha256>","mode":"lean"|"full","xmlBytes":N,"fullXmlBytes":F,"pngBytes":M}`.
+  `{"ts":T,"source":"source-T.xml","fullSource":"source-T.full.xml","screenshot":"screenshot-T.png","hash":"<sha256>","mode":"lean"|"full","xmlBytes":N,"fullXmlBytes":F,"pngBytes":M,"turns":K}`, plus `"warning":"<text>"` on a turn-warning call.
   File names are relative to `--session-dir`, and a name is absent when its file wasn't captured.
+- `turns` counts the screen and act calls so far, this one included; from 100 turns and every 25 after, `warning` prompts a progress check ([`loop-discipline.md` § Turn warning](loop-discipline.md#turn-warning)).
 - The hash covers `source-<ts>.xml` plus the screenshot.
   Track it in your conversation context across turns — repetition is a signal, never a forced stop.
 - The screenshot is captured by default because native overlays (Chrome's "notifications" welcome card, OS permission prompts, system dialogs) are not in webview source — [`loop-discipline.md`](loop-discipline.md#why-png-is-captured-by-default).
@@ -134,10 +135,12 @@ When none exists (`mobile: pinchOpenGesture` has no W3C analog), `execute/sync` 
 Arg shapes vary by driver (UiAutomator2 vs XCUITest); treat the Appium project's mobile-command reference as authoritative.
 Staying in a webview context and driving it with `execute` has the same capture gap.
 
-When the host sends an `execute/sync` call, log a one-line note in `session.log` so the developer knows that action won't appear in the saved test case (`$TS` is the turn's timestamp from the per-turn bookkeeping in SKILL.md):
+When the host sends an `execute/sync` call, log a one-line note in `session.log` so the developer knows that action won't appear in the saved test case.
+Run it right after the call; `$TS` is that call's timestamp, taken from the newest `request-<ts>.json`:
 
 ```bash
 if echo "$ACT_URL" | grep -q '/execute/sync'; then
+  TS=$(ls "$SESSION_DIR"/request-*.json | tail -1); TS=${TS##*request-}; TS=${TS%.json}
   printf 'ts=%s capture-warning=execute/sync url=%s\n' "$TS" "$ACT_URL" >> "$SESSION_DIR/session.log"
 fi
 ```

@@ -1,10 +1,11 @@
 // Appium / WebDriver HTTP client for the drive-automation-session skill.
 // One script, generic mode + four helpers (`screen`, `actions`, `touch-perform`,
 // `control`). Always exits 0; failures are surfaced via stderr and (when
-// --session-dir is set) error-<ts>.json. Full subcommand catalog and the
-// host's error-handling contract live in SKILL.md and references/.
+// --session-dir is set) error-<ts>.json plus a `ts=<ts> error` line in
+// session.log. Full subcommand catalog and the host's error-handling contract
+// live in SKILL.md and references/.
 
-import {readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync} from 'node:fs'
+import {readFileSync, writeFileSync, appendFileSync, mkdirSync, existsSync, readdirSync} from 'node:fs'
 import {parseArgs} from 'node:util'
 import {createHash} from 'node:crypto'
 import {request as httpsRequest} from 'node:https'
@@ -170,8 +171,18 @@ function sessionArtifacts(flags) {
   let ts = Math.floor(Date.now() / 1000)
   while (taken.has(ts)) ts += 1
   const name = (kind, ext) => `${kind}-${ts}.${ext}`
-  artifactsMemo = {ts, name, path: (kind, ext) => join(dir, name(kind, ext))}
+  artifactsMemo = {ts, dir, name, path: (kind, ext) => join(dir, name(kind, ext))}
   return artifactsMemo
+}
+
+// session.log is the session's human-readable timeline: the host writes the
+// start and end lines, appium.js appends one `ts=<ts> ...` line per failed call
+// and per turn warning. Append-only, created if missing. Best effort: a log
+// line that can't be written never fails the call.
+function appendSessionLog(artifacts, line) {
+  if (!artifacts) return
+  try { appendFileSync(join(artifacts.dir, 'session.log'), line + '\n') }
+  catch { /* the call's own artifacts and output are what matter */ }
 }
 
 function persistRequest(artifacts, argv) {
@@ -188,6 +199,42 @@ function persistError(artifacts, status, bodyStr) {
   if (!artifacts) return
   const content = JSON.stringify({status}) + '\n' + (bodyStr || '')
   writeFileSync(artifacts.path('error', 'json'), content.endsWith('\n') ? content : content + '\n')
+  appendSessionLog(artifacts, `ts=${artifacts.ts} error`)
+}
+
+// ---- Turn warning ----------------------------------------------------------
+
+// Every screen and act call writes one request-<ts>.json, so their number is
+// the session's turn count. `screen` reports it and, from TURN_WARN_AT turns
+// and every TURN_WARN_EVERY after, adds a warning that prompts the host to
+// re-check progress. Nothing here stops the loop.
+const TURN_WARN_AT = 100
+const TURN_WARN_EVERY = 25
+
+// Turns 100-124 are bucket 0, 125-149 bucket 1, and so on; below 100, -1.
+const turnBucket = (turns) => turns < TURN_WARN_AT ? -1 : Math.floor((turns - TURN_WARN_AT) / TURN_WARN_EVERY)
+
+// Only screen output reaches the host (act stdout is the raw WebDriver body),
+// so a threshold an act call reaches is reported by the next screen call: a
+// screen call warns when its bucket has not warned yet. Stateless across
+// calls: the record of past warnings is the `ts=<ts> turns=<n> warning` lines
+// this function appends to session.log (an absent log means none has warned).
+// Act calls never check, so they leave the bucket open for the next screen.
+function turnStatus(artifacts) {
+  const turns = readdirSync(artifacts.dir).filter((n) => /^request-\d+\.json$/.test(n)).length
+  const bucket = turnBucket(turns)
+  if (bucket < 0) return {turns}
+  let log = ''
+  try { log = readFileSync(join(artifacts.dir, 'session.log'), 'utf8') }
+  catch { /* no session.log yet */ }
+  for (const m of log.matchAll(/^ts=\d+ turns=(\d+) warning$/gm)) {
+    if (turnBucket(Number(m[1])) === bucket) return {turns}
+  }
+  appendSessionLog(artifacts, `ts=${artifacts.ts} turns=${turns} warning`)
+  return {
+    turns,
+    warning: `${turns} turns on this session — check whether the flow is progressing (references/loop-discipline.md, Stuck patterns) and end with control --blocked if it is not`
+  }
 }
 
 function emitResponse(res, artifacts, {treat404AsSuccess = false} = {}) {
@@ -295,6 +342,9 @@ async function cmdScreen(target, flags) {
   }
 
   Object.assign(out, {hash: hash.digest('hex'), mode, xmlBytes: xmlSize, fullXmlBytes: fullXmlSize, pngBytes: pngSize})
+  // Counted once this call's artifacts are written. A warning goes to stdout
+  // only: stderr means the call failed.
+  Object.assign(out, turnStatus(artifacts))
   process.stdout.write(JSON.stringify(out) + '\n')
   persistResponse(artifacts, JSON.stringify(out))
 }

@@ -16,7 +16,7 @@ allowed-tools: >-
   Bash(node:*),
   Bash(bash:*), Bash(pwsh:*),
   Bash(mkdir:*), Bash(mv:*), Bash(date:*), Bash(echo:*), Bash(printf:*),
-  Bash(ls:*), Bash(tail:*), Bash(wc:*), Bash(tr:*),
+  Bash(ls:*), Bash(tail:*),
   Bash(jq:*),
   Bash(open:*), Bash(xdg-open:*)
 version: 1.0.0
@@ -113,7 +113,6 @@ Remember the choice; act on it in Step 3 right after the session is created. Do 
 | `automationName` | recommended | `UiAutomator2` (Android) or `XCUITest` (iOS) |
 | `app` OR `browserName` | yes | `kobiton-store:vXXXXX` for app testing, browser name for web testing |
 | `testingType` | no | `app` (default) or `web` |
-| `MAX_ITERS` | no | env var override; default 100. Hard ceiling on iteration count (counted from the `request-<ts>.json` files on disk) — pure safety net against runaway cycles, not a stuck-detection mechanism. |
 
 ## Steps
 
@@ -269,7 +268,8 @@ node "$SKILL_DIR/scripts/appium.js" screen \
   --session-id "$SESSION_ID" --session-dir "$SESSION_DIR"
 # Stdout: {"ts":T,"source":"source-T.xml","fullSource":"source-T.full.xml",
 #          "screenshot":"screenshot-T.png","hash":"<sha256>","mode":"lean",
-#          "xmlBytes":N,"fullXmlBytes":F,"pngBytes":M}
+#          "xmlBytes":N,"fullXmlBytes":F,"pngBytes":M,"turns":K}
+#   plus "warning":"<text>" on a turn-warning call (below).
 # The names are relative to $SESSION_DIR. Track the hash across turns in your
 # conversation context — repetition is a signal, never a forced stop. See
 # references/loop-discipline.md "Stuck patterns".
@@ -291,28 +291,10 @@ node "$SKILL_DIR/scripts/appium.js" control \
   --done --reason "Settings reached and Bluetooth toggled" \
   --session-dir "$SESSION_DIR"
 # OR --blocked --reason "Two modals stacked; cannot dismiss"
-
-# ---- Per-turn bookkeeping (after a screen or act turn) ----
-
-# Every screen / act call writes one request-<ts>.json and timestamps increase
-# in call order: the last one is this turn's, their count is the turn count.
-LAST=$(ls "$SESSION_DIR"/request-*.json | tail -1)
-TS=${LAST##*request-}; TS=${TS%.json}
-TURNS=$(ls "$SESSION_DIR"/request-*.json | wc -l | tr -d ' ')
-
-# Log failures so session.log has a timeline. appium.js writes error-<ts>.json
-# on any failure — Appium HTTP error, network blip, usage error like missing
-# flag or malformed JSON. The host reads the error and re-plans next turn.
-if [ -f "$SESSION_DIR/error-$TS.json" ]; then
-  printf 'ts=%s error\n' "$TS" >> "$SESSION_DIR/session.log"
-fi
-
-# Iteration ceiling — safety net only. Not a stuck-detection mechanism.
-if [ "$TURNS" -ge "${MAX_ITERS:-100}" ]; then
-  printf 'ts=%s max-iters-reached turns=%d limit=%d\n' "$TS" "$TURNS" "${MAX_ITERS:-100}" >> "$SESSION_DIR/session.log"
-  exit 0
-fi
 ```
+
+`screen` also reports `turns` (the screen and act calls so far, this one included) and, from 100 turns and every 25 after, a `warning` to re-check the flow against the stuck patterns and end with `control --blocked` if it is not progressing — a prompt, not a stop ([`references/loop-discipline.md` § Turn warning](references/loop-discipline.md#turn-warning)).
+`appium.js` logs each failed call (`ts=<ts> error`) and each warning (`ts=<ts> turns=<n> warning`) to `session.log`.
 
 #### Branch decision guide
 
@@ -359,7 +341,7 @@ See `references/webdriver.md` for the operations catalog (`<path>` and body for 
 
 The script does not enforce blocker thresholds. The AI host tracks the `hash` from `screen` across turns in its conversation context and decides when to emit `control --blocked`. See `references/loop-discipline.md` "Stuck patterns" for concrete examples — same-call repetition, screen oscillation (A→B→A→B), credentials prompt, CAPTCHA, lazy load (use a no-op observe to wait), network spinner.
 
-The only hard programmatic stop is `MAX_ITERS=100` (override per session), which is a safety net against runaway cycles — not a stuck-detection mechanism.
+The script stops nothing: the turn `warning` from `screen` is a prompt to re-check, and the platform's session-duration cap and `appium:newCommandTimeout` are the hard limits.
 
 ## Errors
 
@@ -369,7 +351,7 @@ The only hard programmatic stop is `MAX_ITERS=100` (override per session), which
 | Session create prints `{"status":401}` on stderr | Credentials stale | Re-run `/automate:setup` to refresh `~/.kobiton/.credentials`; check the portal URL |
 | Session create prints a platform-cap message on stderr | `newCommandTimeout: 1800` rejected by Kobiton | Lower the timeout in `references/capabilities.md` |
 | stderr / `error-<ts>.json` body has `value.error: "no such element"` | Selector matched nothing | Re-plan next turn with a different strategy / selector; after two misses in a row, open the latest `source-<ts>.full.xml` (`references/webdriver.md` § Observe) |
-| stderr / `error-<ts>.json` body has `value.error: "invalid session id"` | Kobiton platform-side session ended | Emit `control --blocked` (or just let MAX_ITERS catch it); trap cleans up |
+| stderr / `error-<ts>.json` body has `value.error: "invalid session id"` | Kobiton platform-side session ended | Emit `control --blocked`; trap cleans up |
 
 ## Notes
 
