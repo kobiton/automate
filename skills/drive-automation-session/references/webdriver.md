@@ -11,15 +11,17 @@ Everything after that section is transport-neutral: an operation is a method, a 
 | `POST <path>` with `<body>` | `$KOBITON_BIN wd post <path> '<body>'` | `node appium.js --method POST --url /session/$SID/<path> --req-body '<body>' --session-dir $DIR` |
 | `GET <path>` | `$KOBITON_BIN wd get <path>` | `node appium.js --method GET --url /session/$SID/<path> --session-dir $DIR` |
 | Which session | The one `session create` opened (implicit) | `$SID` in the URL |
-| Success | Response body on stdout | Response body on stdout, also saved as `response-<ts>.json` |
-| Failure | JSON error body, exit 0 — check `.value.error`, not `$?` | Nothing on stdout; `{"status":N}` plus the raw body on stderr, also saved as `error-<ts>.json`; exit 0 |
-| Page source, screenshot | `wd get source` / `wd get screenshot` print raw XML / base64 PNG (the CLI unwraps the envelope); save them as [Observe](#observe) describes | The `screen` helper saves both and prints the file names ([Observe](#observe)) |
+| Success | The unwrapped result on stdout — the envelope's `value` alone, for every call: a find prints `{"ELEMENT":"…","element-6066-11e4-a52e-4f735466cecf":"…"}`, a call with no result prints `null`; exit 0 | The full envelope `{"sessionId":…,"status":0,"value":…}` on stdout, also saved as `response-<ts>.json`; exit 0 |
+| Failure | A top-level `{"error":"…","message":"…"}` on stdout, exit 0 — check `.error`, not `$?` | Nothing on stdout; `{"status":N}` plus the raw body on stderr, also saved as `error-<ts>.json`; exit 0 |
+| Page source, screenshot | `wd get source` / `wd get screenshot` print the raw XML / base64 PNG (the unwrapped result, like every call); save them as [Observe](#observe) describes | The `screen` helper saves both and prints the file names ([Observe](#observe)) |
 
 Both transports take the element id out of a find call's stdout with the same extractor:
 
 ```bash
-jq -r '.value.ELEMENT // .value["element-6066-11e4-a52e-4f735466cecf"] // .value'
+jq -r '(.value? // .) | if type == "object" then (.ELEMENT // .["element-6066-11e4-a52e-4f735466cecf"]) else . end'
 ```
+
+It reads `value` from the `appium.js` envelope and the CLI's unwrapped result as printed, then returns the id from either key, or a bare id string as is.
 
 The rest of each transport stays with its skill: `run-interactive-session/SKILL.md` for `wd --help` and the CLI's non-WebDriver commands; [`endpoint-reference.md`](endpoint-reference.md) for the `appium.js` helpers, the capture allowlist and the session lifecycle; [`loop-discipline.md`](loop-discipline.md) for the turn loop and its artifacts.
 
@@ -51,7 +53,7 @@ The rest of each transport stays with its skill: `run-interactive-session/SKILL.
 | Press back (Android) | POST | `back` | `{}` |
 | Press home (Android) | POST | `appium/device/press_keycode` | `{"keycode":3}` |
 | Press another hardware key (Android: back 4, volume up 24, power 26) | POST | `appium/device/press_keycode` | `{"keycode":N}` |
-| Press a hardware key by script (Android) | POST | `execute` | `{"script":"mobile: pressKey","args":{"keycode":N}}` |
+| Press a hardware key by script (Android) | POST | `execute/sync` | `{"script":"mobile: pressKey","args":[{"keycode":N}]}` |
 | Hide the keyboard | POST | `appium/device/hide_keyboard` | `{}` |
 | Send keys to the focused element | POST | `keys` | `{"value":["<char>","<char>"]}` |
 | Accept an alert | POST | `execute` | `{"script":"kobiton:alerthandler","args":{"auto":"accept"}}` |
@@ -70,6 +72,9 @@ The rest of each transport stays with its skill: `run-interactive-session/SKILL.
 | Set timeouts | POST | `timeouts` | `{"implicit":N}` |
 | Run an Appium `mobile:` command | POST | `execute/sync` | `{"script":"mobile: <command>","args":[{}]}` — argument shapes differ by driver (UiAutomator2 vs XCUITest); take them from the Appium driver docs |
 | Run JavaScript (web context) | POST | `execute` | `{"script":"<js>","args":[]}` |
+
+Send every `mobile:` command to `execute/sync` with its arguments as a one-element array, `"args":[{…}]`.
+The hub also accepts `execute`, and `args` as a bare object.
 
 ### Gesture bodies
 
@@ -136,8 +141,9 @@ Every call that targets an element follows the same steps:
 1. observe              → the lean view (Observe)
 2. read the lean view   → the target node and its attributes
 3. POST element         → {"using":"<strategy>","value":"<selector>"}
-                        ← {"value":{"element-6066-11e4-a52e-4f735466cecf":"<id>"}}
-                          or {"value":{"ELEMENT":"<id>"}} (older drivers)
+                        ← result {"element-6066-11e4-a52e-4f735466cecf":"<id>"},
+                          {"ELEMENT":"<id>"} (older drivers), or both keys
+                          (the CLI prints the result; appium.js nests it under "value")
 4. extract the id       → the extractor in Transports; the id is opaque
 5. act on it            → POST element/<id>/click, element/<id>/value, element/<id>/clear,
                           touch/longclick with {"element":"<id>"}, …
@@ -151,10 +157,10 @@ Example: the lean view holds
 
 Its `content-desc` is meaningful, so find it by accessibility id and click the id that comes back:
 
-| Step | Method | `<path>` | Body | Response |
+| Step | Method | `<path>` | Body | Result (the envelope's `value`) |
 |---|---|---|---|---|
-| Find | POST | `element` | `{"using":"accessibility id","value":"Open Settings"}` | `{"value":{"element-6066-11e4-a52e-4f735466cecf":"el-9"}}` |
-| Click | POST | `element/el-9/click` | `{}` | `{"value":null}` |
+| Find | POST | `element` | `{"using":"accessibility id","value":"Open Settings"}` | `{"element-6066-11e4-a52e-4f735466cecf":"el-9"}` |
+| Click | POST | `element/el-9/click` | `{}` | `null` |
 
 The same find body matches `<XCUIElementTypeButton name="Open Settings" …/>` on iOS.
 To type, find the field (`{"using":"id","value":"com.example.app:id/email_input"}`) and POST `element/<id>/value` with `{"text":"user@example.com"}`.
@@ -165,9 +171,9 @@ After the screen changes (a successful tap, a navigation), observe again and re-
 ### Coordinates
 
 Prefer element calls: they survive layout changes and read better in a saved test case.
-Use coordinates only where no element call reaches the target:
+Use coordinates where no element call reaches the target:
 
-- scrolling a custom view that exposes no scrollable children;
+- scrolling a list, page or other scrollable container — [Operations](#operations) has no element-anchored scroll, so a scroll is a [swipe](#gesture-bodies) through `actions` (in `drive-automation-session`, the `actions` helper builds it);
 - dragging on a canvas (drawing, signature pad, map);
 - swiping a carousel that ignores element-level swipes;
 - tapping a region of an image that has no element.
@@ -175,9 +181,11 @@ Use coordinates only where no element call reaches the target:
 Coordinates come from the lean view too, never invented: Android `bounds="[x1,y1][x2,y2]"`, iOS `x` / `y` / `width` / `height`.
 
 - Center of an element: `((x1+x2)/2, (y1+y2)/2)`.
-- Near the top or bottom edge of a scrollable region: `(cx, y1 + 50)` or `(cx, y2 - 50)`.
+- A scroll swipe starts and ends inside the container's bounds and clear of the status and navigation bars: for example from 80% to 20% of the container's height at its horizontal centre, rather than a fixed offset from its edge.
+  A container that fills the screen reaches into those bars, so a fixed offset from its edge can land the finger on them.
 
-Example: a list with `bounds="[0,300][1080,2100]"` is centered on `(540, 1200)`; to scroll its content down, POST `actions` with a [swipe](#gesture-bodies) whose finger moves up, from `(540, 1800)` to `(540, 600)` over 300 ms.
+Example: a list with `bounds="[0,300][1080,2100]"` is 1800 px tall with its horizontal centre at x = 540; to scroll its content down, POST `actions` with a swipe whose finger moves up, from 80% of its height to 20%: `(540, 1740)` to `(540, 660)` over 300 ms.
+Swap the direction to scroll back up; for a horizontal container, take the same fractions of its width at its vertical centre.
 
 ## Web content
 
@@ -187,7 +195,7 @@ What the native tree shows of a web page differs by platform:
 - **Android** UiAutomator does not see inside a WebView: the same dialog is invisible in the native source.
   Switch to the `WEBVIEW_*` context and use web selectors, or tap by coordinates.
 
-In a browser session or a `WEBVIEW_*` context the lean view is the stripped DOM; default to web interactions there (find, then click or value; `execute` for scripts).
+In a browser session or a `WEBVIEW_*` context, default to web interactions (find, then click or value; `execute` for scripts).
 Switch to `NATIVE_APP` only when the web path can't do the job:
 
 - something covers the page that isn't in the DOM — a native modal, system dialog, permission prompt or address-bar autofill (the screenshot shows it, the source doesn't);
@@ -210,13 +218,19 @@ Both skills save the same three files per observation under `.kobiton/sessions/<
 `drive-automation-session`'s `screen` helper writes all three in one call and prints their names; `run-interactive-session` writes them with `wd get source`, `wd get screenshot` and the lean-view filter (its Step 4).
 The filter is `drive-automation-session/scripts/ui-tree.js`: `node ui-tree.js <source-file>` prints the lean view.
 
+When a source file is large — over about 30 KB, typical of a web page, whose lean view often runs 70–175 KB — `grep` it for the target (its id, `name`, text, `aria-label` or a CSS hook) rather than reading it whole, the same targeted search the full source gets ([When to open the full source](#when-to-open-the-full-source)).
+`screen` reports the sizes as `xmlBytes` (lean) and `fullXmlBytes` (full).
+
 ### What the lean view keeps
+
+What the lean view is depends on what `/source` returned, not on the session type: an HTML page gives the stripped DOM, a native tree gives the native filter.
+A browser session can return the native tree before a page has loaded, so its first observation may be native.
 
 - **Native Android (UiAutomator2):** every element with a non-empty `resource-id`, `content-desc` or `text`, or with `clickable`, `long-clickable`, `checkable` or `scrollable="true"`.
   Each keeps `resource-id`, `content-desc`, `text`, `hint`, `bounds`, the state flags that are `true` (`clickable`, `long-clickable`, `scrollable`, `password`, `selected`), `checked` on any checkable element, and `enabled="false"` when an element is disabled.
 - **Native iOS (XCUITest):** every element with a non-empty `name`, `label` or `value`, `accessible="true"`, or a scroll container (`Table`, `CollectionView`, `ScrollView`, `WebView`).
   Each keeps `name`, `label`, `value`, `x`, `y`, `width`, `height`, plus `enabled` / `visible` when they are `false`.
-- **Webview / browser:** the stripped DOM — `<script>` / `<style>` / `<head>` / `<noscript>` and inline base64 images removed, attributes pruned to text, ids, names, classes, `aria-*`, `role`, `href`, `data-testid` and form-control attributes.
+- **HTML page** (a loaded page in a browser session or a `WEBVIEW_*` context): the stripped DOM — `<script>` / `<style>` / `<head>` / `<noscript>` and inline base64 images removed, attributes pruned to text, ids, names, classes, `aria-*`, `role`, `href`, `data-testid` and form-control attributes.
 
 Element tag names (`android.widget.Button`, `XCUIElementTypeButton`, `div`) are preserved, so `//<tag>[@attr='…']` selectors built from the lean view resolve against the live session.
 In native trees, wrapper elements that carry none of the above are dropped and their children move up one level, so nesting depth in the lean view is not the real depth.
@@ -243,14 +257,17 @@ Otherwise it is on demand: don't read it every turn.
 
 ## Responses and errors
 
-Every WebDriver response is a JSON envelope `{"value": <result>}`; only the CLI's `wd get source` / `wd get screenshot` are unwrapped ([Transports](#transports)).
+The hub answers every call with a JSON envelope whose `value` is the result.
+`appium.js` prints the whole envelope; the CLI prints only the result, for every `wd` call ([Transports](#transports)).
+The rules below describe the result.
 
-- A null or empty `value` means success: click, value, clear, actions, orientation, url, and scripts that return nothing.
-- A non-null `value` is the result: a string (`element/<el>/text`, `url`, `orientation`), an object (`window/rect` returns `{"width":N,"height":N,"x":N,"y":N}`), or a script's return value.
-- A find returns the element id under `value.ELEMENT`, under `value["element-6066-11e4-a52e-4f735466cecf"]`, or as a bare string; the extractor in [Transports](#transports) covers all three, and `elements` returns a list of them.
-- A failure carries `{"value":{"error":"<error>","message":"…","stacktrace":"…"}}` with an HTTP 4xx or 5xx status; read `message` when `error` alone doesn't explain it.
+- A null or empty result means success: click, value, clear, actions, orientation, url, and scripts that return nothing.
+- A non-null result is the answer: a string (`element/<el>/text`, `url`, `orientation`), an object (`window/rect` returns `{"width":N,"height":N,"x":N,"y":N}`), or a script's return value.
+- A find returns the element id under `ELEMENT`, under `element-6066-11e4-a52e-4f735466cecf` (the CLI prints both keys), or as a bare string; the extractor in [Transports](#transports) covers every shape on both transports, and `elements` returns a list of them.
+- A failure is `{"error":"<error>","message":"…"}` with an HTTP 4xx or 5xx status: the CLI prints it at the top level of stdout (exit 0), and `appium.js` prints the hub's body, with the same fields under `value`, on stderr.
+  Read `message` when `error` alone doesn't explain it.
 
-| `value.error` | Meaning | Next move |
+| `error` | Meaning | Next move |
 |---|---|---|
 | `no such element` | The selector matched nothing | Re-read the lean view and try another strategy or a more specific value; on the second miss for the same target, open the full source ([When to open the full source](#when-to-open-the-full-source)) |
 | `stale element reference` | The element id belongs to an earlier screen state | Observe again and re-find |

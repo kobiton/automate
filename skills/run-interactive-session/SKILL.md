@@ -75,6 +75,10 @@ Every command is self-contained - no env vars to manage between calls:
 
 `$KOBITON_BIN` is used as shorthand throughout this document. In every Bash command, substitute it with the literal path `~/.kobiton/bin/kobiton` - the variable does not persist between Bash calls.
 
+`$SKILL_DIR` is shorthand for this skill's directory, the one holding this SKILL.md.
+In every Bash command and every path you `Read`, substitute it with the literal absolute path of that directory - nothing sets the variable, and it does not persist between Bash calls.
+The skill reaches the sibling `drive-automation-session` skill through it (`$SKILL_DIR/../drive-automation-session/`), the same sibling-path pattern the plugin's other skills use for `../run-automation-suite/scripts/`.
+
 ## Conventions
 
 ### Argument order
@@ -165,7 +169,10 @@ For each command:
 1. Find the element and extract its ID with the shared extractor:
 
        $KOBITON_BIN wd post element '{"using":"id","value":"com.app:id/etName"}' \
-         | jq -r '.value.ELEMENT // .value["element-6066-11e4-a52e-4f735466cecf"] // .value'
+         | jq -r '(.value? // .) | if type == "object" then (.ELEMENT // .["element-6066-11e4-a52e-4f735466cecf"]) else . end'
+
+   The CLI prints the unwrapped element object, `{"ELEMENT":"…","element-6066-11e4-a52e-4f735466cecf":"…"}`.
+   A failed find prints a top-level `{"error":"…","message":"…"}` at exit 0 and the extractor prints `null`: check `.error` before using the ID.
 
 2. Type into it (substituting the captured element ID):
 
@@ -180,24 +187,23 @@ Ensure the artifacts directory exists first (idempotent, safe to repeat):
     mkdir -p .kobiton/sessions/<session-id>
 
 Artifacts use the file names in [`webdriver.md` § Observe](../drive-automation-session/references/webdriver.md#observe) - `screenshot-<ts>.png`, `source-<ts>.full.xml` and `source-<ts>.xml`, with `<ts>` the epoch seconds of the capture - the same names `drive-automation-session` writes.
+One observation's files share one `<ts>`: compute `TS=$(date +%s)` once and reuse it for that observation's screenshot and source in the same Bash call, or substitute its literal value into each command when they run as separate calls.
 
-**Screenshot.** The CLI emits the base64-encoded PNG directly on stdout; decode and save in one pipe:
-
-    $KOBITON_BIN wd get screenshot \
-      | base64 -d \
-      > .kobiton/sessions/<session-id>/screenshot-$(date +%s).png
-
-Then use the `Read` tool on the saved file to display it inline, and report the file path to the user.
-
-**Page source.** The CLI emits raw XML (Android UIAutomator2) or hierarchy markup (iOS XCUITest) on stdout. Save it as the full source, then write the lean view next to it with the shared filter that ships with the sibling `drive-automation-session` skill (`$SKILL_DIR` is this skill's directory, the one holding this SKILL.md - the same sibling-path pattern the plugin's other skills use for `../run-automation-suite/scripts/`):
+**Screenshot and page source.** `wd get screenshot` prints the base64-encoded PNG and `wd get source` the raw XML (Android UIAutomator2) or hierarchy markup (iOS XCUITest).
+Decode the screenshot into its file, save the source as the full source, then write the lean view next to it with the shared filter that ships with the sibling `drive-automation-session` skill (substitute `$SKILL_DIR` and `$KOBITON_BIN` as [How It Works](#how-it-works) says):
 
     TS=$(date +%s)
+    $KOBITON_BIN wd get screenshot \
+      | base64 -d \
+      > .kobiton/sessions/<session-id>/screenshot-$TS.png
     $KOBITON_BIN wd get source > .kobiton/sessions/<session-id>/source-$TS.full.xml
     node "$SKILL_DIR/../drive-automation-session/scripts/ui-tree.js" \
       .kobiton/sessions/<session-id>/source-$TS.full.xml \
       > .kobiton/sessions/<session-id>/source-$TS.xml
 
-Run all three lines in one Bash call so `TS` is shared. `Read` the lean `source-<ts>.xml` for element inspection; open the `.full.xml` only in the cases [`webdriver.md`](../drive-automation-session/references/webdriver.md#when-to-open-the-full-source) lists, and build selectors by its [Selectors](../drive-automation-session/references/webdriver.md#selectors) rules.
+Drop the screenshot command when this observation doesn't need it ([`webdriver.md` § Screenshot](../drive-automation-session/references/webdriver.md#screenshot) says when it does), or the source commands for a screenshot alone; keep the `TS=` line either way.
+Use the `Read` tool on the screenshot to display it inline, and report the file path to the user.
+`Read` the lean `source-<ts>.xml` for element inspection, or `grep` it for the target when it is large ([`webdriver.md` § Observe](../drive-automation-session/references/webdriver.md#observe)); open the `.full.xml` only in the cases [`webdriver.md`](../drive-automation-session/references/webdriver.md#when-to-open-the-full-source) lists, and build selectors by its [Selectors](../drive-automation-session/references/webdriver.md#selectors) rules.
 
 ### 5. End the session
 
@@ -222,8 +228,8 @@ For example, `wd post element '{"using":"accessibility id","value":"Open Setting
 
 CLI-specific behaviour:
 
-- `wd get source` and `wd get screenshot` print raw XML and base64 PNG (the CLI unwraps the envelope) - save them as in Step 4.
-- `wd` failures exit 0 (see Error Handling).
+- Every `wd` call prints the unwrapped result - the envelope's `value` alone: a find prints `{"ELEMENT":"…","element-6066-11e4-a52e-4f735466cecf":"…"}`, a call with no result prints `null`, and `wd get source` / `wd get screenshot` print raw XML / base64 PNG (save them as in Step 4).
+- `wd` failures print a top-level `{"error":"…","message":"…"}` and exit 0 (see Error Handling).
 - `$KOBITON_BIN wd --help` lists the subcommands; `$KOBITON_BIN session ping` checks the session is alive.
 
 ### adb-shell commands (Android only)
@@ -285,7 +291,7 @@ The whitelist evolves with CLI releases; `$KOBITON_BIN device adb-shell --help` 
 
   On unrestricted devices prefer the quoted on-device form - filtering locally on the full output is slower and can overflow the 25k-token MCP limit if it isn't routed through an artifact file. On restricted sessions the local route is the only one: always bound the command (`-d -t N`, `-n 1`) and go through an artifact file, never paste raw output to chat.
 
-**Platform guard.** `adb` is Android-only. If the active session targets iOS, do **not** call `device adb-shell`. Refuse and reach for the WebDriver equivalent (`wd post execute '{"script":"mobile: ..."}'`) or a different inspection path.
+**Platform guard.** `adb` is Android-only. If the active session targets iOS, do **not** call `device adb-shell`. Refuse and reach for the WebDriver equivalent (`wd post execute/sync '{"script":"mobile: ...","args":[{...}]}'`) or a different inspection path.
 
 **Device logs on iOS.** `logcat` is Android-only; the cross-platform log path is `$KOBITON_BIN device log`, which **streams until killed** — always bound it and expect the bound's exit code, which means success here, not failure:
 
@@ -301,7 +307,7 @@ The **Restricted** column says what changes on a restricted session; `ok` means 
 | Get screen resolution | `$KOBITON_BIN device adb-shell wm size` | rejected (`wm` not whitelisted) - use `$KOBITON_BIN wd get window/rect` instead |
 | Get foreground app/activity | `$KOBITON_BIN device adb-shell "dumpsys window \| grep mCurrentFocus"` | quoted pipe rejected - run bare `dumpsys window`, filter locally |
 | Open a URL (Android Chrome) | UI-driven: launch Chrome via `monkey -p com.android.chrome -c android.intent.category.LAUNCHER 1`, then `wd post element '{"using":"id","value":"com.android.chrome:id/url_bar"}'` → `wd post element/<id>/click '{}'` → `wd post element/<id>/value '{"text":"<url>"}'` → `input keyevent 66` | this recipe IS the restricted path - a URL argument to `am start` is rejected (`Argument is not permitted for 'am'`); on unrestricted devices `am start -a android.intent.action.VIEW -d <url>` also works |
-| Open a URL (iOS Safari) | `wd post execute '{"script":"mobile: launchApp","args":[{"bundleId":"com.apple.mobilesafari"}]}'` → `wd post element '{"using":"accessibility id","value":"TabBarItemTitle"}'` → `wd post element/<id>/click '{}'` → `wd post element/<id>/value '{"text":"<url>\n"}'` — the trailing `\n` submits (iOS has no keyevent); `click` requires a body, `'{}'` works | n/a - WebDriver path, not adb-shell |
+| Open a URL (iOS Safari) | `wd post execute/sync '{"script":"mobile: launchApp","args":[{"bundleId":"com.apple.mobilesafari"}]}'` → `wd post element '{"using":"accessibility id","value":"TabBarItemTitle"}'` → `wd post element/<id>/click '{}'` → `wd post element/<id>/value '{"text":"<url>\n"}'` — the trailing `\n` submits (iOS has no keyevent); `click` requires a body, `'{}'` works | n/a - WebDriver path, not adb-shell |
 | List running processes | `$KOBITON_BIN device adb-shell ps -A` | ok |
 | List user-installed packages | `$KOBITON_BIN device adb-shell pm list packages -3` | ok |
 | Find APK path of a package | `$KOBITON_BIN device adb-shell pm path <pkg>` | ok |
@@ -382,7 +388,7 @@ The skill produces two kinds of output: **per-command responses** that Claude pa
 
 The common parsing patterns:
 
-- **WebDriver (`wd`)** responses are the JSON envelopes described in [`webdriver.md` § Responses and errors](../drive-automation-session/references/webdriver.md#responses-and-errors), except `wd get screenshot` / `wd get source`, which the CLI unwraps into raw base64 PNG / raw XML on stdout - pipe those straight into a file.
+- **WebDriver (`wd`)** calls print the unwrapped result of every call - the `value` of the envelope described in [`webdriver.md` § Responses and errors](../drive-automation-session/references/webdriver.md#responses-and-errors), never the envelope itself: a find prints the element object, a call with no result prints `null`, a failure prints a top-level `{"error":"…","message":"…"}` at exit 0, and `wd get screenshot` / `wd get source` print raw base64 PNG / raw XML - pipe those straight into a file.
 - **Session commands** mix text + exit code. `session create --hide` prints `Session <id> created for device <udid>.` (and, without `--hide`, an extra `Session token <jwt>` line - which is why the flag is mandatory); `session ping` prints `Session <id> pinged.` and signals liveness through exit code (0 = alive); `session list` prints a comma-separated table (`ID, State, Type, Device, Platform, Created, Ended`) followed by a footer - `Page N (M items), T total` when paged, `N of T sessions, P pages.` when `--all` spans several pages - or the single line `No sessions found.` when nothing matches.
 - **`device` / `file` / `app` / `test`** emit plain text and signal failure through exit code. Long-running ones (`test run`, `device forward`) should be launched with `run_in_background: true` and tailed.
 
@@ -409,7 +415,7 @@ Where `<portal-base>` is derived from the `KOBITON_PORTAL` value in the active p
 
 - **Unexpected argument / unknown flag**: run `$KOBITON_BIN <command> --help` to discover the correct syntax, then retry with the right arguments. Never guess flags. Exception: never drop `--hide` from `session create` - if it is rejected, the cached build is too old (see below).
 - **`Refusing to run 'session create' ... does not support --hide`** from the wrapper: the pinned build is not cached and the fallback build predates `--hide`, so creating a session would print the bearer token. Run `/automate:setup` (or re-open the session so the SessionStart hook downloads the pinned build), then retry the same command.
-- **`wd` errors exit 0**: WebDriver failures (e.g. no such element) return exit code 0 with a JSON error body - check the response JSON, not `$?`. A bounded `device log` exiting 124 (`timeout`) or 142 (perl-alarm) is the bound firing, not a failure.
+- **`wd` errors exit 0**: WebDriver failures (e.g. no such element) print a top-level `{"error":"<error>","message":"…"}` and exit 0 - check `.error` in the output, not `$?`. A bounded `device log` exiting 124 (`timeout`) or 142 (perl-alarm) is the bound firing, not a failure.
 - **Session create failed**: device may be offline, already reserved, or the UDID is wrong - verify availability with the `listDevices` MCP tool before retrying.
 - **Session expired / auth error mid-flow**: `session ping` fails or a command returns auth error - offer to create a new session.
 - **`no such element`, `stale element reference` and other WebDriver errors**: see [`webdriver.md` § Responses and errors](../drive-automation-session/references/webdriver.md#responses-and-errors) for the next move; capture the page source (Step 4) before re-planning a selector.
@@ -439,8 +445,8 @@ The skill walks through:
 
 4. Press Home (in case another app was foregrounded), then launch Settings:
 
-       ~/.kobiton/bin/kobiton wd post execute \
-         '{"script":"mobile: pressKey","args":{"keycode":3}}'
+       ~/.kobiton/bin/kobiton wd post execute/sync \
+         '{"script":"mobile: pressKey","args":[{"keycode":3}]}'
        ~/.kobiton/bin/kobiton app run com.android.settings
 
 5. Find the "Display" row by visible text:
@@ -448,7 +454,7 @@ The skill walks through:
        ~/.kobiton/bin/kobiton wd post element \
          '{"using":"xpath","value":"//*[@text=\"Display\"]"}'
 
-   Response is a JSON envelope; extract the element ID from `.value` with the extractor in [`webdriver.md` § Transports](../drive-automation-session/references/webdriver.md#transports).
+   The CLI prints the unwrapped element object, `{"ELEMENT":"…","element-6066-11e4-a52e-4f735466cecf":"…"}`; extract the element ID with the extractor in [`webdriver.md` § Transports](../drive-automation-session/references/webdriver.md#transports).
 
 6. Click it (substituting the captured `ELEMENT_ID`):
 
@@ -502,7 +508,7 @@ The skill walks through:
 
 Assumes a session is already active (run `session ping` first; if expired, create a new one).
 
-1. Dump the source and write its lean view - ensure the artifacts directory exists first:
+1. Dump the source and write its lean view - ensure the artifacts directory exists first, and substitute `$SKILL_DIR` with this skill's absolute directory ([How It Works](#how-it-works)):
 
        mkdir -p .kobiton/sessions/12345
        TS=$(date +%s)

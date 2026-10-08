@@ -14,7 +14,7 @@ There is no synthetic action language: the AI host sends raw WebDriver calls thr
 It always exits 0.
 
 **Reading the result.** Read it from the call's own output.
-On success stdout is the raw WebDriver response body: pipe it to `jq`, for example through the element-id extractor in [`webdriver.md` § Transports](webdriver.md#transports).
+On success stdout is the raw WebDriver response body, the full envelope `{"sessionId":…,"status":0,"value":…}`: pipe it to `jq`, for example through the element-id extractor in [`webdriver.md` § Transports](webdriver.md#transports).
 On failure stdout is empty and stderr carries `{"status":N}` plus the raw body, or `{"error","message"}` when the call never reached the hub.
 With `--session-dir`, the same content is saved as `response-<ts>.json` or `error-<ts>.json` next to `request-<ts>.json` ([`loop-discipline.md` § Artifact layout](loop-discipline.md#artifact-layout)); re-read the newest one when you need it again later.
 
@@ -25,7 +25,7 @@ Example — the find-then-click from [`webdriver.md`](webdriver.md#find-an-eleme
 node appium.js --method POST --url /session/$SID/element \
   --req-body '{"using":"accessibility id","value":"Open Settings"}' \
   --session-dir $DIR \
-  | jq -r '.value.ELEMENT // .value["element-6066-11e4-a52e-4f735466cecf"] // .value'
+  | jq -r '(.value? // .) | if type == "object" then (.ELEMENT // .["element-6066-11e4-a52e-4f735466cecf"]) else . end'
 # → el-9
 
 # Turn N+1: click it.
@@ -88,7 +88,7 @@ The scroll from [`webdriver.md` § Coordinates](webdriver.md#coordinates):
 
 ```bash
 node appium.js actions --session-id $SID --type swipe \
-  --from-x 540 --from-y 1800 --to-x 540 --to-y 600 --duration 300 \
+  --from-x 540 --from-y 1740 --to-x 540 --to-y 660 --duration 300 \
   --session-dir $DIR
 ```
 

@@ -16,7 +16,7 @@ allowed-tools: >-
   Bash(node:*),
   Bash(bash:*), Bash(pwsh:*),
   Bash(mkdir:*), Bash(mv:*), Bash(date:*), Bash(echo:*), Bash(printf:*),
-  Bash(ls:*), Bash(tail:*), Bash(wc:*),
+  Bash(ls:*), Bash(tail:*), Bash(wc:*), Bash(tr:*),
   Bash(jq:*),
   Bash(open:*), Bash(xdg-open:*)
 version: 1.0.0
@@ -298,7 +298,7 @@ node "$SKILL_DIR/scripts/appium.js" control \
 # in call order: the last one is this turn's, their count is the turn count.
 LAST=$(ls "$SESSION_DIR"/request-*.json | tail -1)
 TS=${LAST##*request-}; TS=${TS%.json}
-TURNS=$(ls "$SESSION_DIR"/request-*.json | wc -l)
+TURNS=$(ls "$SESSION_DIR"/request-*.json | wc -l | tr -d ' ')
 
 # Log failures so session.log has a timeline. appium.js writes error-<ts>.json
 # on any failure — Appium HTTP error, network blip, usage error like missing

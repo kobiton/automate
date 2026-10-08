@@ -2,16 +2,21 @@
 
 Reference material for the `run-interactive-session` skill. The skill drives a Kobiton device by translating natural-language intent into CLI commands; this file holds the parsing guidance for every command's response so the skill knows how to extract values, detect success, and surface results to the user.
 
-WebDriver commands (`wd post` / `wd get`) return the JSON envelope `{"value": <result>}`, except `wd get screenshot` and `wd get source`, which the CLI unwraps and emits as raw bytes / text. Non-WebDriver commands (`session`, `device`, `file`, `app`, `test`) typically emit plain text and signal failure through exit code.
+WebDriver commands (`wd post` / `wd get`) print the unwrapped `<result>` of the hub's `{"value": <result>}` envelope for every call, never the envelope itself. Non-WebDriver commands (`session`, `device`, `file`, `app`, `test`) typically emit plain text and signal failure through exit code.
 
 ## WebDriver commands
 
-Envelope shapes, element-ID extraction and error values are shared with `drive-automation-session` in [`webdriver.md` § Responses and errors](../../drive-automation-session/references/webdriver.md#responses-and-errors). The two commands the CLI unwraps:
+Result shapes, element-ID extraction and error values are shared with `drive-automation-session` in [`webdriver.md` § Responses and errors](../../drive-automation-session/references/webdriver.md#responses-and-errors).
+Every `wd` call exits 0, so read the output, not `$?`:
 
 | Command | Response on stdout | How to read |
 |---|---|---|
-| `wd get screenshot` | Base64-encoded PNG (CLI unwraps the WebDriver JSON for you) | Pipe through `base64 -d` straight into a `screenshot-<ts>.png` file |
-| `wd get source` | Raw XML / hierarchy markup (CLI unwraps the WebDriver JSON for you) | Redirect straight into a `source-<ts>.full.xml` file, then write and read the lean view (SKILL.md Step 4) |
+| `wd post element` | The element object `{"ELEMENT":"<id>","element-6066-11e4-a52e-4f735466cecf":"<id>"}` | Take the id with the extractor in [`webdriver.md` § Transports](../../drive-automation-session/references/webdriver.md#transports) |
+| A call with no result (`click`, `value`, `clear`, `actions`, …) | `null` | Success; nothing to parse |
+| A call with a result (`element/<el>/text`, `url`, `window/rect`, …) | The result itself: a string or an object | Read directly, or `jq` a field out of an object |
+| Any failed `wd` call | A top-level `{"error":"<error>","message":"…"}` | Check `.error`; the next move per error is in [`webdriver.md` § Responses and errors](../../drive-automation-session/references/webdriver.md#responses-and-errors) |
+| `wd get screenshot` | Base64-encoded PNG | Pipe through `base64 -d` straight into a `screenshot-<ts>.png` file, with the same `<ts>` as the observation's source files (SKILL.md Step 4) |
+| `wd get source` | Raw XML / hierarchy markup | Redirect straight into a `source-<ts>.full.xml` file, then write and read the lean view (SKILL.md Step 4) |
 
 ## Session lifecycle
 

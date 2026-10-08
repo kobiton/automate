@@ -27,7 +27,7 @@ The skill now allows `Bash(node:*)`.
 `skills/drive-automation-session/references/webdriver.md` is now the single WebDriver reference for `drive-automation-session` and `run-interactive-session`.
 Both skills send the same W3C WebDriver / Appium calls — the CLI's `wd post <path> '<json>'` / `wd get <path>` is the same `POST` / `GET /session/{id}/<path>` that `appium.js` sends — so the reference describes each operation once, as a method, a path and a body, next to a short table of how each skill sends it.
 It covers the operations (the union of both skills' previous command tables), selector rules, the find-then-act workflow and the coordinates fallback, web content and context switching, what to observe (lean view, full source, screenshot), and the response and error shapes.
-`run-interactive-session` replaces its WebDriver command table, response-shape notes, web-content note and selector guidance with a short section that names its transport and links the reference; its `references/response-shapes.md` keeps only the two commands the CLI unwraps.
+`run-interactive-session` replaces its WebDriver command table, response-shape notes, web-content note and selector guidance with a short section that names its transport and links the reference; its `references/response-shapes.md` keeps a short table of what `wd` prints (the unwrapped result of every call: the element object for a find, `null` for a call with no result, a top-level `{"error","message"}` for a failure).
 `drive-automation-session`'s `references/endpoint-reference.md` keeps only what is specific to that skill: how `appium.js` sends a call and reports its result, the scriptless-capture allowlist, the helpers, the session lifecycle, the endpoints the capture doesn't record, and the loop-control sentinels.
 
 ### Changed: `drive-automation-session` artifacts use timestamped names
@@ -38,7 +38,7 @@ Each `appium.js` call with `--session-dir` takes one timestamp, moving to the ne
 These replace the `iter-NNN.*` files (`iter-NNN.xml`, `.full.xml`, `.png`, `.request.json`, `.response.json`, `.error.json`, `.control.json`).
 `screen`'s stdout line adds `ts` and the names of the files it wrote (`source`, `fullSource`, `screenshot`), and `control`'s stdout adds `ts`; an act call's stdout is still the raw WebDriver response body, and a failure still prints to stderr.
 The `--iter` flag and the `ITER` environment variable are removed: the `MAX_ITERS` ceiling counts the `request-<ts>.json` files on disk, and `session.log` lines carry `ts=` instead of `iter=`.
-The skill now allows `Bash(ls:*)`, `Bash(tail:*)` and `Bash(wc:*)` for that per-turn bookkeeping.
+The skill now allows `Bash(ls:*)`, `Bash(tail:*)`, `Bash(wc:*)` and `Bash(tr:*)` for that per-turn bookkeeping.
 
 ### Changed: validation reads say when a result may still be partial
 
