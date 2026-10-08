@@ -15,7 +15,7 @@ allowed-tools: >-
   Bash(~/.kobiton/bin/kobiton:*),
   Bash(node:*),
   Bash(mkdir:*), Bash(date:*), Bash(base64:*), Bash(echo:*),
-  Bash(cat:*), Bash(grep:*), Bash(head:*), Bash(tail:*),
+  Bash(cat:*), Bash(grep:*), Bash(head:*), Bash(tail:*), Bash(test:*),
   Bash(jq:*), Bash(xmllint:*),
   Bash(timeout:*), Bash(perl:*),
   Bash(open:*), Bash(xdg-open:*)
@@ -200,9 +200,10 @@ Decode the screenshot into its file, save the source as the full source, then wr
     node "$SKILL_DIR/../drive-automation-session/scripts/ui-tree.js" \
       .kobiton/sessions/<session-id>/source-$TS.full.xml \
       > .kobiton/sessions/<session-id>/source-$TS.xml
+    echo "$TS"
 
-A transport failure leaves an empty file (the CLI prints the reason on stderr and exits non-zero): check each file is non-empty (`test -s`) before reading it, and rerun that command with the same `$TS` once if it is empty.
-Drop the screenshot command when this observation doesn't need it ([`webdriver.md` § Screenshot](../drive-automation-session/references/webdriver.md#screenshot) says when it does), or the source commands for a screenshot alone; keep the `TS=` line either way.
+A transport failure leaves an empty file (the CLI prints the reason on stderr and exits non-zero): check each file is non-empty (`test -s`) before reading it, and rerun that command once if it is empty, with the printed `<ts>` substituted for `$TS`.
+Drop the screenshot command when this observation doesn't need it ([`webdriver.md` § Screenshot](../drive-automation-session/references/webdriver.md#screenshot) says when it does), or the source commands for a screenshot alone; keep the `TS=` and `echo` lines either way.
 Use the `Read` tool on the screenshot to display it inline, and report the file path to the user.
 `Read` the lean `source-<ts>.xml` for element inspection, or `grep` it for the target when it is large ([`webdriver.md` § Observe](../drive-automation-session/references/webdriver.md#observe)); open the `.full.xml` only in the cases [`webdriver.md`](../drive-automation-session/references/webdriver.md#when-to-open-the-full-source) lists, and build selectors by its [Selectors](../drive-automation-session/references/webdriver.md#selectors) rules.
 
@@ -461,11 +462,13 @@ The skill walks through:
 
        ~/.kobiton/bin/kobiton wd post element/<ELEMENT_ID>/click '{}'
 
-7. Capture the screenshot:
+7. Capture the screenshot (one `TS` per observation, as in Step 4):
 
+       TS=$(date +%s)
        ~/.kobiton/bin/kobiton wd get screenshot \
          | base64 -d \
-         > .kobiton/sessions/12345/screenshot-$TS.png   # TS=$(date +%s), once per observation (Step 4)
+         > .kobiton/sessions/12345/screenshot-$TS.png
+       echo "$TS"
 
 8. Read the file with the `Read` tool to display it inline, then report:
 

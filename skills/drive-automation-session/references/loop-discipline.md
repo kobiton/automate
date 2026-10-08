@@ -18,7 +18,7 @@ The host picks one branch per turn. The script always exits 0; a call failed whe
 
 Native overlays (Chrome's "notifications" welcome card, OS-level permission prompts, system dialogs that appear over the app/webview) are NOT reflected in the webview's `/source` XML — the chromedriver page-source layer only sees the in-page DOM, not what's drawn on top. A turn that captures XML-only can completely miss a blocking dialog and lead the host to act on a stale picture.
 
-The first pilot run hit exactly this: it opened Chrome, captured `about:blank` XML, and tried to navigate without seeing the "Chrome notifications make things easier — Continue / No thanks" welcome card. PNG-by-default catches that class of failure on iteration 1.
+The first pilot run hit exactly this: it opened Chrome, captured `about:blank` XML, and tried to navigate without seeing the "Chrome notifications make things easier — Continue / No thanks" welcome card. PNG-by-default catches that class of failure on the first turn.
 
 `--xml-only` captures the source and no screenshot — for turns where nothing can be drawn over the source (e.g., confirming a hash change on a known-stable native screen). `--png-only` captures the screenshot and no source — for verification turns where layout is the only signal that matters (e.g., confirming an animation finished, checking image rendering). Capturing a file and reading it are separate choices: [`webdriver.md` § Observe](webdriver.md#observe) says when the screenshot and the full source are worth reading.
 

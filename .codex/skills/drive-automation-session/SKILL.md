@@ -3,7 +3,7 @@ name: drive-automation-session
 description: >-
   Drive an already-reserved Kobiton device from a natural-language intent.
   Opens an automation Appium session directly against the Kobiton WebDriver
-  hub, runs an observe-decide-act loop with one action per iteration, pauses
+  hub, runs an observe-decide-act loop with one action per turn, pauses
   to ask the user when stuck (same-action repetition, screen unchanged, or
   model self-declared blocker), and returns the session id. Use when the
   user says "drive the device to X", describes a flow they want exercised
@@ -213,7 +213,7 @@ If the user chose **foreground**, reuse `run-automation-suite`'s launcher chain 
 
 Swap width and height if `getSession` / rendered caps report `orientation=LANDSCAPE` — default is portrait.
 
-Invoke per host OS. **Run in the background** (Claude Code: `Bash` tool with `run_in_background: true`; other hosts: append `&` and `disown`) so the resize-polling loop doesn't block iteration 1. The launcher's stdout/stderr will surface later when it completes; the URL printed above is the user's fallback if the launcher silently fails.
+Invoke per host OS. **Run in the background** (Claude Code: `Bash` tool with `run_in_background: true`; other hosts: append `&` and `disown`) so the resize-polling loop doesn't block the first turn. The launcher's stdout/stderr will surface later when it completes; the URL printed above is the user's fallback if the launcher silently fails.
 
 | OS | Command |
 |----|---------|
@@ -240,7 +240,7 @@ On Linux, fall back to `xdg-open "$LIVE_VIEW_URL"` (browser selection isn't supp
 
 If neither path is available, the URL is already on stdout from the `printf` above — the user can copy-paste it.
 
-### 4. Per-turn iteration pattern (three branches)
+### 4. Per-turn pattern (three branches)
 
 There is no Bash `while`. The skill is **turn-based**: each turn, you (the AI host) pick **exactly one** of three branches:
 

@@ -152,7 +152,7 @@ The AI host ends the cycle with `control` instead of an action; it writes `contr
 
 1. **Default to allowlisted.** If the intent has an allowlisted endpoint, use it.
 2. **Use a helper when boilerplate would be error-prone.** `actions` for W3C gestures, `touch-perform` for legacy multi-step touch.
-3. **Fall back to `execute/sync` only when nothing else fits.** Log a capture-warning and say why in the action's reason.
+3. **Fall back to `execute/sync` only when nothing else fits.** Say why in the action's reason.
 4. **Read the Appium docs** for an `execute/sync` mobile command — the args differ by driver; the plugin doesn't ship them.
 
 ## Adding a new gesture
