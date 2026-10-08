@@ -38,14 +38,13 @@ Each `appium.js` call with `--session-dir` takes one timestamp, moving to the ne
 These replace the `iter-NNN.*` files (`iter-NNN.xml`, `.full.xml`, `.png`, `.request.json`, `.response.json`, `.error.json`, `.control.json`).
 `screen`'s stdout line adds `ts` and the names of the files it wrote (`source`, `fullSource`, `screenshot`), and `control`'s stdout adds `ts`; an act call's stdout is still the raw WebDriver response body, and a failure still prints to stderr.
 The `--iter` flag and the `ITER` environment variable are removed, and `session.log` lines carry `ts=` instead of `iter=`.
-The skill now allows `Bash(ls:*)` and `Bash(tail:*)`, which the `execute/sync` capture-warning note uses to find its call's `<ts>`.
 
 ### Changed: `drive-automation-session` warns on the turn count instead of capping iterations
 
 `screen`'s stdout line adds `turns`, the number of screen and act calls in the session so far (the `request-<ts>.json` files on disk, this call included).
 From 100 turns, and every 25 turns after, it also adds a `warning` that tells the host to check whether the flow is progressing and to end with `control --blocked` if it is not; a threshold reached by an act call is reported on the next `screen`.
 The warning is a prompt, not a stop: an act call's stdout is unchanged, and nothing is written to stderr.
-`appium.js` appends to `<session-dir>/session.log` itself: `ts=<ts> error` for every call that writes `error-<ts>.json`, and `ts=<ts> turns=<n> warning` for every warning.
+`appium.js` appends to `<session-dir>/session.log` itself: `ts=<ts> error` for every call that writes `error-<ts>.json`, `ts=<ts> turns=<n> warning` for every warning, and `ts=<ts> capture-warning=execute/sync url=<url>` (or `=execute`) for every script call, which the saved test case won't contain.
 The `MAX_ITERS` iteration cap and the host-side per-turn bookkeeping snippet are removed; the platform's session-duration cap and `appium:newCommandTimeout` are the hard limits.
 
 ### Changed: validation reads say when a result may still be partial
