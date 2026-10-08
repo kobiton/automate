@@ -677,15 +677,38 @@ describe('appium.js turn warning and session.log', () => {
     expect(after.warning).toBeUndefined()
   })
 
-  it('an execute or execute/sync call appends a capture-warning line to session.log', async () => {
+  it.each([
+    ['/session/s/execute/sync', 'execute/sync'],
+    ['/session/s/execute', 'execute'],
+    ['/session/s/execute/', 'execute']
+  ])('a POST to %s appends capture-warning=%s to session.log', async (url, kind) => {
     reset(() => ({status: 200, body: {value: null}}))
     const dir = makeSessionDir()
-    await runWithCreds(['--method', 'POST', '--url', '/session/s/execute/sync', '--req-body', '{"script":"mobile: pressKey","args":[{"keycode":3}]}', '--session-dir', dir])
+    await runWithCreds(['--method', 'POST', '--url', url, '--req-body', '{"script":"mobile: pressKey","args":[{"keycode":3}]}', '--session-dir', dir])
     const ts = soleTs(dir)
-    expect(readFileSync(logPath(dir), 'utf8')).toBe(`ts=${ts} capture-warning=execute/sync url=/session/s/execute/sync\n`)
-    const other = makeSessionDir()
-    await runWithCreds(['--method', 'POST', '--url', '/session/s/element', '--req-body', '{"using":"id","value":"a"}', '--session-dir', other])
-    expect(existsSync(logPath(other))).toBe(false)
+    expect(readFileSync(logPath(dir), 'utf8')).toBe(`ts=${ts} capture-warning=${kind} url=${url}\n`)
+  })
+
+  it('a call that is not a POST to execute logs no capture-warning', async () => {
+    reset(() => ({status: 200, body: {value: null}}))
+    const element = makeSessionDir()
+    await runWithCreds(['--method', 'POST', '--url', '/session/s/element', '--req-body', '{"using":"id","value":"a"}', '--session-dir', element])
+    expect(existsSync(logPath(element))).toBe(false)
+    const get = makeSessionDir()
+    await runWithCreds(['--method', 'GET', '--url', '/session/s/execute', '--session-dir', get])
+    expect(existsSync(logPath(get))).toBe(false)
+  })
+
+  it('a non-JSON /source body writes error-<ts>.json (parse) and appends ts=<ts> error', async () => {
+    reset(() => ({status: 200, body: 'not json'}))
+    const dir = makeSessionDir()
+    const r = await runWithCreds(['screen', '--session-id', 's', '--session-dir', dir, '--xml-only'])
+    const ts = soleTs(dir)
+    expect(r.stdout).toBe('')
+    const [head, ...rest] = readFileSync(join(dir, `error-${ts}.json`), 'utf8').split('\n')
+    expect(JSON.parse(head)).toEqual({status: 0})
+    expect(JSON.parse(rest.join('\n')).error).toBe('parse')
+    expect(readFileSync(logPath(dir), 'utf8')).toBe(`ts=${ts} error\n`)
   })
 
   it('a failed call appends ts=<ts> error to session.log after the host lines', async () => {
