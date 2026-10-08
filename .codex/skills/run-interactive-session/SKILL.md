@@ -201,6 +201,7 @@ Decode the screenshot into its file, save the source as the full source, then wr
       .kobiton/sessions/<session-id>/source-$TS.full.xml \
       > .kobiton/sessions/<session-id>/source-$TS.xml
 
+A transport failure leaves an empty file (the CLI prints the reason on stderr and exits non-zero): check each file is non-empty (`test -s`) before reading it, and rerun that command with the same `$TS` once if it is empty.
 Drop the screenshot command when this observation doesn't need it ([`webdriver.md` § Screenshot](../drive-automation-session/references/webdriver.md#screenshot) says when it does), or the source commands for a screenshot alone; keep the `TS=` line either way.
 Use the `Read` tool on the screenshot to display it inline, and report the file path to the user.
 `Read` the lean `source-<ts>.xml` for element inspection, or `grep` it for the target when it is large ([`webdriver.md` § Observe](../drive-automation-session/references/webdriver.md#observe)); open the `.full.xml` only in the cases [`webdriver.md`](../drive-automation-session/references/webdriver.md#when-to-open-the-full-source) lists, and build selectors by its [Selectors](../drive-automation-session/references/webdriver.md#selectors) rules.
@@ -229,7 +230,7 @@ For example, `wd post element '{"using":"accessibility id","value":"Open Setting
 CLI-specific behaviour:
 
 - Every `wd` call prints the unwrapped result - the envelope's `value` alone: a find prints `{"ELEMENT":"…","element-6066-11e4-a52e-4f735466cecf":"…"}`, a call with no result prints `null`, and `wd get source` / `wd get screenshot` print raw XML / base64 PNG (save them as in Step 4).
-- `wd` failures print a top-level `{"error":"…","message":"…"}` and exit 0 (see Error Handling).
+- WebDriver failures print a top-level `{"error":"…","message":"…"}` and exit 0; transport failures print plain text on stderr and exit non-zero (see Error Handling).
 - `$KOBITON_BIN wd --help` lists the subcommands; `$KOBITON_BIN session ping` checks the session is alive.
 
 ### adb-shell commands (Android only)
@@ -415,7 +416,7 @@ Where `<portal-base>` is derived from the `KOBITON_PORTAL` value in the active p
 
 - **Unexpected argument / unknown flag**: run `$KOBITON_BIN <command> --help` to discover the correct syntax, then retry with the right arguments. Never guess flags. Exception: never drop `--hide` from `session create` - if it is rejected, the cached build is too old (see below).
 - **`Refusing to run 'session create' ... does not support --hide`** from the wrapper: the pinned build is not cached and the fallback build predates `--hide`, so creating a session would print the bearer token. Run `/automate:setup` (or re-open the session so the SessionStart hook downloads the pinned build), then retry the same command.
-- **`wd` errors exit 0**: WebDriver failures (e.g. no such element) print a top-level `{"error":"<error>","message":"…"}` and exit 0 - check `.error` in the output, not `$?`. A bounded `device log` exiting 124 (`timeout`) or 142 (perl-alarm) is the bound firing, not a failure.
+- **`wd` errors**: WebDriver failures (e.g. no such element) print a top-level `{"error":"<error>","message":"…"}` and exit 0 - check `.error` in the output. Transport failures (`Failed to connect to Direct Hub`, `Invalid session '<id>'`) print plain text on stderr and exit non-zero - check `$?` as well, and retry the command once. A bounded `device log` exiting 124 (`timeout`) or 142 (perl-alarm) is the bound firing, not a failure.
 - **Session create failed**: device may be offline, already reserved, or the UDID is wrong - verify availability with the `listDevices` MCP tool before retrying.
 - **Session expired / auth error mid-flow**: `session ping` fails or a command returns auth error - offer to create a new session.
 - **`no such element`, `stale element reference` and other WebDriver errors**: see [`webdriver.md` § Responses and errors](../drive-automation-session/references/webdriver.md#responses-and-errors) for the next move; capture the page source (Step 4) before re-planning a selector.
@@ -464,7 +465,7 @@ The skill walks through:
 
        ~/.kobiton/bin/kobiton wd get screenshot \
          | base64 -d \
-         > .kobiton/sessions/12345/screenshot-$(date +%s).png
+         > .kobiton/sessions/12345/screenshot-$TS.png   # TS=$(date +%s), once per observation (Step 4)
 
 8. Read the file with the `Read` tool to display it inline, then report:
 

@@ -12,7 +12,7 @@ Everything after that section is transport-neutral: an operation is a method, a 
 | `GET <path>` | `$KOBITON_BIN wd get <path>` | `node appium.js --method GET --url /session/$SID/<path> --session-dir $DIR` |
 | Which session | The one `session create` opened (implicit) | `$SID` in the URL |
 | Success | The unwrapped result on stdout — the envelope's `value` alone, for every call: a find prints `{"ELEMENT":"…","element-6066-11e4-a52e-4f735466cecf":"…"}`, a call with no result prints `null`; exit 0 | The full envelope `{"sessionId":…,"status":0,"value":…}` on stdout, also saved as `response-<ts>.json`; exit 0 |
-| Failure | A top-level `{"error":"…","message":"…"}` on stdout, exit 0 — check `.error`, not `$?` | Nothing on stdout; `{"status":N}` plus the raw body on stderr, also saved as `error-<ts>.json`; exit 0 |
+| Failure | A WebDriver error prints a top-level `{"error":"…","message":"…"}` on stdout at exit 0 — check `.error`; a transport failure (no connection to the session, `Invalid session`) prints plain text on stderr and exits non-zero, with nothing on stdout — check `$?` too | Nothing on stdout; `{"status":N}` plus the raw body on stderr, also saved as `error-<ts>.json`; exit 0 |
 | Page source, screenshot | `wd get source` / `wd get screenshot` print the raw XML / base64 PNG (the unwrapped result, like every call); save them as [Observe](#observe) describes | The `screen` helper saves both and prints the file names ([Observe](#observe)) |
 
 Both transports take the element id out of a find call's stdout with the same extractor:
@@ -130,6 +130,7 @@ Anchor web selectors on `aria-label`, `id`, `name`, `href`, `data-testid`, `role
 - Join XPath steps with `//` (descendant), not `/` (child): an element's parent in the lean view may be a grandparent in the live tree.
 - When two elements share an attribute, narrow with an ancestor predicate joined by `//` — `//*[@resource-id='com.example.app:id/dialog']//android.widget.Button[@text='Continue']` — not with an index.
   If an index really is the only distinguishing feature, take it from the full source, not from the lean view.
+- To reach a value shown next to its label (settings rows, form fields), step from the label with the `following` axis — `//*[@text='Build number']/following::*[@resource-id='android:id/summary'][1]` — rather than through their shared parent, which the lean view may have dropped.
 - In a shell-quoted JSON body, write XPath string literals with escaped double quotes: `'{"using":"xpath","value":"//*[@text=\"Display\"]"}'`.
 - On iOS web content, check the element's actual `XCUIElementType` in the source before writing an XPath by type: web controls often surface as `Link` or `StaticText` rather than `Button`.
 
@@ -218,8 +219,10 @@ Both skills save the same three files per observation under `.kobiton/sessions/<
 `drive-automation-session`'s `screen` helper writes all three in one call and prints their names; `run-interactive-session` writes them with `wd get source`, `wd get screenshot` and the lean-view filter (its Step 4).
 The filter is `drive-automation-session/scripts/ui-tree.js`: `node ui-tree.js <source-file>` prints the lean view.
 
-When a source file is large — over about 30 KB, typical of a web page, whose lean view often runs 70–175 KB — `grep` it for the target (its id, `name`, text, `aria-label` or a CSS hook) rather than reading it whole, the same targeted search the full source gets ([When to open the full source](#when-to-open-the-full-source)).
+When the file you are about to read — lean or full — is large, over about 30 KB (typical of a web page, whose lean view often runs 70–175 KB), `grep` it for the target (its id, `name`, text, `aria-label` or a CSS hook) rather than reading it whole, the same targeted search the full source gets ([When to open the full source](#when-to-open-the-full-source)).
 `screen` reports the sizes as `xmlBytes` (lean) and `fullXmlBytes` (full).
+
+Neither source says what is on screen: iOS lists rows below the fold with `visible="true"`, and neither tree has the status bar. When it matters which elements are visible, read the screenshot.
 
 ### What the lean view keeps
 

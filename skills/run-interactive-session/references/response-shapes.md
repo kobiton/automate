@@ -7,7 +7,7 @@ WebDriver commands (`wd post` / `wd get`) print the unwrapped `<result>` of the 
 ## WebDriver commands
 
 Result shapes, element-ID extraction and error values are shared with `drive-automation-session` in [`webdriver.md` § Responses and errors](../../drive-automation-session/references/webdriver.md#responses-and-errors).
-Every `wd` call exits 0, so read the output, not `$?`:
+A WebDriver error exits 0, so read the output; a transport failure (plain text on stderr, nothing on stdout) exits non-zero, so check `$?` too:
 
 | Command | Response on stdout | How to read |
 |---|---|---|
