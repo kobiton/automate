@@ -554,8 +554,8 @@ describe('appium.js persistence (--session-dir)', () => {
     // Occupy the next five seconds with one artifact of each kind, so the
     // call lands on now + 5 even if the clock ticks while the child starts.
     const now = Math.floor(Date.now() / 1000)
-    const kinds = ['request-%.json', 'screenshot-%.png', 'source-%.full.xml', 'control-%.json', 'error-%.json']
-    kinds.forEach((k, i) => writeFileSync(join(dir, k.replace('%', String(now + i))), ''))
+    const kinds = [['request', 'json'], ['screenshot', 'png'], ['source', 'full.xml'], ['control', 'json'], ['error', 'json']]
+    kinds.forEach(([kind, ext], i) => writeFileSync(join(dir, `${kind}-${now + i}.${ext}`), ''))
     await runWithCreds(['--method', 'GET', '--url', '/session/s/source', '--session-dir', dir])
     expect(existsSync(join(dir, `request-${now + 5}.json`))).toBe(true)
     expect(existsSync(join(dir, `response-${now + 5}.json`))).toBe(true)
