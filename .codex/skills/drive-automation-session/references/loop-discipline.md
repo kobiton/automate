@@ -54,7 +54,7 @@ For how to construct the `act` call from the observed XML — selectors, the fin
   error-1759700004.json           ← the call's stderr on failure (line 1 = {status}; line 2+ = body)
   ...
   control-1759700031.json         ← only when the host emitted `control` (instead of an Appium call)
-  session.log                     ← human-readable timeline: the host's start / end lines, appium.js's `ts=<ts> error` and `ts=<ts> turns=<n> warning` lines
+  session.log                     ← human-readable timeline: the host's start / end lines, appium.js's `ts=<ts> error`, `ts=<ts> turns=<n> warning` and `ts=<ts> capture-warning=…` lines
 ```
 
 Every file one call writes shares its `<ts>`, and timestamps increase in call order.

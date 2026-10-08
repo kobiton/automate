@@ -16,7 +16,6 @@ allowed-tools: >-
   Bash(node:*),
   Bash(bash:*), Bash(pwsh:*),
   Bash(mkdir:*), Bash(mv:*), Bash(date:*), Bash(echo:*), Bash(printf:*),
-  Bash(ls:*), Bash(tail:*),
   Bash(jq:*),
   Bash(open:*), Bash(xdg-open:*)
 version: 1.0.0
@@ -294,7 +293,7 @@ node "$SKILL_DIR/scripts/appium.js" control \
 ```
 
 `screen` also reports `turns` (the screen and act calls so far, this one included) and, from 100 turns and every 25 after, a `warning` to re-check the flow against the stuck patterns and end with `control --blocked` if it is not progressing — a prompt, not a stop ([`references/loop-discipline.md` § Turn warning](references/loop-discipline.md#turn-warning)).
-`appium.js` logs each failed call (`ts=<ts> error`) and each warning (`ts=<ts> turns=<n> warning`) to `session.log`.
+`appium.js` logs each failed call (`ts=<ts> error`), each warning (`ts=<ts> turns=<n> warning`) and each `execute` / `execute/sync` call, which the saved test case won't contain (`ts=<ts> capture-warning=…`), to `session.log`.
 
 #### Branch decision guide
 

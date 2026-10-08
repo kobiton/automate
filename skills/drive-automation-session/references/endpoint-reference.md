@@ -135,15 +135,7 @@ When none exists (`mobile: pinchOpenGesture` has no W3C analog), `execute/sync` 
 Arg shapes vary by driver (UiAutomator2 vs XCUITest); treat the Appium project's mobile-command reference as authoritative.
 Staying in a webview context and driving it with `execute` has the same capture gap.
 
-When the host sends an `execute/sync` call, log a one-line note in `session.log` so the developer knows that action won't appear in the saved test case.
-Run it right after the call; `$TS` is that call's timestamp, taken from the newest `request-<ts>.json`:
-
-```bash
-if echo "$ACT_URL" | grep -q '/execute/sync'; then
-  TS=$(ls "$SESSION_DIR"/request-*.json | tail -1); TS=${TS##*request-}; TS=${TS%.json}
-  printf 'ts=%s capture-warning=execute/sync url=%s\n' "$TS" "$ACT_URL" >> "$SESSION_DIR/session.log"
-fi
-```
+`appium.js` appends `ts=<ts> capture-warning=execute/sync url=<url>` (or `capture-warning=execute`) to `session.log` for every script call, so the developer knows that action won't appear in the saved test case.
 
 ## Loop-control sentinels
 

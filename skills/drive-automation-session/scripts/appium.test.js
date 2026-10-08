@@ -677,6 +677,17 @@ describe('appium.js turn warning and session.log', () => {
     expect(after.warning).toBeUndefined()
   })
 
+  it('an execute or execute/sync call appends a capture-warning line to session.log', async () => {
+    reset(() => ({status: 200, body: {value: null}}))
+    const dir = makeSessionDir()
+    await runWithCreds(['--method', 'POST', '--url', '/session/s/execute/sync', '--req-body', '{"script":"mobile: pressKey","args":[{"keycode":3}]}', '--session-dir', dir])
+    const ts = soleTs(dir)
+    expect(readFileSync(logPath(dir), 'utf8')).toBe(`ts=${ts} capture-warning=execute/sync url=/session/s/execute/sync\n`)
+    const other = makeSessionDir()
+    await runWithCreds(['--method', 'POST', '--url', '/session/s/element', '--req-body', '{"using":"id","value":"a"}', '--session-dir', other])
+    expect(existsSync(logPath(other))).toBe(false)
+  })
+
   it('a failed call appends ts=<ts> error to session.log after the host lines', async () => {
     reset(() => ({status: 404, body: {value: {error: 'no such element'}}}))
     const dir = makeSessionDir()

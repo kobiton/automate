@@ -176,8 +176,8 @@ function sessionArtifacts(flags) {
 }
 
 // session.log is the session's human-readable timeline: the host writes the
-// start and end lines, appium.js appends one `ts=<ts> ...` line per failed call
-// and per turn warning. Append-only, created if missing. Best effort: a log
+// start and end lines, appium.js appends one `ts=<ts> ...` line per failed call,
+// per turn warning and per script call (capture-warning). Append-only, created if missing. Best effort: a log
 // line that can't be written never fails the call.
 function appendSessionLog(artifacts, line) {
   if (!artifacts) return
@@ -272,6 +272,9 @@ async function cmdGeneric(target, flags) {
   const treat404AsSuccess = method === 'DELETE' && /\/session\/[^/]+\/?$/.test(url)
   const res = await hubFetch(target, method, url, body)
   emitResponse(res, artifacts, {treat404AsSuccess})
+  // Script calls run on the device but are not recorded into a saved test case.
+  const script = method === 'POST' && url.match(/\/(execute(?:\/sync)?)\/?$/)
+  if (script && artifacts) appendSessionLog(artifacts, `ts=${artifacts.ts} capture-warning=${script[1]} url=${url}`)
 }
 
 // ---- `screen` helper -------------------------------------------------------
