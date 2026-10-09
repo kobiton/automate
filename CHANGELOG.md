@@ -62,6 +62,14 @@ The `MAX_ITERS` iteration cap and the host-side per-turn bookkeeping snippet are
 - `getUserInputEvents` `limit` is now documented as default 10, max 20 (was default 50, max 200); page forward by calling again with the newest event's timestamp as `sinceTimestamp` until a call returns fewer than `limit` events.
 - `listDevices` documents `private_devices_total`, `cloud_devices_total` and `favorite_devices_total` (one per list returned, counted after the filters and before the limit) and the top-level effective `limit`; when a total exceeds `limit`, narrow with `platform`, `deviceName`, `udid` or `deviceGroup`.
 
+## 1.14.2 - 2026-10-06
+
+### Added: `@kobiton/mcp-tools` tool catalog package
+
+`packages/mcp-tools` publishes the schemas in `tools/*.yaml` as one catalog file, `tool-definitions.yaml`, in the `@kobiton/mcp-tools` npm package.
+A pull request that changes `tools/` bumps the package version (CI checks it), and the `Publish MCP tools` workflow publishes each new version.
+Plugin behavior is unchanged.
+
 ## 1.14.1 - 2026-10-05
 
 ### Fixed: `/automate:setup` writes the canonical API URL
