@@ -139,7 +139,7 @@ jobs:
           registry-url: https://registry.npmjs.org
 
       # Trusted publishing needs npm 11.5.1 or later
-      - run: npm install -g npm@11.6.2
+      - run: npm install -g npm@11.6.2 --ignore-scripts
 
       # ./ makes npm read a file path; package/<name>.tgz alone is parsed as a GitHub owner/repo
       - name: Publish
