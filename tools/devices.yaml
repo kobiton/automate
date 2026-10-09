@@ -18,7 +18,13 @@ tools:
       virtual_usb_ready reflects the host machine's virtualUSB configuration,
       not current availability; check is_online and is_booked for that.
       Organization admins can call listHostingMachines with the same udid to
-      see the virtualUSB status of that device's host machine.
+      see the virtualUSB status of that device's host machine. Each list is
+      cut to `limit` devices (echoed at the top level as the effective
+      value); `private_devices_total`, `cloud_devices_total` and
+      `favorite_devices_total` (one per list returned) count every device
+      that matched the filters before that cut. When a total exceeds
+      `limit`, narrow with `platform`, `deviceName`, `udid` or `deviceGroup`
+      rather than raising `limit`.
     annotations:
       readOnlyHint: true
       destructiveHint: false
@@ -79,7 +85,9 @@ tools:
             virtualUSB status of that device's host machine.
         limit:
           type: integer
-          description: Maximum number of devices to return (max 20)
+          description: >-
+            Maximum number of devices to return per list (default 5, max 20;
+            larger values are reduced to 20)
           default: 5
       required:
         - userIntent

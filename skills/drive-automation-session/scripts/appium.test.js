@@ -2,7 +2,7 @@ import {describe, it, expect, beforeAll, afterAll} from 'vitest'
 import {execFile} from 'node:child_process'
 import {createServer} from 'node:http'
 import {createHash} from 'node:crypto'
-import {writeFileSync, mkdtempSync, readFileSync, existsSync} from 'node:fs'
+import {writeFileSync, mkdtempSync, readFileSync, existsSync, readdirSync} from 'node:fs'
 import {tmpdir} from 'node:os'
 import {join, resolve} from 'node:path'
 
@@ -59,6 +59,13 @@ function writeTemp(name, content) {
 
 function makeSessionDir() {
   return mkdtempSync(join(tmpdir(), 'drive-automation-session-sess-'))
+}
+
+// The one timestamp every artifact in `dir` shares (one appium.js call per dir).
+function soleTs(dir) {
+  const stamps = new Set(readdirSync(dir).map((f) => f.match(/^[a-z]+-(\d+)\./)?.[1]).filter(Boolean))
+  expect(stamps.size).toBe(1)
+  return Number([...stamps][0])
 }
 
 let credsFilePath
@@ -141,7 +148,7 @@ describe('appium.js generic mode', () => {
   it('Appium error → exit 0; stderr = {status} + raw body (host classifies)', async () => {
     reset(() => ({status: 404, body: {value: {error: 'no such element', message: 'not found'}}}))
     const r = await runWithCreds(['--method', 'POST', '--url', '/session/x/element', '--req-body', '{"using":"xpath","value":"//Missing"}'])
-    // Script exits 0 — host reads the stderr (or iter-N.error.json) to classify.
+    // Script exits 0 — host reads the stderr (or error-<ts>.json) to classify.
     expect(r.ok).toBe(true)
     const [summary, ...bodyLines] = r.stderr.trim().split('\n')
     expect(JSON.parse(summary).status).toBe(404)
@@ -227,123 +234,214 @@ describe('appium.js credentials', () => {
 })
 
 describe('appium.js screen helper', () => {
+  const NATIVE = [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<hierarchy index="0" class="hierarchy" rotation="0" width="1080" height="2400">',
+    '  <android.widget.FrameLayout index="0" package="com.example" class="android.widget.FrameLayout" text="" resource-id="" clickable="false" enabled="true" bounds="[0,0][1080,2400]">',
+    '    <android.widget.Button index="0" package="com.example" class="android.widget.Button" text="OK" content-desc="confirm" resource-id="com.example:id/ok" clickable="true" enabled="true" focusable="true" bounds="[100,1800][620,1920]" />',
+    '  </android.widget.FrameLayout>',
+    '</hierarchy>'
+  ].join('\n')
+  const NATIVE_LEAN = [
+    '<hierarchy>',
+    '  <android.widget.Button text="OK" content-desc="confirm" resource-id="com.example:id/ok" clickable="true" bounds="[100,1800][620,1920]" />',
+    '</hierarchy>',
+    ''
+  ].join('\n')
+
   it('default: captures BOTH XML and PNG (so native overlays show up)', async () => {
-    const xml = '<hierarchy><node/></hierarchy>'
     const pngB64 = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).toString('base64')
     let callIdx = 0
     reset(() => {
       callIdx += 1
-      if (callIdx === 1) return {status: 200, body: {value: xml}}
+      if (callIdx === 1) return {status: 200, body: {value: NATIVE}}
       return {status: 200, body: {value: pngB64}}
     })
     const dir = makeSessionDir()
-    const r = await runWithCreds(['screen', '--session-id', 'sess-s', '--session-dir', dir, '--iter', '1'])
+    const before = Math.floor(Date.now() / 1000)
+    const r = await runWithCreds(['screen', '--session-id', 'sess-s', '--session-dir', dir])
     expect(r.ok).toBe(true)
     expect(state.hits).toHaveLength(2)
     expect(state.hits[0].path).toBe('/wd/hub/session/sess-s/source')
     expect(state.hits[1].path).toBe('/wd/hub/session/sess-s/screenshot')
-    expect(existsSync(join(dir, 'iter-001.xml'))).toBe(true)
-    expect(existsSync(join(dir, 'iter-001.png'))).toBe(true)
-    expect(readFileSync(join(dir, 'iter-001.xml'), 'utf8')).toBe(xml)
     const stdout = JSON.parse(r.stdout)
-    const expected = createHash('sha256').update(xml).update(Buffer.from(pngB64, 'base64')).digest('hex')
+    const ts = stdout.ts
+    expect(ts).toBeGreaterThanOrEqual(before)
+    expect(ts).toBeLessThanOrEqual(Math.floor(Date.now() / 1000))
+    // stdout names the files it wrote, so the host knows what to read.
+    expect(stdout.source).toBe(`source-${ts}.xml`)
+    expect(stdout.fullSource).toBe(`source-${ts}.full.xml`)
+    expect(stdout.screenshot).toBe(`screenshot-${ts}.png`)
+    expect(readdirSync(dir).sort()).toEqual([
+      `request-${ts}.json`, `response-${ts}.json`, `screenshot-${ts}.png`, `source-${ts}.full.xml`, `source-${ts}.xml`
+    ])
+    // Hash covers what the host reads (the lean source-<ts>.xml) plus the PNG.
+    const expected = createHash('sha256').update(NATIVE_LEAN).update(Buffer.from(pngB64, 'base64')).digest('hex')
     expect(stdout.hash).toBe(expected)
-    expect(stdout.xmlBytes).toBeGreaterThan(0)
+    expect(stdout.mode).toBe('lean')
+    expect(stdout.xmlBytes).toBe(Buffer.byteLength(NATIVE_LEAN))
+    expect(stdout.fullXmlBytes).toBe(Buffer.byteLength(NATIVE))
     expect(stdout.pngBytes).toBeGreaterThan(0)
+    expect(JSON.parse(readFileSync(join(dir, `response-${ts}.json`), 'utf8'))).toEqual(stdout)
+  })
+
+  it('native source: source-<ts>.xml is the lean view; source-<ts>.full.xml is the raw /source', async () => {
+    reset(() => ({status: 200, body: {value: NATIVE}}))
+    const dir = makeSessionDir()
+    const r = await runWithCreds(['screen', '--session-id', 'sess-nv', '--session-dir', dir, '--xml-only'])
+    expect(r.ok).toBe(true)
+    const stdout = JSON.parse(r.stdout)
+    expect(readFileSync(join(dir, stdout.source), 'utf8')).toBe(NATIVE_LEAN)
+    expect(readFileSync(join(dir, stdout.fullSource), 'utf8')).toBe(NATIVE)
+    expect(stdout.hash).toBe(createHash('sha256').update(NATIVE_LEAN).digest('hex'))
+    expect(stdout.mode).toBe('lean')
   })
 
   it('--xml-only: skips screenshot; only /source is hit', async () => {
-    const xml = '<hierarchy/>'
-    reset(() => ({status: 200, body: {value: xml}}))
+    reset(() => ({status: 200, body: {value: NATIVE}}))
     const dir = makeSessionDir()
-    const r = await runWithCreds(['screen', '--session-id', 'sess-x', '--session-dir', dir, '--iter', '2', '--xml-only'])
+    const r = await runWithCreds(['screen', '--session-id', 'sess-x', '--session-dir', dir, '--xml-only'])
     expect(r.ok).toBe(true)
     expect(state.hits).toHaveLength(1)
     expect(state.hits[0].path).toBe('/wd/hub/session/sess-x/source')
-    expect(existsSync(join(dir, 'iter-002.xml'))).toBe(true)
-    expect(existsSync(join(dir, 'iter-002.png'))).toBe(false)
     const stdout = JSON.parse(r.stdout)
+    const {ts} = stdout
+    expect(existsSync(join(dir, `source-${ts}.xml`))).toBe(true)
+    expect(existsSync(join(dir, `source-${ts}.full.xml`))).toBe(true)
+    expect(existsSync(join(dir, `screenshot-${ts}.png`))).toBe(false)
+    expect(stdout.screenshot).toBeUndefined()
     expect(stdout.pngBytes).toBe(0)
-    expect(stdout.hash).toBe(createHash('sha256').update(xml).digest('hex'))
+    expect(stdout.hash).toBe(createHash('sha256').update(NATIVE_LEAN).digest('hex'))
   })
 
-  it('--png-only: skips source; only /screenshot is hit', async () => {
+  it('--png-only: skips source; only /screenshot is hit and no XML is written', async () => {
     const pngB64 = Buffer.from([0x89, 0x50, 0x4e, 0x47]).toString('base64')
     reset(() => ({status: 200, body: {value: pngB64}}))
     const dir = makeSessionDir()
-    const r = await runWithCreds(['screen', '--session-id', 'sess-p', '--session-dir', dir, '--iter', '3', '--png-only'])
+    const r = await runWithCreds(['screen', '--session-id', 'sess-p', '--session-dir', dir, '--png-only'])
     expect(r.ok).toBe(true)
     expect(state.hits).toHaveLength(1)
     expect(state.hits[0].path).toBe('/wd/hub/session/sess-p/screenshot')
-    expect(existsSync(join(dir, 'iter-003.xml'))).toBe(false)
-    expect(existsSync(join(dir, 'iter-003.png'))).toBe(true)
     const stdout = JSON.parse(r.stdout)
+    const {ts} = stdout
+    expect(existsSync(join(dir, `source-${ts}.xml`))).toBe(false)
+    expect(existsSync(join(dir, `source-${ts}.full.xml`))).toBe(false)
+    expect(existsSync(join(dir, `screenshot-${ts}.png`))).toBe(true)
+    expect(stdout.source).toBeUndefined()
+    expect(stdout.fullSource).toBeUndefined()
+    expect(stdout.screenshot).toBe(`screenshot-${ts}.png`)
     expect(stdout.xmlBytes).toBe(0)
+    expect(stdout.fullXmlBytes).toBe(0)
     expect(stdout.pngBytes).toBeGreaterThan(0)
   })
 
   it('--xml-only AND --png-only is a usage error', async () => {
     const dir = makeSessionDir()
-    const r = await runWithCreds(['screen', '--session-id', 'x', '--session-dir', dir, '--iter', '4', '--xml-only', '--png-only'])
+    const r = await runWithCreds(['screen', '--session-id', 'x', '--session-dir', dir, '--xml-only', '--png-only'])
     expect(r.ok).toBe(true) // exit 0 always
     expect(r.stderr).toContain('mutually exclusive')
   })
 
-  it('persists iter-N.request.json with the audit argv', async () => {
-    reset(() => ({status: 200, body: {value: '<y/>'}}))
+  it('--full on a native screen writes the raw tree to source-<ts>.xml (the pre-lean behaviour)', async () => {
+    reset(() => ({status: 200, body: {value: NATIVE}}))
     const dir = makeSessionDir()
-    await runWithCreds(['screen', '--session-id', 'sess-rq', '--session-dir', dir, '--iter', '2'])
-    const req = JSON.parse(readFileSync(join(dir, 'iter-002.request.json'), 'utf8'))
-    expect(req.argv).toContain('screen')
-    expect(req.argv).toContain('sess-rq')
+    const r = await runWithCreds(['screen', '--session-id', 'sess-fn', '--session-dir', dir, '--full', '--xml-only'])
+    expect(r.ok).toBe(true)
+    const stdout = JSON.parse(r.stdout)
+    expect(readFileSync(join(dir, stdout.source), 'utf8')).toBe(NATIVE)
+    expect(readFileSync(join(dir, stdout.fullSource), 'utf8')).toBe(NATIVE)
+    expect(stdout.mode).toBe('full')
+    expect(stdout.hash).toBe(createHash('sha256').update(NATIVE).digest('hex'))
+    expect(stdout.xmlBytes).toBe(stdout.fullXmlBytes)
+    const req = JSON.parse(readFileSync(join(dir, `request-${stdout.ts}.json`), 'utf8'))
+    expect(req.argv).toContain('--full')
   })
 
-  it('requires --session-dir AND ITER (stderr names --session-dir; exit 0)', async () => {
+  it('--full on a webview screen writes the stripped DOM to source-<ts>.xml (same as the lean view)', async () => {
+    const raw = '<html><head><script>noise()</script></head><body><div role="button" aria-label="Search" jsdata="x">icon</div></body></html>'
+    reset(() => ({status: 200, body: {value: raw}}))
+    const dir = makeSessionDir()
+    const r = await runWithCreds(['screen', '--session-id', 'sess-fw', '--session-dir', dir, '--full', '--xml-only'])
+    expect(r.ok).toBe(true)
+    const stdout = JSON.parse(r.stdout)
+    const stripped = readFileSync(join(dir, stdout.source), 'utf8')
+    expect(stripped).not.toContain('<script')
+    expect(stripped).toContain('aria-label="Search"')
+    expect(readFileSync(join(dir, stdout.fullSource), 'utf8')).toBe(raw)
+    expect(stdout.mode).toBe('full')
+  })
+
+  it('--full combined with the default capture still writes the PNG', async () => {
+    const pngB64 = Buffer.from([0x89, 0x50, 0x4e, 0x47]).toString('base64')
+    let callIdx = 0
+    reset(() => {
+      callIdx += 1
+      return callIdx === 1 ? {status: 200, body: {value: NATIVE}} : {status: 200, body: {value: pngB64}}
+    })
+    const dir = makeSessionDir()
+    const r = await runWithCreds(['screen', '--session-id', 'sess-fp', '--session-dir', dir, '--full'])
+    expect(r.ok).toBe(true)
+    expect(state.hits).toHaveLength(2)
+    const stdout = JSON.parse(r.stdout)
+    expect(existsSync(join(dir, stdout.screenshot))).toBe(true)
+    expect(readFileSync(join(dir, stdout.source), 'utf8')).toBe(NATIVE)
+  })
+
+  it('persists request-<ts>.json with the audit argv', async () => {
+    reset(() => ({status: 200, body: {value: '<y/>'}}))
+    const dir = makeSessionDir()
+    const r = await runWithCreds(['screen', '--session-id', 'sess-rq', '--session-dir', dir])
+    const req = JSON.parse(readFileSync(join(dir, `request-${JSON.parse(r.stdout).ts}.json`), 'utf8'))
+    expect(req.argv).toContain('screen')
+    expect(req.argv).toContain('sess-rq')
+    expect(req.argv).not.toContain('--full')
+  })
+
+  it('a failed /source writes error-<ts>.json and no source files (stdout empty)', async () => {
+    reset(() => ({status: 404, body: {value: {error: 'invalid session id'}}}))
+    const dir = makeSessionDir()
+    const r = await runWithCreds(['screen', '--session-id', 'gone', '--session-dir', dir])
+    expect(r.ok).toBe(true)
+    expect(r.stdout).toBe('')
+    expect(JSON.parse(r.stderr.trim().split('\n')[0]).status).toBe(404)
+    const ts = soleTs(dir)
+    expect(readdirSync(dir).sort()).toEqual([`error-${ts}.json`, `request-${ts}.json`, 'session.log'])
+    expect(readFileSync(join(dir, 'session.log'), 'utf8')).toBe(`ts=${ts} error\n`)
+  })
+
+  it('requires --session-dir (stderr names --session-dir; exit 0)', async () => {
     const r = await runWithCreds(['screen', '--session-id', 'x'])
     expect(r.ok).toBe(true)
     expect(r.stderr).toContain('--session-dir')
   })
 
-  it('webview source: writes stripped iter-N.xml AND raw iter-N.full.xml', async () => {
+  it('webview source: writes stripped source-<ts>.xml AND raw source-<ts>.full.xml', async () => {
     const raw = '<html><head><script>noise()</script></head><body><div role="button" aria-label="Search YouTube" jsdata="x">icon</div></body></html>'
     reset(() => ({status: 200, body: {value: raw}}))
     const dir = makeSessionDir()
-    const r = await runWithCreds(['screen', '--session-id', 'sess-wv', '--session-dir', dir, '--iter', '5', '--xml-only'])
+    const r = await runWithCreds(['screen', '--session-id', 'sess-wv', '--session-dir', dir, '--xml-only'])
     expect(r.ok).toBe(true)
-    expect(existsSync(join(dir, 'iter-005.xml'))).toBe(true)
-    expect(existsSync(join(dir, 'iter-005.full.xml'))).toBe(true)
-    const stripped = readFileSync(join(dir, 'iter-005.xml'), 'utf8')
-    const full = readFileSync(join(dir, 'iter-005.full.xml'), 'utf8')
+    const stdout = JSON.parse(r.stdout)
+    const stripped = readFileSync(join(dir, `source-${stdout.ts}.xml`), 'utf8')
+    const full = readFileSync(join(dir, `source-${stdout.ts}.full.xml`), 'utf8')
     expect(full).toBe(raw)
     expect(stripped).not.toContain('<script')
     expect(stripped).not.toContain('jsdata=')
     expect(stripped).toContain('aria-label="Search YouTube"')
     // Hash is computed on the stripped XML, not the raw, so screen-hash
     // equality reflects what the host actually reads.
-    const stdout = JSON.parse(r.stdout)
     expect(stdout.hash).toBe(createHash('sha256').update(stripped).digest('hex'))
     expect(stdout.xmlBytes).toBe(Buffer.byteLength(stripped))
-  })
-
-  it('native source: writes iter-N.xml only (raw); no iter-N.full.xml', async () => {
-    const raw = '<hierarchy><android.widget.Button text="OK" content-desc="confirm"/></hierarchy>'
-    reset(() => ({status: 200, body: {value: raw}}))
-    const dir = makeSessionDir()
-    const r = await runWithCreds(['screen', '--session-id', 'sess-nv', '--session-dir', dir, '--iter', '6', '--xml-only'])
-    expect(r.ok).toBe(true)
-    expect(existsSync(join(dir, 'iter-006.xml'))).toBe(true)
-    expect(existsSync(join(dir, 'iter-006.full.xml'))).toBe(false)
-    expect(readFileSync(join(dir, 'iter-006.xml'), 'utf8')).toBe(raw)
-    const stdout = JSON.parse(r.stdout)
-    expect(stdout.hash).toBe(createHash('sha256').update(raw).digest('hex'))
+    expect(stdout.fullXmlBytes).toBe(Buffer.byteLength(raw))
+    expect(stdout.mode).toBe('lean')
   })
 
   it('webview detection is leading-whitespace tolerant and case-insensitive', async () => {
-    const raw = '\n  <HTML><body><div>hi</div></body></HTML>'
+    const raw = '\n  <HTML><body><div jsdata="x">hi</div></body></HTML>'
     reset(() => ({status: 200, body: {value: raw}}))
     const dir = makeSessionDir()
-    await runWithCreds(['screen', '--session-id', 'sess-ws', '--session-dir', dir, '--iter', '7', '--xml-only'])
-    expect(existsSync(join(dir, 'iter-007.full.xml'))).toBe(true)
+    const r = await runWithCreds(['screen', '--session-id', 'sess-ws', '--session-dir', dir, '--xml-only'])
+    expect(readFileSync(join(dir, JSON.parse(r.stdout).source), 'utf8')).not.toContain('jsdata=')
   })
 
   it('webview detection accepts an XML declaration before <html (chromedriver path)', async () => {
@@ -353,10 +451,9 @@ describe('appium.js screen helper', () => {
     const raw = '<?xml version="1.0" encoding="UTF-8"?><html><body><div jsdata="x">hi</div></body></html>'
     reset(() => ({status: 200, body: {value: raw}}))
     const dir = makeSessionDir()
-    const r = await runWithCreds(['screen', '--session-id', 'sess-xml', '--session-dir', dir, '--iter', '8', '--xml-only'])
+    const r = await runWithCreds(['screen', '--session-id', 'sess-xml', '--session-dir', dir, '--xml-only'])
     expect(r.ok).toBe(true)
-    expect(existsSync(join(dir, 'iter-008.full.xml'))).toBe(true)
-    const stripped = readFileSync(join(dir, 'iter-008.xml'), 'utf8')
+    const stripped = readFileSync(join(dir, JSON.parse(r.stdout).source), 'utf8')
     expect(stripped).not.toContain('jsdata=') // strip actually ran
   })
 
@@ -364,99 +461,277 @@ describe('appium.js screen helper', () => {
     const raw = '<!DOCTYPE html><html><body><span jsdata="x">hi</span></body></html>'
     reset(() => ({status: 200, body: {value: raw}}))
     const dir = makeSessionDir()
-    await runWithCreds(['screen', '--session-id', 'sess-dt', '--session-dir', dir, '--iter', '9', '--xml-only'])
-    expect(existsSync(join(dir, 'iter-009.full.xml'))).toBe(true)
-    expect(readFileSync(join(dir, 'iter-009.xml'), 'utf8')).not.toContain('jsdata=')
+    const r = await runWithCreds(['screen', '--session-id', 'sess-dt', '--session-dir', dir, '--xml-only'])
+    expect(readFileSync(join(dir, JSON.parse(r.stdout).source), 'utf8')).not.toContain('jsdata=')
   })
 
   it('webview detection accepts a UTF-8 BOM before <html', async () => {
     const raw = '﻿<html><body><i jsdata="x">hi</i></body></html>'
     reset(() => ({status: 200, body: {value: raw}}))
     const dir = makeSessionDir()
-    await runWithCreds(['screen', '--session-id', 'sess-bom', '--session-dir', dir, '--iter', '10', '--xml-only'])
-    expect(existsSync(join(dir, 'iter-010.full.xml'))).toBe(true)
+    const r = await runWithCreds(['screen', '--session-id', 'sess-bom', '--session-dir', dir, '--xml-only'])
+    expect(readFileSync(join(dir, JSON.parse(r.stdout).source), 'utf8')).not.toContain('jsdata=')
   })
 
-  it('native UiAutomator2 source is NOT misclassified as webview', async () => {
+  it('native UiAutomator2 source is NOT misclassified as webview (gets the native lean view)', async () => {
     const raw = '<hierarchy><android.widget.FrameLayout text=""><android.widget.Button text="OK"/></android.widget.FrameLayout></hierarchy>'
     reset(() => ({status: 200, body: {value: raw}}))
     const dir = makeSessionDir()
-    await runWithCreds(['screen', '--session-id', 'sess-ua2', '--session-dir', dir, '--iter', '11', '--xml-only'])
-    expect(existsSync(join(dir, 'iter-011.xml'))).toBe(true)
-    expect(existsSync(join(dir, 'iter-011.full.xml'))).toBe(false)
+    const r = await runWithCreds(['screen', '--session-id', 'sess-ua2', '--session-dir', dir, '--xml-only'])
+    expect(readFileSync(join(dir, JSON.parse(r.stdout).source), 'utf8')).toBe('<hierarchy>\n  <android.widget.Button text="OK" />\n</hierarchy>\n')
+    expect(readFileSync(join(dir, JSON.parse(r.stdout).fullSource), 'utf8')).toBe(raw)
   })
 
-  it('native XCUITest source is NOT misclassified as webview', async () => {
-    const raw = '<SCREEN><XCUIElementTypeApplication name="App"><XCUIElementTypeButton name="OK"/></XCUIElementTypeApplication></SCREEN>'
+  it('native XCUITest source is NOT misclassified as webview (gets the native lean view)', async () => {
+    const raw = '<SCREEN><XCUIElementTypeApplication name="App"><XCUIElementTypeOther accessible="false"><XCUIElementTypeButton name="OK"/></XCUIElementTypeOther></XCUIElementTypeApplication></SCREEN>'
     reset(() => ({status: 200, body: {value: raw}}))
     const dir = makeSessionDir()
-    await runWithCreds(['screen', '--session-id', 'sess-xc', '--session-dir', dir, '--iter', '12', '--xml-only'])
-    expect(existsSync(join(dir, 'iter-012.xml'))).toBe(true)
-    expect(existsSync(join(dir, 'iter-012.full.xml'))).toBe(false)
+    const r = await runWithCreds(['screen', '--session-id', 'sess-xc', '--session-dir', dir, '--xml-only'])
+    expect(readFileSync(join(dir, JSON.parse(r.stdout).source), 'utf8')).toBe([
+      '<SCREEN>',
+      '  <XCUIElementTypeApplication name="App">',
+      '    <XCUIElementTypeButton name="OK" />',
+      '  </XCUIElementTypeApplication>',
+      '</SCREEN>',
+      ''
+    ].join('\n'))
+    expect(readFileSync(join(dir, JSON.parse(r.stdout).fullSource), 'utf8')).toBe(raw)
+  })
+
+  it('unrecognised source passes through to source-<ts>.xml unchanged', async () => {
+    const raw = '<root><child a="1"/></root>'
+    reset(() => ({status: 200, body: {value: raw}}))
+    const dir = makeSessionDir()
+    const r = await runWithCreds(['screen', '--session-id', 'sess-un', '--session-dir', dir, '--xml-only'])
+    expect(readFileSync(join(dir, JSON.parse(r.stdout).source), 'utf8')).toBe(raw)
   })
 })
 
-describe('appium.js persistence (--session-dir / --iter)', () => {
-  it('generic call persists iter-N.request.json + iter-N.response.json on success', async () => {
+describe('appium.js persistence (--session-dir)', () => {
+  it('generic call persists request-<ts>.json + response-<ts>.json on success; stdout is the raw body', async () => {
     reset(() => ({status: 200, body: {value: {ELEMENT: 'el-x'}}}))
     const dir = makeSessionDir()
-    await runWithCreds(['--method', 'POST', '--url', '/session/s/element', '--req-body', '{"using":"xpath","value":"//B"}', '--session-dir', dir, '--iter', '3'])
-    const req = JSON.parse(readFileSync(join(dir, 'iter-003.request.json'), 'utf8'))
+    const r = await runWithCreds(['--method', 'POST', '--url', '/session/s/element', '--req-body', '{"using":"xpath","value":"//B"}', '--session-dir', dir])
+    // Act stdout stays the raw WebDriver body (the host pipes it to jq).
+    expect(JSON.parse(r.stdout)).toEqual({value: {ELEMENT: 'el-x'}})
+    const ts = soleTs(dir)
+    expect(readdirSync(dir).sort()).toEqual([`request-${ts}.json`, `response-${ts}.json`])
+    const req = JSON.parse(readFileSync(join(dir, `request-${ts}.json`), 'utf8'))
     expect(req.argv).toContain('--method')
     expect(req.argv).toContain('POST')
-    const resp = JSON.parse(readFileSync(join(dir, 'iter-003.response.json'), 'utf8'))
+    const resp = JSON.parse(readFileSync(join(dir, `response-${ts}.json`), 'utf8'))
     expect(resp).toEqual({value: {ELEMENT: 'el-x'}})
-    expect(existsSync(join(dir, 'iter-003.error.json'))).toBe(false)
   })
 
-  it('generic call persists iter-N.error.json on failure (exit 0, host classifies)', async () => {
+  it('generic call persists error-<ts>.json on failure (exit 0, host classifies)', async () => {
     reset(() => ({status: 404, body: {value: {error: 'no such element'}}}))
     const dir = makeSessionDir()
-    const r = await runWithCreds(['--method', 'POST', '--url', '/session/s/element', '--req-body', '{"using":"xpath","value":"//Missing"}', '--session-dir', dir, '--iter', '4'])
-    // Script exits 0 in all Appium-response cases; the host detects failure
-    // by iter-N.error.json existence on the next turn.
+    const r = await runWithCreds(['--method', 'POST', '--url', '/session/s/element', '--req-body', '{"using":"xpath","value":"//Missing"}', '--session-dir', dir])
+    // Script exits 0 in all Appium-response cases; the failure shows on
+    // stderr (stdout stays empty) and in error-<ts>.json.
     expect(r.ok).toBe(true)
-    const err = readFileSync(join(dir, 'iter-004.error.json'), 'utf8')
+    expect(r.stdout).toBe('')
+    const ts = soleTs(dir)
+    const err = readFileSync(join(dir, `error-${ts}.json`), 'utf8')
+    expect(r.stderr).toBe(err)
     const [summary, ...bodyLines] = err.trim().split('\n')
     expect(JSON.parse(summary).status).toBe(404)
     expect(JSON.parse(bodyLines.join('\n'))).toEqual({value: {error: 'no such element'}})
-    expect(existsSync(join(dir, 'iter-004.response.json'))).toBe(false)
+    expect(existsSync(join(dir, `response-${ts}.json`))).toBe(false)
   })
 
-  it('no --session-dir / --iter → no files written', async () => {
+  it('no --session-dir → no files written', async () => {
     reset(() => ({status: 200, body: {value: '<x/>'}}))
     const dir = makeSessionDir()
     await runWithCreds(['--method', 'GET', '--url', '/session/s/source'])
     // dir is empty; nothing should land there
-    expect(existsSync(join(dir, 'iter-001.request.json'))).toBe(false)
+    expect(readdirSync(dir)).toEqual([])
   })
 
-  it('pads iter to 3 digits', async () => {
+  it('timestamp already taken by any artifact kind → the next free second', async () => {
     reset(() => ({status: 200, body: {value: '<x/>'}}))
     const dir = makeSessionDir()
-    await runWithCreds(['--method', 'GET', '--url', '/session/s/source', '--session-dir', dir, '--iter', '42'])
-    expect(existsSync(join(dir, 'iter-042.request.json'))).toBe(true)
+    // Occupy the next five seconds with one artifact of each kind, so the
+    // call lands on now + 5 even if the clock ticks while the child starts.
+    const now = Math.floor(Date.now() / 1000)
+    const kinds = [['request', 'json'], ['screenshot', 'png'], ['source', 'full.xml'], ['control', 'json'], ['error', 'json']]
+    kinds.forEach(([kind, ext], i) => writeFileSync(join(dir, `${kind}-${now + i}.${ext}`), ''))
+    await runWithCreds(['--method', 'GET', '--url', '/session/s/source', '--session-dir', dir])
+    expect(existsSync(join(dir, `request-${now + 5}.json`))).toBe(true)
+    expect(existsSync(join(dir, `response-${now + 5}.json`))).toBe(true)
   })
 
-  it('reads ITER from env when --iter flag is omitted', async () => {
+  it('consecutive calls get distinct timestamps that sort in call order', async () => {
     reset(() => ({status: 200, body: {value: '<x/>'}}))
     const dir = makeSessionDir()
-    await runWithCreds(
-      ['--method', 'GET', '--url', '/session/s/source', '--session-dir', dir],
-      {ITER: '7'}
-    )
-    expect(existsSync(join(dir, 'iter-007.request.json'))).toBe(true)
+    const a = await runWithCreds(['screen', '--session-id', 's', '--session-dir', dir, '--xml-only'])
+    const b = await runWithCreds(['screen', '--session-id', 's', '--session-dir', dir, '--xml-only'])
+    const c = await runWithCreds(['control', '--done', '--reason', 'r', '--session-dir', dir])
+    const [ta, tb, tc] = [a, b, c].map((r) => JSON.parse(r.stdout).ts)
+    expect(tb).toBeGreaterThan(ta)
+    expect(tc).toBeGreaterThan(tb)
+    const requests = readdirSync(dir).filter((f) => f.startsWith('request-')).sort()
+    expect(requests).toEqual([`request-${ta}.json`, `request-${tb}.json`])
+  })
+})
+
+describe('appium.js turn warning and session.log', () => {
+  // Stand-ins for earlier screen / act turns: request files stamped well in
+  // the past, so the call under test still takes the current second.
+  let seedBase = Math.floor(Date.now() / 1000) - 1_000_000
+  function seedTurns(dir, n) {
+    for (let i = 0; i < n; i += 1) {
+      seedBase += 1
+      writeFileSync(join(dir, `request-${seedBase}.json`), '{"argv":[]}\n')
+    }
+  }
+  const screen = (dir) => runWithCreds(['screen', '--session-id', 's', '--session-dir', dir, '--xml-only'])
+  const logPath = (dir) => join(dir, 'session.log')
+  const warningLines = (dir) => existsSync(logPath(dir))
+    ? readFileSync(logPath(dir), 'utf8').split('\n').filter((l) => l.endsWith(' warning'))
+    : []
+
+  it('screen stdout carries turns: the screen and act calls so far, this one included', async () => {
+    reset(() => ({status: 200, body: {value: '<x/>'}}))
+    const dir = makeSessionDir()
+    const first = JSON.parse((await screen(dir)).stdout)
+    expect(first.turns).toBe(1)
+    expect(first.warning).toBeUndefined()
+    await runWithCreds(['--method', 'POST', '--url', '/session/s/element', '--req-body', '{"using":"id","value":"a"}', '--session-dir', dir])
+    const third = JSON.parse((await screen(dir)).stdout)
+    expect(third.turns).toBe(3)
+    expect(JSON.parse(readFileSync(join(dir, `response-${third.ts}.json`), 'utf8'))).toEqual(third)
+    // Successful calls below the threshold write nothing to session.log.
+    expect(existsSync(logPath(dir))).toBe(false)
   })
 
-  it('explicit --iter overrides ITER env', async () => {
+  it('no warning at 99 turns', async () => {
     reset(() => ({status: 200, body: {value: '<x/>'}}))
     const dir = makeSessionDir()
-    await runWithCreds(
-      ['--method', 'GET', '--url', '/session/s/source', '--session-dir', dir, '--iter', '99'],
-      {ITER: '7'}
-    )
-    expect(existsSync(join(dir, 'iter-099.request.json'))).toBe(true)
-    expect(existsSync(join(dir, 'iter-007.request.json'))).toBe(false)
+    seedTurns(dir, 98)
+    const r = await screen(dir)
+    const out = JSON.parse(r.stdout)
+    expect(out.turns).toBe(99)
+    expect(out.warning).toBeUndefined()
+    expect(existsSync(logPath(dir))).toBe(false)
+  })
+
+  it('warns at 100 turns on stdout only, and appends ts=<ts> turns=100 warning to session.log', async () => {
+    reset(() => ({status: 200, body: {value: '<x/>'}}))
+    const dir = makeSessionDir()
+    seedTurns(dir, 99)
+    const started = '2026-10-08T00:00:00Z session=s started intent=x\n'
+    writeFileSync(logPath(dir), started)
+    const r = await screen(dir)
+    expect(r.stderr).toBe('')
+    const out = JSON.parse(r.stdout)
+    expect(out.turns).toBe(100)
+    expect(out.warning).toBe('100 turns on this session — check whether the flow is progressing (references/loop-discipline.md, Stuck patterns) and end with control --blocked if it is not')
+    expect(JSON.parse(readFileSync(join(dir, `response-${out.ts}.json`), 'utf8'))).toEqual(out)
+    // Append-only: the host's lines stay.
+    expect(readFileSync(logPath(dir), 'utf8')).toBe(`${started}ts=${out.ts} turns=100 warning\n`)
+  })
+
+  it('warns at 125 turns when no warning for 125-149 is logged', async () => {
+    reset(() => ({status: 200, body: {value: '<x/>'}}))
+    const dir = makeSessionDir()
+    seedTurns(dir, 124)
+    writeFileSync(logPath(dir), 'ts=1 turns=100 warning\n')
+    const out = JSON.parse((await screen(dir)).stdout)
+    expect(out.turns).toBe(125)
+    expect(out.warning).toMatch(/^125 turns on this session/)
+    expect(warningLines(dir)).toEqual(['ts=1 turns=100 warning', `ts=${out.ts} turns=125 warning`])
+  })
+
+  it('warns once at 100, not on any screen call from 101 to 124, then again at 125', async () => {
+    reset(() => ({status: 200, body: {value: '<x/>'}}))
+    const dir = makeSessionDir()
+    seedTurns(dir, 99)
+    const seen = []
+    for (let turn = 100; turn <= 125; turn += 1) {
+      const r = await screen(dir)
+      expect(r.stderr).toBe('')
+      const out = JSON.parse(r.stdout)
+      expect(out.turns).toBe(turn)
+      if (out.warning) seen.push(out.turns)
+    }
+    expect(seen).toEqual([100, 125])
+    expect(warningLines(dir).map((l) => l.replace(/^ts=\d+ /, ''))).toEqual(['turns=100 warning', 'turns=125 warning'])
+  }, 60_000)
+
+  it('a threshold reached by an act call warns on the next screen call; act stdout is unchanged', async () => {
+    const body = {value: {ELEMENT: 'el-1'}}
+    reset((hit) => hit.path.endsWith('/source') ? {status: 200, body: {value: '<x/>'}} : {status: 200, body})
+    const dir = makeSessionDir()
+    seedTurns(dir, 98)
+    expect(JSON.parse((await screen(dir)).stdout).warning).toBeUndefined()   // turn 99
+    const act = await runWithCreds(['--method', 'POST', '--url', '/session/s/element', '--req-body', '{"using":"id","value":"a"}', '--session-dir', dir])   // turn 100
+    expect(act.stdout).toBe(JSON.stringify(body) + '\n')
+    expect(act.stderr).toBe('')
+    expect(warningLines(dir)).toEqual([])
+    const next = JSON.parse((await screen(dir)).stdout)   // turn 101
+    expect(next.turns).toBe(101)
+    expect(next.warning).toMatch(/^101 turns on this session/)
+    expect(warningLines(dir)).toEqual([`ts=${next.ts} turns=101 warning`])
+    const after = JSON.parse((await screen(dir)).stdout)   // turn 102
+    expect(after.warning).toBeUndefined()
+  })
+
+  it.each([
+    ['/session/s/execute/sync', 'execute/sync'],
+    ['/session/s/execute', 'execute'],
+    ['/session/s/execute/', 'execute']
+  ])('a POST to %s appends capture-warning=%s to session.log', async (url, kind) => {
+    reset(() => ({status: 200, body: {value: null}}))
+    const dir = makeSessionDir()
+    await runWithCreds(['--method', 'POST', '--url', url, '--req-body', '{"script":"mobile: pressKey","args":[{"keycode":3}]}', '--session-dir', dir])
+    const ts = soleTs(dir)
+    expect(readFileSync(logPath(dir), 'utf8')).toBe(`ts=${ts} capture-warning=${kind} url=${url}\n`)
+  })
+
+  it('a call that is not a POST to execute logs no capture-warning', async () => {
+    reset(() => ({status: 200, body: {value: null}}))
+    const element = makeSessionDir()
+    await runWithCreds(['--method', 'POST', '--url', '/session/s/element', '--req-body', '{"using":"id","value":"a"}', '--session-dir', element])
+    expect(existsSync(logPath(element))).toBe(false)
+    const get = makeSessionDir()
+    await runWithCreds(['--method', 'GET', '--url', '/session/s/execute', '--session-dir', get])
+    expect(existsSync(logPath(get))).toBe(false)
+  })
+
+  it('a non-JSON /source body writes error-<ts>.json (parse) and appends ts=<ts> error', async () => {
+    reset(() => ({status: 200, body: 'not json'}))
+    const dir = makeSessionDir()
+    const r = await runWithCreds(['screen', '--session-id', 's', '--session-dir', dir, '--xml-only'])
+    const ts = soleTs(dir)
+    expect(r.stdout).toBe('')
+    const [head, ...rest] = readFileSync(join(dir, `error-${ts}.json`), 'utf8').split('\n')
+    expect(JSON.parse(head)).toEqual({status: 0})
+    expect(JSON.parse(rest.join('\n')).error).toBe('parse')
+    expect(readFileSync(logPath(dir), 'utf8')).toBe(`ts=${ts} error\n`)
+  })
+
+  it('a failed call appends ts=<ts> error to session.log after the host lines', async () => {
+    reset(() => ({status: 404, body: {value: {error: 'no such element'}}}))
+    const dir = makeSessionDir()
+    const started = '2026-10-08T00:00:00Z session=s started intent=x\n'
+    writeFileSync(logPath(dir), started)
+    await runWithCreds(['--method', 'POST', '--url', '/session/s/element', '--req-body', '{"using":"id","value":"a"}', '--session-dir', dir])
+    const ts = soleTs(dir)
+    expect(readFileSync(logPath(dir), 'utf8')).toBe(`${started}ts=${ts} error\n`)
+  })
+
+  it('a failed screen call at a threshold logs the error and leaves the warning for the next screen', async () => {
+    let fail = true
+    reset(() => fail ? {status: 500, body: {value: {error: 'unknown error'}}} : {status: 200, body: {value: '<x/>'}})
+    const dir = makeSessionDir()
+    seedTurns(dir, 99)
+    const r = await screen(dir)   // turn 100, fails
+    expect(r.stdout).toBe('')
+    expect(readFileSync(logPath(dir), 'utf8')).toMatch(/^ts=\d+ error\n$/)
+    fail = false
+    const out = JSON.parse((await screen(dir)).stdout)   // turn 101
+    expect(out.warning).toMatch(/^101 turns on this session/)
   })
 })
 
@@ -496,12 +771,12 @@ describe('appium.js actions helper', () => {
 
   it('unknown --type exits 1', async () => {
     const r = await runWithCreds(['actions', '--session-id', 'x', '--type', 'noop'])
-    expect(r.ok).toBe(true)  // exit 0 always; host detects error via stderr / iter-N.error.json
+    expect(r.ok).toBe(true)  // exit 0 always; host detects error via stderr / error-<ts>.json
   })
 
   it('non-numeric swipe coord exits 1', async () => {
     const r = await runWithCreds(['actions', '--session-id', 'x', '--type', 'swipe', '--from-x', 'abc', '--from-y', '0', '--to-x', '0', '--to-y', '0'])
-    expect(r.ok).toBe(true)  // exit 0 always; host detects error via stderr / iter-N.error.json
+    expect(r.ok).toBe(true)  // exit 0 always; host detects error via stderr / error-<ts>.json
   })
 })
 
@@ -517,51 +792,58 @@ describe('appium.js touch-perform helper', () => {
   it('--steps not an array exits 1', async () => {
     const f = writeTemp('steps.json', {action: 'press'})
     const r = await runWithCreds(['touch-perform', '--session-id', 'x', '--steps', `@${f}`])
-    expect(r.ok).toBe(true)  // exit 0 always; host detects error via stderr / iter-N.error.json
+    expect(r.ok).toBe(true)  // exit 0 always; host detects error via stderr / error-<ts>.json
   })
 })
 
 describe('appium.js control helper', () => {
-  it('--done writes iter-N.control.json with {control: DONE, reason}', async () => {
+  it('--done writes control-<ts>.json with {control: DONE, reason}; stdout adds ts', async () => {
     reset()
     const dir = makeSessionDir()
-    const r = await runWithCreds(['control', '--done', '--reason', 'all good', '--session-dir', dir, '--iter', '5'])
+    const r = await runWithCreds(['control', '--done', '--reason', 'all good', '--session-dir', dir])
     expect(r.ok).toBe(true)
-    const ctl = JSON.parse(readFileSync(join(dir, 'iter-005.control.json'), 'utf8'))
+    const out = JSON.parse(r.stdout)
+    expect(out).toEqual({ts: out.ts, control: 'DONE', reason: 'all good'})
+    expect(readdirSync(dir)).toEqual([`control-${out.ts}.json`])
+    const ctl = JSON.parse(readFileSync(join(dir, `control-${out.ts}.json`), 'utf8'))
     expect(ctl).toEqual({control: 'DONE', reason: 'all good'})
     // No HTTP request issued
     expect(state.hits).toHaveLength(0)
   })
 
-  it('--blocked writes iter-N.control.json with {control: BLOCKED, reason}', async () => {
+  it('--blocked writes control-<ts>.json with {control: BLOCKED, reason}', async () => {
     const dir = makeSessionDir()
-    await runWithCreds(['control', '--blocked', '--reason', 'stuck', '--session-dir', dir, '--iter', '6'])
-    const ctl = JSON.parse(readFileSync(join(dir, 'iter-006.control.json'), 'utf8'))
+    await runWithCreds(['control', '--blocked', '--reason', 'stuck', '--session-dir', dir])
+    const ctl = JSON.parse(readFileSync(join(dir, `control-${soleTs(dir)}.json`), 'utf8'))
     expect(ctl).toEqual({control: 'BLOCKED', reason: 'stuck'})
   })
 
-  it('control without --done or --blocked exits 1', async () => {
+  it('control without --done or --blocked writes error-<ts>.json (exit 0)', async () => {
     const dir = makeSessionDir()
-    const r = await runWithCreds(['control', '--reason', 'x', '--session-dir', dir, '--iter', '7'])
-    expect(r.ok).toBe(true)  // exit 0 always; host detects error via stderr / iter-N.error.json
+    const r = await runWithCreds(['control', '--reason', 'x', '--session-dir', dir])
+    expect(r.ok).toBe(true)  // exit 0 always; host detects error via stderr / error-<ts>.json
+    const ts = soleTs(dir)
+    expect(readdirSync(dir).sort()).toEqual([`error-${ts}.json`, 'session.log'])
+    expect(readFileSync(join(dir, 'session.log'), 'utf8')).toBe(`ts=${ts} error\n`)
   })
 
-  it('control without --session-dir/--iter exits 1', async () => {
+  it('control without --session-dir is a usage error (exit 0)', async () => {
     const r = await runWithCreds(['control', '--done', '--reason', 'x'])
-    expect(r.ok).toBe(true)  // exit 0 always; host detects error via stderr / iter-N.error.json
+    expect(r.ok).toBe(true)  // exit 0 always; host detects error via stderr
+    expect(r.stderr).toContain('--session-dir')
   })
 })
 
 describe('appium.js usage errors', () => {
   it('unknown helper exits 1', async () => {
     const r = await runWithCreds(['cuddle', '--session-id', 'x'])
-    expect(r.ok).toBe(true)  // exit 0 always; host detects error via stderr / iter-N.error.json
+    expect(r.ok).toBe(true)  // exit 0 always; host detects error via stderr / error-<ts>.json
     expect(r.stderr).toContain('unknown helper')
   })
 
   it('generic without --method exits 1', async () => {
     const r = await runWithCreds(['--url', '/session/x/source'])
-    expect(r.ok).toBe(true)  // exit 0 always; host detects error via stderr / iter-N.error.json
+    expect(r.ok).toBe(true)  // exit 0 always; host detects error via stderr / error-<ts>.json
   })
 
   it('--req-body invalid JSON exits 0; stderr names bad-input', async () => {
@@ -570,12 +852,13 @@ describe('appium.js usage errors', () => {
     expect(r.stderr).toContain('bad-input')
   })
 
-  it('bad-input with --session-dir writes iter-N.error.json (exit 0)', async () => {
+  it('bad-input with --session-dir writes error-<ts>.json (exit 0)', async () => {
     const dir = makeSessionDir()
-    const r = await runWithCreds(['--method', 'POST', '--url', '/session', '--req-body', 'not json {', '--session-dir', dir, '--iter', '7'])
+    const r = await runWithCreds(['--method', 'POST', '--url', '/session', '--req-body', 'not json {', '--session-dir', dir])
     expect(r.ok).toBe(true)
-    expect(existsSync(join(dir, 'iter-007.error.json'))).toBe(true)
-    const err = readFileSync(join(dir, 'iter-007.error.json'), 'utf8')
+    const ts = soleTs(dir)
+    expect(existsSync(join(dir, `error-${ts}.json`))).toBe(true)
+    const err = readFileSync(join(dir, `error-${ts}.json`), 'utf8')
     expect(err).toContain('bad-input')
   })
 })

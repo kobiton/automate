@@ -1,5 +1,67 @@
 # Changelog
 
+## 1.15.0 - 2026-10-05
+
+### Added: lean UI-tree view for the WebDriver skills
+
+`drive-automation-session` and `run-interactive-session` now read a lean view of the page source instead of the whole tree.
+A new shared filter, `skills/drive-automation-session/scripts/ui-tree.js` (Node, no dependencies; `node ui-tree.js <source-file>` prints the lean view), keeps only the elements an agent can target or read — ids, accessibility labels, text, and clickable / scrollable / checkable flags — with their bounds, and preserves element tag names so selectors built from it resolve against the live session.
+Native UiAutomator2 and XCUITest trees are filtered for the first time; on representative settings screens the lean view is about 77% (Android) and 71% (iOS) smaller than the raw source.
+Webview pages keep the existing stripped DOM unchanged.
+The shared WebDriver reference (below) carries the read rule for both skills: the lean view is the default read, the full source is the escape hatch (an unavoidable positional XPath, an expected element missing from the lean view, or `no such element` twice in a row), selectors come from identifying attributes rather than position, and the screenshot is read on demand.
+
+### Changed: `screen` writes the lean view and always keeps the raw source
+
+In `drive-automation-session`, `screen` now writes the lean view to `source-<ts>.xml` and the raw `/source` body to `source-<ts>.full.xml` on every turn that captures the source (previously only on webview turns; native trees were written raw to the XML file).
+The new `--full` flag restores the previous XML output (stripped webview DOM, raw native tree) and combines with `--xml-only`.
+The stdout / `response-<ts>.json` line adds `mode` (`lean` | `full`) and `fullXmlBytes`; the screen hash still covers `source-<ts>.xml` plus the screenshot.
+The `--xml-only` / `--png-only` docs now describe what each captures.
+
+### Changed: `run-interactive-session` page source
+
+Step 4 saves `wd get source` to `source-<ts>.full.xml`, writes the lean view to `source-<ts>.xml` with the shared filter, and reads the lean file.
+The skill now allows `Bash(node:*)`.
+
+### Added: one WebDriver reference for both WebDriver skills
+
+`skills/drive-automation-session/references/webdriver.md` is now the single WebDriver reference for `drive-automation-session` and `run-interactive-session`.
+Both skills send the same W3C WebDriver / Appium calls — the CLI's `wd post <path> '<json>'` / `wd get <path>` is the same `POST` / `GET /session/{id}/<path>` that `appium.js` sends — so the reference describes each operation once, as a method, a path and a body, next to a short table of how each skill sends it.
+It covers the operations (the union of both skills' previous command tables), selector rules, the find-then-act workflow and the coordinates fallback, web content and context switching, what to observe (lean view, full source, screenshot), and the response and error shapes.
+`run-interactive-session` replaces its WebDriver command table, response-shape notes, web-content note and selector guidance with a short section that names its transport and links the reference; its `references/response-shapes.md` keeps a short table of what `wd` prints (the unwrapped result of every call: the element object for a find, `null` for a call with no result, a top-level `{"error","message"}` for a failure).
+`drive-automation-session`'s `references/endpoint-reference.md` keeps only what is specific to that skill: how `appium.js` sends a call and reports its result, the scriptless-capture allowlist, the helpers, the session lifecycle, the endpoints the capture doesn't record, and the loop-control sentinels.
+
+### Changed: `drive-automation-session` artifacts use timestamped names
+
+`drive-automation-session` now names its session artifacts the way `run-interactive-session` does: `<kind>-<ts>.<ext>` under `.kobiton/sessions/<session-id>/`, with `<ts>` the call's epoch seconds.
+Each `appium.js` call with `--session-dir` takes one timestamp, moving to the next free second when two calls land in the same second, so names stay unique and sort in call order.
+`screen` writes `source-<ts>.xml` (lean view), `source-<ts>.full.xml` (raw source) and `screenshot-<ts>.png`; every screen and act call writes `request-<ts>.json` and then `response-<ts>.json` or `error-<ts>.json`; `control` writes `control-<ts>.json`.
+These replace the `iter-NNN.*` files (`iter-NNN.xml`, `.full.xml`, `.png`, `.request.json`, `.response.json`, `.error.json`, `.control.json`).
+`screen`'s stdout line adds `ts` and the names of the files it wrote (`source`, `fullSource`, `screenshot`), and `control`'s stdout adds `ts`; an act call's stdout is still the raw WebDriver response body, and a failure still prints to stderr.
+The `--iter` flag and the `ITER` environment variable are removed, and `session.log` lines carry `ts=` instead of `iter=`.
+
+### Changed: `drive-automation-session` warns on the turn count instead of capping iterations
+
+`screen`'s stdout line adds `turns`, the number of screen and act calls in the session so far (the `request-<ts>.json` files on disk, this call included).
+From 100 turns, and every 25 turns after, it also adds a `warning` that tells the host to check whether the flow is progressing and to end with `control --blocked` if it is not; a threshold reached by an act call is reported on the next `screen`.
+The warning is a prompt, not a stop: an act call's stdout is unchanged, and nothing is written to stderr.
+`appium.js` appends to `<session-dir>/session.log` itself: `ts=<ts> error` for every call that writes `error-<ts>.json`, `ts=<ts> turns=<n> warning` for every warning, and `ts=<ts> capture-warning=execute/sync url=<url>` (or `=execute`) for every script call, which the saved test case won't contain.
+The `MAX_ITERS` iteration cap and the host-side per-turn bookkeeping snippet are removed; the platform's session-duration cap and `appium:newCommandTimeout` are the hard limits.
+
+### Changed: validation reads say when a result may still be partial
+
+- `getSession` documents `scan_status`: one entry per background validation scan (`accessibility`, `crash`, `response_time`, `flex_correct`), each `complete`, `in_progress` or `not_applicable`; poll `getSession` until the relevant type is no longer `in_progress` before treating a validation list as final.
+- The six per-type validation list tools no longer call an empty result a normal answer: an empty or short result may be partial while the session's validation scan is still running.
+  `listAccessibilityValidations`, `listCrashValidations`, `listResponseTimeValidations` and `listFlexCorrects` point to `getSession` `scan_status`; `listBlockerValidations` and `listElementSelectionValidations` point to `getTestRun` `is_processing` and the execution scanning statuses.
+- `getAccessibilityValidationsSummary` documents `scan_complete` (true when no more accessibility findings will arrive).
+- `listCrashValidations` documents `pending_count` (crash logs still being processed; when above 0 the list is partial).
+- `getTestRun` documents the per-execution `accessibility_scanning_status`, `crash_scanning_status` and `network_payload_scanning_status` next to `is_processing`.
+
+### Changed: bounded pages on list tools
+
+- `listTestCases`, `listTestSuites` and `listTestRuns` document `rowsPerPage` as default 10, max 20 (larger values are reduced to 20).
+- `getUserInputEvents` `limit` is now documented as default 10, max 20 (was default 50, max 200); page forward by calling again with the newest event's timestamp as `sinceTimestamp` until a call returns fewer than `limit` events.
+- `listDevices` documents `private_devices_total`, `cloud_devices_total` and `favorite_devices_total` (one per list returned, counted after the filters and before the limit) and the top-level effective `limit`; when a total exceeds `limit`, narrow with `platform`, `deviceName`, `udid` or `deviceGroup`.
+
 ## 1.14.2 - 2026-10-06
 
 ### Added: `@kobiton/mcp-tools` tool catalog package

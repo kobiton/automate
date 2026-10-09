@@ -1,26 +1,26 @@
 # Loop Discipline
 
-The skill is turn-based. Each turn, the AI host increments `ITER` and runs **exactly one** of three branches against `appium.js`: observe (`screen`), act (an Appium call), or control (end the cycle). The branch the host picks depends on what happened the previous turn — see "Branch decision guide" below.
+The skill is turn-based. Each turn, the AI host runs **exactly one** of three branches against `appium.js`: observe (`screen`), act (an Appium call), or control (end the cycle). The branch the host picks depends on what happened the previous turn — see "Branch decision guide" below.
 
 ## One branch per turn
 
-The host exports `ITER` once per turn (`export ITER=$((ITER + 1))`). Every `appium.js` invocation in that turn reads it from env — no `--iter` flag on individual calls.
+Every `appium.js` call with `--session-dir` takes one timestamp `<ts>` (epoch seconds) and names all of its artifacts with it; when two calls land in the same second, the later one takes the next free second, so names stay unique and sort in call order.
 
 | Branch | Command | Effect |
 |---|---|---|
-| **screen** | `node appium.js screen --session-id <id> --session-dir <d>` [`--xml-only` \| `--png-only`] | Default writes BOTH `iter-<N>.xml` and `iter-<N>.png`. Emits `{hash, xmlBytes, pngBytes}` on stdout. |
-| **act** | `node appium.js <argv> --session-dir <d>` | Issues the Appium call. Writes `iter-<N>.request.json` + either `iter-<N>.response.json` (success) or `iter-<N>.error.json` (any failure: Appium error, network, parse, usage). |
-| **control** | `node appium.js control --done\|--blocked --reason "..." --session-dir <d>` | Writes `iter-<N>.control.json`; no HTTP call. Signals the host to end the cycle. |
+| **screen** | `node appium.js screen --session-id <id> --session-dir <d>` [`--xml-only` \| `--png-only`] [`--full`] | Default writes the lean `source-<ts>.xml`, the raw `source-<ts>.full.xml` and `screenshot-<ts>.png`. Prints `{ts, source, fullSource, screenshot, hash, mode, xmlBytes, fullXmlBytes, pngBytes, turns}` on stdout, plus `warning` on a [turn-warning](#turn-warning) call. What to read is in [`webdriver.md` § Observe](webdriver.md#observe). |
+| **act** | `node appium.js <argv> --session-dir <d>` | Issues the Appium call. Prints the raw response body on stdout (success) or `{status}` plus the body on stderr (any failure: Appium error, network, parse, usage). Writes `request-<ts>.json` + either `response-<ts>.json` or `error-<ts>.json` with the same content; a failure also appends `ts=<ts> error` to `session.log`. |
+| **control** | `node appium.js control --done\|--blocked --reason "..." --session-dir <d>` | Writes `control-<ts>.json` and prints it with `ts`; no HTTP call. Signals the host to end the cycle. |
 
-The host picks one branch per turn. The script always exits 0; failures are detected by reading `iter-<N>.error.json`.
+The host picks one branch per turn. The script always exits 0; a call failed when it printed to stderr (and wrote `error-<ts>.json`).
 
 ### Why PNG is captured by default
 
 Native overlays (Chrome's "notifications" welcome card, OS-level permission prompts, system dialogs that appear over the app/webview) are NOT reflected in the webview's `/source` XML — the chromedriver page-source layer only sees the in-page DOM, not what's drawn on top. A turn that captures XML-only can completely miss a blocking dialog and lead the host to act on a stale picture.
 
-The first pilot run hit exactly this: it opened Chrome, captured `about:blank` XML, and tried to navigate without seeing the "Chrome notifications make things easier — Continue / No thanks" welcome card. PNG-by-default catches that class of failure on iteration 1.
+The first pilot run hit exactly this: it opened Chrome, captured `about:blank` XML, and tried to navigate without seeing the "Chrome notifications make things easier — Continue / No thanks" welcome card. PNG-by-default catches that class of failure on the first turn.
 
-Use `--xml-only` when you trust the source XML is complete (e.g., known-stable native screens where you're just confirming a hash change) and want to save tokens. Use `--png-only` for verification turns where layout is the only signal that matters (e.g., confirming an animation finished, checking image rendering).
+`--xml-only` captures the source and no screenshot — for turns where nothing can be drawn over the source (e.g., confirming a hash change on a known-stable native screen). `--png-only` captures the screenshot and no source — for verification turns where layout is the only signal that matters (e.g., confirming an animation finished, checking image rendering). Capturing a file and reading it are separate choices: [`webdriver.md` § Observe](webdriver.md#observe) says when the screenshot and the full source are worth reading.
 
 ## Branch decision guide
 
@@ -30,40 +30,46 @@ Pick the next turn's branch based on what just happened:
 |---|---|---|
 | `screen` just ran | **act** | You have a fresh observation; decide what to do. |
 | `act` succeeded | **screen** | The screen probably changed; observe before the next decision. |
-| `act` returned `no such element` / `invalid selector` / `invalid argument` / bad-input | **act** (again, with a corrected call) | The action didn't fire, so the screen didn't change. The previous `iter-K.xml` is still current — re-read it from disk if needed; don't burn an ITER on a fresh `screen`. |
+| `act` returned `no such element` / `invalid selector` / `invalid argument` / bad-input | **act** (again, with a corrected call) | The action didn't fire, so the screen didn't change. The latest `source-<ts>.xml` is still current — re-read it from disk if needed; don't burn a turn on a fresh `screen`. A second `no such element` on the same target is the cue to open the matching `source-<ts>.full.xml` ([`webdriver.md`](webdriver.md#when-to-open-the-full-source)). |
 | `act` returned `stale element reference` | **screen** | The element id is from a prior state; you need fresh element ids from a new observation. |
 | `act` returned HTTP 5xx / network timeout | **act** (retry the same call) | Transient failure; retry once. If it fails twice, `control --blocked`. |
 | Goal reached | **control --done** | End the cycle cleanly. |
 | Stuck (per "Stuck patterns" below) | **control --blocked** | End the cycle and surface the reason to the user. |
 
-The host is responsible for remembering which `iter-K.xml` represents the current screen state. After a successful `act`, the most recent `iter-K.xml` is stale until the next `screen`. After a failed `act`, the most recent `iter-K.xml` is still current.
+The host is responsible for remembering which `source-<ts>.xml` represents the current screen state — `screen` prints its name. After a successful `act`, the latest `source-<ts>.xml` is stale until the next `screen`. After a failed `act`, it is still current.
 
-For how to actually construct the `act` call body from the observed XML — selector strategies, the find-element → element-id workflow, when to fall back to coordinates — see `endpoint-reference.md` "Building Appium calls from the observed XML".
+For how to construct the `act` call from the observed XML — selectors, the find-then-act workflow, when to fall back to coordinates — see [`webdriver.md`](webdriver.md); for how `appium.js` sends it, [`endpoint-reference.md`](endpoint-reference.md).
 
 ## Artifact layout
 
 ```
 .kobiton/sessions/<session-id>/
-  caps.json                            ← desired caps used to open the session
-  iter-001.xml                         ← page source (stripped on webview turns; raw on native)
-  iter-001.full.xml                    ← only on webview turns — raw /source for selector escape hatch
-  iter-001.png                         ← skipped only when `--xml-only` is passed
-  iter-001.request.json                ← {argv: [...]} — what the host invoked
-  iter-001.response.json               ← raw Appium response on success
-  iter-001.error.json                  ← raw Appium error on failure (line 1 = {status}; line 2+ = body)
-  iter-001.control.json                ← only when the host emitted `control` (instead of an Appium call)
-  iter-002.xml
+  caps.json                       ← desired caps used to open the session
+  request-1759700000.json         ← {argv: [...]} — what the host invoked (screen and act calls)
+  source-1759700000.xml           ← lean view of the page source (unfiltered with `--full`); see webdriver.md § Observe
+  source-1759700000.full.xml      ← raw /source — the escape hatch; written whenever the source is captured
+  screenshot-1759700000.png       ← skipped only when `--xml-only` is passed
+  response-1759700000.json        ← the call's stdout on success (raw Appium response; for `screen`, its JSON line)
+  request-1759700004.json
+  error-1759700004.json           ← the call's stderr on failure (line 1 = {status}; line 2+ = body)
   ...
-  session.log                          ← human-readable timeline
+  control-1759700031.json         ← only when the host emitted `control` (instead of an Appium call)
+  session.log                     ← human-readable timeline: the host's start / end lines, appium.js's `ts=<ts> error`, `ts=<ts> turns=<n> warning` and `ts=<ts> capture-warning=…` lines
 ```
 
-Workspace-relative, NOT `/tmp`. Consistent with `run-interactive-session` so existing post-session tooling (test-case authoring, video pickup) finds artifacts in the same place.
+Every file one call writes shares its `<ts>`, and timestamps increase in call order.
+Workspace-relative, NOT `/tmp`, with the same `<kind>-<ts>.<ext>` names `run-interactive-session` uses, so post-session tooling (test-case authoring, video pickup) finds artifacts in the same place.
+Disk is not rotated (a 100-turn session is ~50MB worst case with screenshots); the workspace's per-session directory is the user's to clean up.
 
-## Iteration ceiling
+## Turn warning
 
-Hard cap at `MAX_ITERS=100` iterations per session — when the cycle crosses that count, end with `exit 0`; the trap cleans up. Override per session with `MAX_ITERS=<n>`. Disk is not rotated (a 100-iter session is ~50MB worst case with screenshots); the workspace's per-session directory is the user's to clean up.
+Every `screen` and `act` call writes one `request-<ts>.json`, so their number is the session's turn count; `screen` prints it as `turns`, this call included.
+From 100 turns, and again every 25 turns after (125, 150, …), `screen` also prints a `warning` and `appium.js` appends `ts=<ts> turns=<n> warning` to `session.log`.
+A threshold reached by an act call is reported on the next `screen`.
 
-This is a pure safety net against runaway cycles (host logic bugs, pathological flows). It is NOT the stuck-detection mechanism — see "Stuck patterns" below. Most real flows complete in 10-30 turns, well under the cap.
+On a warning, re-check the flow against "Stuck patterns" below: keep going if it is progressing, and end with `control --blocked` if it is not.
+The warning is a prompt, not a stop; most real flows complete in 10–30 turns.
+The platform's session-duration cap and `appium:newCommandTimeout` are the hard limits.
 
 ## Stuck patterns — host decides
 
@@ -71,9 +77,10 @@ The script does NOT enforce blocker thresholds. There is no `N_REPEAT`, no `N_UN
 
 What the script provides:
 
-- **`screen` emits `{hash, xmlBytes, pngBytes}`** on stdout. Track the hash across turns in your conversation context to detect repetition.
-- **`iter-N.request.json`** — every prior call's audit, available for re-reading.
-- **`iter-N.error.json`** — full raw Appium error from any recoverable failure.
+- **`screen` prints `{ts, hash, …}`** on stdout. Track the hash across turns in your conversation context to detect repetition.
+- **`screen` prints `turns`**, and a `warning` from 100 turns ([Turn warning](#turn-warning)).
+- **`request-<ts>.json`** — every prior call's audit, available for re-reading.
+- **`error-<ts>.json`** — full raw Appium error from any recoverable failure.
 
 What the host decides:
 
@@ -89,23 +96,24 @@ What the host decides:
 You tapped an xpath, got `no such element`. You try the same xpath again, same error. Two consecutive identical recoverable errors on the same selector → that selector is wrong. Either pick a different strategy/value, or `control --blocked` if you genuinely can't tell what the right selector is.
 
 ```
-iter 5: actions --session-id S --type touch ...  → "no such element"
-iter 6: actions --session-id S --type touch ...  → "no such element"
+turn 5: actions --session-id S --type touch ...  → "no such element"
+turn 6: actions --session-id S --type touch ...  → "no such element"
        (same argv, same error)
-Decision: don't repeat a third time. Either re-read iter-6.xml for a better
+Decision: don't repeat a third time. Open the latest source-<ts>.full.xml for
+the element's real attributes (webdriver.md § Observe) and build a different
 selector, or control --blocked with reason "selector missed twice; need user".
 ```
 
 #### 2. Screen oscillation (A → B → A)
 
-You tapped to navigate to B, then tapped back to A. Your conversation memory shows this hash existed at iter N-2. Programmatic same-call detection misses this (the argvs differ); only your context catches it.
+You tapped to navigate to B, then tapped back to A. Your conversation memory shows this hash existed two turns ago. Programmatic same-call detection misses this (the argvs differ); only your context catches it.
 
 ```
-iter 3: hash=aaa…  (Settings screen)
-iter 4: tap "Bluetooth" → hash=bbb… (Bluetooth screen)
-iter 5: tap "Back" → hash=aaa… (Settings screen again)
-iter 6: tap "Bluetooth" → hash=bbb…
-iter 7: tap "Back" → hash=aaa…
+turn 3: hash=aaa…  (Settings screen)
+turn 4: tap "Bluetooth" → hash=bbb… (Bluetooth screen)
+turn 5: tap "Back" → hash=aaa… (Settings screen again)
+turn 6: tap "Bluetooth" → hash=bbb…
+turn 7: tap "Back" → hash=aaa…
        (your prior 4 turns formed an A-B-A-B loop)
 Decision: control --blocked with reason "navigated in a circle between
 Settings and Bluetooth without completing the intent".
@@ -116,10 +124,10 @@ Settings and Bluetooth without completing the intent".
 You tapped a "Load more" button. The list re-fetches over the network with no spinner. The hash from `screen` doesn't change for several turns. Don't panic — the page is loading. Re-run `screen` as a no-op observe to wait.
 
 ```
-iter 8: tap "Load more"
-iter 9: screen → hash=X (page still loading)
-iter 10: screen (no act) → hash=X
-iter 11: screen → hash=Y (page rendered)
+turn 8: tap "Load more"
+turn 9: screen → hash=X (page still loading)
+turn 10: screen (no act) → hash=X
+turn 11: screen → hash=Y (page rendered)
 Decision: re-emit `screen` for as many turns as the use case suggests is
 reasonable. Track the hash yourself; an unchanged hash is data, not a
 deadline.
@@ -159,17 +167,17 @@ won't dismiss with available controls". User may need to suggest a swipe
 or a hardware-back-button approach.
 ```
 
-When you emit `control --blocked`, post one concise line in the conversation: `I can't make progress on iter=<N>. <observed condition>. What would you like me to do?` — actionable, lets the user redirect.
+When you emit `control --blocked`, post one concise line in the conversation: `I can't make progress. <observed condition>. What would you like me to do?` — actionable, lets the user redirect.
 
 ## Termination
 
 The cycle ends when **any one** of these is true:
 
-- AI host runs `node appium.js control --done --reason "..."`. Reason is appended to `session.log`; the trap ends the WebDriver session.
+- AI host runs `node appium.js control --done --reason "..."`. The reason is saved in `control-<ts>.json`; the trap ends the WebDriver session.
 - User issues a stop command (or Ctrl-C). The trap cleans up.
-- Kobiton platform-side session termination. The next `appium.js` call returns exit 3 with `error: session-not-found` or `error: invalid session id`. The trap cleans up (no-op since the session is already gone).
+- Kobiton platform-side session termination. The next `appium.js` call fails with `invalid session id` (stderr and `error-<ts>.json`; the exit code stays 0). The trap cleans up (no-op since the session is already gone).
 
-There is no arbitrary action-count cap. There is no wall-clock cap inside this skill. The platform-side session-duration cap (set by the org plan; not configurable here) is the absolute ceiling.
+There is no action-count or wall-clock cap inside this skill; the [turn warning](#turn-warning) is a prompt, not a stop. The platform-side session-duration cap (set by the org plan; not configurable here) is the hard limit.
 
 ## Try/finally cleanup contract
 
@@ -195,25 +203,21 @@ Do NOT call the `terminateSession` MCP tool as a belt-and-braces follow-up: it m
 
 ## Reading errors
 
-`appium.js` exits 0 for **all** Appium calls — successful and failed. The script does NOT classify "recoverable" vs "fatal". That classification is the host's judgment, made by reading `iter-<N>.error.json` (and the prior conversation context).
+`appium.js` exits 0 for **all** Appium calls — successful and failed. The script does NOT classify "recoverable" vs "fatal". That classification is the host's judgment, made by reading the failed call's stderr (and the prior conversation context).
 
-When a call fails, `iter-<N>.error.json` contains:
+When a call fails, stdout is empty and stderr carries the error: `{status}` plus the raw body for an HTTP error, or the script's own `{error, message}` JSON when the call never reached the server. `error-<ts>.json` holds the same error:
 
 - **Line 1:** a `{status}` JSON summary (HTTP status code; `0` for runtime errors like timeout / parse / network).
 - **Line 2+:** the raw response body verbatim. For Appium HTTP errors this is typically `{value: {error, message, stacktrace}}`. For runtime errors (script never reached the server) it's the script's own `{error, message}` JSON. For non-Appium error pages (HTML, plaintext from a misconfigured proxy, etc.) it's whatever the server sent.
 
-The host detects failure by checking whether `iter-<N>.error.json` exists in the per-turn block. If present, read it before emitting the next turn's call.
+The host detects failure by the call's stderr output; `appium.js` also writes `error-<ts>.json` and appends `ts=<ts> error` to `session.log`. Read the error before emitting the next turn's call.
 
 ### Re-plannable Appium errors (typically: continue, try again)
 
-These are the classic W3C error values where the right move is usually a re-plan (different selector, refreshed source, slight timing adjustment):
+The W3C error values where the right move is usually a re-plan — `no such element`, `stale element reference`, `invalid selector`, `invalid argument`, `timeout` — and the next move for each are in [`webdriver.md` § Responses and errors](webdriver.md#responses-and-errors); the "Branch decision guide" above says which branch that next move takes.
+One more is specific to this transport:
 
-- **`no such element`** — selector didn't match. Re-read the updated `iter-<N>.xml`, try a different strategy (xpath → accessibility id, or vice versa) or a more specific value. If repeated on a webview turn AND the target is clearly visible in `iter-<N>.png`, the identifying attribute may have been stripped from the DOM — open `iter-<N>.full.xml` (raw `/source`) for that turn, find the real attribute, build the selector against it. The next turn's selectors go back to `iter-<N>.xml`.
-- **`stale element reference`** — element id is from a prior screen state. Re-find the element from the current source.
-- **`invalid selector`** — XPath / accessibility-id syntax is wrong. Fix the syntax.
-- **`invalid argument`** — usually the body shape doesn't match what Appium expects for that endpoint. Re-read Appium docs and correct the body.
-- **HTTP 408** (gateway timeout) — Kobiton hub didn't get an answer in time. Retry once; if it fails again, that's a stronger signal.
-- **`timeout`** (W3C) — Appium itself timed out (often during element wait). Retry, or use `POST /session/{id}/timeouts` to relax the implicit wait.
+- **HTTP 408** (gateway timeout) — the Kobiton hub didn't get an answer in time. Retry once; if it fails again, that's a stronger signal.
 
 ### Likely-fatal errors (typically: end the cycle with `control --blocked`)
 
@@ -230,4 +234,4 @@ When you're not sure, read the full body. The Appium `message` and `stacktrace` 
 
 ## Capture-warning for unsupported endpoints
 
-See `references/endpoint-reference.md` "Unsupported-for-capture endpoints" for which endpoints are NOT in the Kobiton scriptless-capture allowlist (today, `/execute/sync` for `mobile:` commands). Actions hitting those endpoints still execute, but they won't appear in `saveTestCase` output. Pick an allowlisted endpoint when capture matters.
+See [`endpoint-reference.md` § Unsupported for capture](endpoint-reference.md#unsupported-for-capture) for which endpoints are NOT in the Kobiton scriptless-capture allowlist (today, `/execute/sync` for `mobile:` commands). Actions hitting those endpoints still execute, but they won't appear in `saveTestCase` output. Pick an allowlisted endpoint when capture matters.
