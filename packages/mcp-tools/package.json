@@ -1,6 +1,6 @@
 {
   "name": "@kobiton/mcp-tools",
-  "version": "1.0.0-beta.1",
+  "version": "1.0.0",
   "description": "Tool catalog served by the Kobiton MCP server, as one YAML file",
   "license": "MIT",
   "repository": {
