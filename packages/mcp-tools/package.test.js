@@ -1,6 +1,6 @@
 import {describe, it, expect, beforeEach, afterEach} from 'vitest'
 import {execFileSync} from 'node:child_process'
-import {mkdtempSync, readFileSync, rmSync} from 'node:fs'
+import {mkdtempSync, readFileSync, rmSync, symlinkSync} from 'node:fs'
 import {join, resolve} from 'node:path'
 import {tmpdir} from 'node:os'
 import {dump} from 'js-yaml'
@@ -42,6 +42,15 @@ describe('@kobiton/mcp-tools package', () => {
     // Run the prepack command from the package directory, writing to a temp file instead
     const outputPath = join(tmpDir, 'tool-definitions.yaml')
     execFileSync(process.execPath, ['../../scripts/build-tool-definitions.js', '--out', outputPath], {cwd: PACKAGE_DIR})
+
+    expect(readFileSync(outputPath, 'utf8')).toBe(dump(buildToolDefinitions(ROOT).combined))
+  })
+
+  it('builds the catalog when the build script is invoked through a symlink', () => {
+    const link = join(tmpDir, 'build-link.js')
+    symlinkSync(join(ROOT, 'scripts', 'build-tool-definitions.js'), link)
+    const outputPath = join(tmpDir, 'tool-definitions.yaml')
+    execFileSync(process.execPath, [link, '--out', outputPath])
 
     expect(readFileSync(outputPath, 'utf8')).toBe(dump(buildToolDefinitions(ROOT).combined))
   })

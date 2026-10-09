@@ -1,6 +1,6 @@
 import {describe, it, expect, beforeEach, afterEach} from 'vitest'
 import {spawnSync} from 'node:child_process'
-import {copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync} from 'node:fs'
+import {copyFileSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync} from 'node:fs'
 import {join} from 'node:path'
 import {tmpdir} from 'node:os'
 import {distTagFor} from './mcp-tools-dist-tag.js'
@@ -37,12 +37,16 @@ describe('mcp-tools-dist-tag CLI', () => {
   let tmpDir
 
   // A throwaway repo layout: scripts/<cli> next to packages/mcp-tools/package.json at the given version
-  function runCli(version, ref) {
+  function setUpRepo(version) {
     mkdirSync(join(tmpDir, 'scripts'), {recursive: true})
     mkdirSync(join(tmpDir, 'packages', 'mcp-tools'), {recursive: true})
     copyFileSync(join(import.meta.dirname, 'mcp-tools-dist-tag.js'), join(tmpDir, 'scripts', 'mcp-tools-dist-tag.js'))
     writeFileSync(join(tmpDir, 'packages', 'mcp-tools', 'package.json'), JSON.stringify({version}))
-    return spawnSync(process.execPath, [join(tmpDir, 'scripts', 'mcp-tools-dist-tag.js')], {
+    return join(tmpDir, 'scripts', 'mcp-tools-dist-tag.js')
+  }
+
+  function runCli(cliPath, ref) {
+    return spawnSync(process.execPath, [cliPath], {
       encoding: 'utf8',
       env: {...process.env, GITHUB_REF: ref}
     })
@@ -57,13 +61,21 @@ describe('mcp-tools-dist-tag CLI', () => {
   })
 
   it('prints the dist-tag for the package version on GITHUB_REF', () => {
-    const result = runCli('1.0.0-beta.0', 'refs/heads/feat/new-tool')
+    const result = runCli(setUpRepo('1.0.0-beta.0'), 'refs/heads/feat/new-tool')
+    expect(result.status).toBe(0)
+    expect(result.stdout).toBe('beta\n')
+  })
+
+  it('prints the dist-tag when invoked through a symlink', () => {
+    const link = join(tmpDir, 'dist-tag-link.js')
+    symlinkSync(setUpRepo('1.0.0-beta.0'), link)
+    const result = runCli(link, 'refs/heads/feat/new-tool')
     expect(result.status).toBe(0)
     expect(result.stdout).toBe('beta\n')
   })
 
   it('exits 1 with the reason and prints no tag when the version cannot publish from the ref', () => {
-    const result = runCli('1.0.0', 'refs/heads/feat/new-tool')
+    const result = runCli(setUpRepo('1.0.0'), 'refs/heads/feat/new-tool')
     expect(result.status).toBe(1)
     expect(result.stdout).toBe('')
     expect(result.stderr).toContain('can only be published from main')
