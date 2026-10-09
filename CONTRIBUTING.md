@@ -229,7 +229,7 @@ Releases are managed by maintainers only. The process:
 5. Push: `git push origin main --tags`
 6. Create a GitHub Release from the tag with the changelog entry as the body
 
-Contributors do **not** need to bump versions or update the changelog — maintainers handle this during release.
+Contributors do **not** need to bump the plugin version or update the changelog — maintainers handle this during release. The tool catalog package below is the one exception.
 
 ### Tool catalog package
 
