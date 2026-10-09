@@ -1,0 +1,21 @@
+{
+  "name": "@kobiton/mcp-tools",
+  "version": "1.0.0",
+  "description": "Tool catalog served by the Kobiton MCP server, as one YAML file",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kobiton/automate.git",
+    "directory": "packages/mcp-tools"
+  },
+  "files": [
+    "tool-definitions.yaml"
+  ],
+  "exports": {
+    "./tool-definitions.yaml": "./tool-definitions.yaml",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "prepack": "node ../../scripts/build-tool-definitions.js --out tool-definitions.yaml"
+  }
+}

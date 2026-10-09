@@ -28,3 +28,33 @@ jobs:
 
       - name: Run tests
         run: pnpm test
+
+      - name: Check MCP tools package contents
+        working-directory: packages/mcp-tools
+        run: |
+          npm pack --dry-run --json 2>/dev/null | sed -n '/^\[/,$p' > "$RUNNER_TEMP/pack.json"
+          node -e '
+            const [{files}] = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))
+            const paths = files.map((f) => f.path).sort().join(", ")
+            if (paths !== "README.md, package.json, tool-definitions.yaml") {
+              console.error(`unexpected package contents: ${paths}`)
+              process.exit(1)
+            }
+          ' "$RUNNER_TEMP/pack.json"
+
+      - name: Require an MCP tools version bump for tool changes
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          git fetch --no-tags --depth=1 origin "$BASE_REF"
+          if git diff --quiet "origin/$BASE_REF" HEAD -- tools/; then
+            exit 0
+          fi
+          base_version=$(git show "origin/$BASE_REF:packages/mcp-tools/package.json" 2>/dev/null \
+            | node -p 'JSON.parse(require("fs").readFileSync(0, "utf8")).version' 2>/dev/null || true)
+          head_version=$(node -p 'require("./packages/mcp-tools/package.json").version')
+          if [ "$base_version" = "$head_version" ]; then
+            echo "::error::tools/ changed but packages/mcp-tools is still at $head_version; bump its version so the change is published"
+            exit 1
+          fi

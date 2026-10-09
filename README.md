@@ -828,7 +828,7 @@ For details on how Kobiton handles your data, see the [Kobiton Privacy Policy](h
 
 ## Development
 
-The `tools/` directory contains reference YAML schemas that mirror the MCP server's tool definitions. They are published to S3 for the backend but are not consumed by the plugin at runtime.
+The `tools/` directory contains the YAML schemas of the MCP server's tools. They are published as the [`@kobiton/mcp-tools`](packages/mcp-tools/README.md) package, the catalog the hosted MCP server serves, and are not consumed by the plugin at runtime.
 
 ```bash
 # Install dependencies
@@ -843,7 +843,7 @@ pnpm test
 # Refresh the .codex/ mirror after editing skills/ or assets/
 pnpm run build:codex
 
-# Build combined tool definitions (for S3 publishing)
+# Build combined tool definitions into dist/, refresh the .codex/ mirror and sync manifest versions
 pnpm run build
 ```
 

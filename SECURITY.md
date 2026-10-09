@@ -17,7 +17,7 @@ We will acknowledge receipt within 48 hours and provide a detailed response with
 ## Scope
 
 This policy covers the plugin code in this repository:
-- Tool schemas (`tools/*.yaml`)
+- Tool schemas (`tools/*.yaml`) and the tool catalog package (`packages/mcp-tools/`)
 - Skill definitions (`skills/`)
 - Plugin manifests (`.claude-plugin/`)
 - Validation scripts (`scripts/`)
