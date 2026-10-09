@@ -43,3 +43,6 @@ yarn-error.log*
 coverage/
 *.lcov
 .eslintcache
+
+# Built into the package at pack time
+packages/mcp-tools/tool-definitions.yaml

@@ -1,9 +1,9 @@
 import {describe, it, expect, beforeEach, afterEach} from 'vitest'
-import {mkdtempSync, mkdirSync, writeFileSync, rmSync} from 'node:fs'
+import {mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync} from 'node:fs'
 import {join} from 'node:path'
 import {tmpdir} from 'node:os'
 import {load, dump} from 'js-yaml'
-import {buildToolDefinitions} from './build-tool-definitions.js'
+import {buildToolDefinitions, writeToolDefinitions, resolveOutputPath} from './build-tool-definitions.js'
 
 function writeToolFile(dir, filename, domain, toolName) {
   writeFileSync(join(dir, 'tools', filename), [
@@ -92,5 +92,44 @@ describe('buildToolDefinitions', () => {
     setupValidProject(tmpDir)
     const {toolFiles} = buildToolDefinitions(tmpDir)
     expect(toolFiles).toEqual(['devices.yaml', 'sessions.yaml'])
+  })
+})
+
+describe('writeToolDefinitions', () => {
+  let tmpDir
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), 'automate-build-test-'))
+  })
+
+  afterEach(() => {
+    rmSync(tmpDir, {recursive: true, force: true})
+  })
+
+  it('writes the dumped catalog to the given path, creating parent directories', () => {
+    setupValidProject(tmpDir)
+    const outputPath = join(tmpDir, 'nested', 'out', 'tool-definitions.yaml')
+    expect(writeToolDefinitions(tmpDir, outputPath)).toBe(outputPath)
+    expect(readFileSync(outputPath, 'utf8')).toBe(dump(buildToolDefinitions(tmpDir).combined))
+  })
+})
+
+describe('resolveOutputPath', () => {
+  it('defaults to <root>/dist/tool-definitions.yaml', () => {
+    expect(resolveOutputPath([], '/repo', '/elsewhere')).toBe('/repo/dist/tool-definitions.yaml')
+  })
+
+  it('resolves a relative --out against cwd', () => {
+    expect(resolveOutputPath(['--out', 'tool-definitions.yaml'], '/repo', '/repo/packages/mcp-tools'))
+      .toBe('/repo/packages/mcp-tools/tool-definitions.yaml')
+  })
+
+  it('keeps an absolute --out as is', () => {
+    expect(resolveOutputPath(['--out', '/tmp/catalog.yaml'], '/repo', '/elsewhere')).toBe('/tmp/catalog.yaml')
+  })
+
+  it('throws when --out has no value', () => {
+    expect(() => resolveOutputPath(['--out'], '/repo', '/repo')).toThrow('--out requires a path')
+    expect(() => resolveOutputPath(['--out', '--other'], '/repo', '/repo')).toThrow('--out requires a path')
   })
 })

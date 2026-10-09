@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.14.2 - 2026-10-06
+
+### Added: `@kobiton/mcp-tools` tool catalog package
+
+`packages/mcp-tools` publishes the schemas in `tools/*.yaml` as one catalog file, `tool-definitions.yaml`, in the `@kobiton/mcp-tools` npm package.
+A pull request that changes `tools/` bumps the package version (CI checks it), and the `Publish MCP tools` workflow publishes each new version.
+Plugin behavior is unchanged.
+
 ## 1.14.1 - 2026-10-05
 
 ### Fixed: `/automate:setup` writes the canonical API URL

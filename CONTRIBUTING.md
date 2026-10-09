@@ -99,7 +99,7 @@ Each skill file must have YAML frontmatter with `name` and `description`.
 
 | Change | Surfaces to update |
 |--------|--------------------|
-| Tool (`tools/*.yaml`) | README `## Tools` table **and its tool count**, `AGENTS.md` domain summary, `CLAUDE.md` tool inventory |
+| Tool (`tools/*.yaml`) | README `## Tools` table **and its tool count**, `AGENTS.md` domain summary, `CLAUDE.md` tool inventory, `version` in `packages/mcp-tools/package.json` |
 | Skill (`skills/*/`) | README `## Skills` table, `AGENTS.md` skill routing table, `CLAUDE.md` skills table |
 | Slash command (`commands/`) | README `## Commands` table, `CLAUDE.md` slash commands table |
 
@@ -229,7 +229,14 @@ Releases are managed by maintainers only. The process:
 5. Push: `git push origin main --tags`
 6. Create a GitHub Release from the tag with the changelog entry as the body
 
-Contributors do **not** need to bump versions or update the changelog — maintainers handle this during release.
+Contributors do **not** need to bump the plugin version or update the changelog — maintainers handle this during release. The tool catalog package below is the one exception.
+
+### Tool catalog package
+
+`packages/mcp-tools` publishes the tool catalog as `@kobiton/mcp-tools`, versioned separately from the plugin.
+The one version contributors do bump: any PR that changes `tools/` also bumps `version` in `packages/mcp-tools/package.json` (CI fails otherwise).
+After merge, the `Publish MCP tools` workflow publishes the new version to npm.
+Pre-release versions (`X.Y.Z-<channel>.N`) are published by maintainers running that workflow manually on a branch.
 
 ## License
 
