@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<AppiumAUT>
+  <XCUIElementTypeApplication type="XCUIElementTypeApplication" name="Settings" label="Settings" enabled="true" visible="true" accessible="false" x="0" y="0" width="390" height="844" index="0">
+    <XCUIElementTypeWindow type="XCUIElementTypeWindow" enabled="true" visible="true" accessible="false" x="0" y="0" width="390" height="844" index="0">
+      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="0" width="390" height="844" index="0">
+        <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="0" width="390" height="844" index="0">
+          <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="0" width="390" height="844" index="0">
+            <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="0" width="390" height="844" index="0">
+              <XCUIElementTypeNavigationBar type="XCUIElementTypeNavigationBar" name="Settings" enabled="true" visible="true" accessible="false" x="0" y="47" width="390" height="96" index="0">
+                <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="47" width="390" height="44" index="0">
+                  <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="47" width="390" height="44" index="0"/>
+                </XCUIElementTypeOther>
+                <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="Settings" name="Settings" label="Settings" enabled="true" visible="true" accessible="false" x="16" y="91" width="140" height="41" index="1"/>
+              </XCUIElementTypeNavigationBar>
+              <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="0" width="390" height="844" index="1">
+                <XCUIElementTypeTable type="XCUIElementTypeTable" enabled="true" visible="true" accessible="false" x="0" y="0" width="390" height="844" index="0">
+                  <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="143" width="390" height="60" index="0">
+                    <XCUIElementTypeSearchField type="XCUIElementTypeSearchField" value="Search" name="Search" label="Search" enabled="true" visible="true" accessible="true" x="16" y="151" width="358" height="36" index="0">
+                      <XCUIElementTypeImage type="XCUIElementTypeImage" name="magnifyingglass" enabled="true" visible="true" accessible="false" x="24" y="160" width="18" height="18" index="0"/>
+                      <XCUIElementTypeButton type="XCUIElementTypeButton" name="Dictate" label="Dictate" enabled="true" visible="true" accessible="true" x="340" y="158" width="24" height="24" index="1"/>
+                    </XCUIElementTypeSearchField>
+                  </XCUIElementTypeOther>
+                  <XCUIElementTypeCell type="XCUIElementTypeCell" name="Example Person, Apple Account, iCloud, and more" label="Example Person, Apple Account, iCloud, and more" enabled="true" visible="true" accessible="true" x="0" y="203" width="390" height="57" index="1">
+                    <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="203" width="390" height="57" index="0">
+                      <XCUIElementTypeImage type="XCUIElementTypeImage" enabled="true" visible="true" accessible="false" x="16" y="208" width="47" height="47" index="0"/>
+                      <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="Example Person" name="Example Person" label="Example Person" enabled="true" visible="true" accessible="false" x="78" y="211" width="200" height="24" index="1"/>
+                      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="259" width="390" height="1" index="2"/>
+                    </XCUIElementTypeOther>
+                  </XCUIElementTypeCell>
+                  <XCUIElementTypeCell type="XCUIElementTypeCell" name="com.example.settings.airplane" label="Airplane Mode" enabled="true" visible="true" accessible="false" x="0" y="260" width="390" height="44" index="2">
+                    <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="260" width="390" height="44" index="0">
+                      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="260" width="390" height="44" index="0">
+                        <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="260" width="390" height="44" index="0"/>
+                        <XCUIElementTypeImage type="XCUIElementTypeImage" name="com.example.settings.airplane.icon" enabled="true" visible="true" accessible="false" x="16" y="267" width="29" height="29" index="1"/>
+                        <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="Airplane Mode" name="Airplane Mode" label="Airplane Mode" enabled="true" visible="true" accessible="false" x="60" y="271" width="200" height="21" index="2"/>
+                        <XCUIElementTypeSwitch type="XCUIElementTypeSwitch" value="0" name="Airplane Mode" label="Airplane Mode" enabled="true" visible="true" accessible="true" x="323" y="266" width="51" height="31" index="3"/>
+                        <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="60" y="303" width="330" height="1" index="4"/>
+                      </XCUIElementTypeOther>
+                    </XCUIElementTypeOther>
+                  </XCUIElementTypeCell>
+                  <XCUIElementTypeCell type="XCUIElementTypeCell" value="HomeNet" name="com.example.settings.wi-fi" label="Wi-Fi" enabled="true" visible="true" accessible="true" x="0" y="304" width="390" height="44" index="3">
+                    <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="304" width="390" height="44" index="0">
+                      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="304" width="390" height="44" index="0">
+                        <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="304" width="390" height="44" index="0"/>
+                        <XCUIElementTypeImage type="XCUIElementTypeImage" name="com.example.settings.wi-fi.icon" enabled="true" visible="true" accessible="false" x="16" y="311" width="29" height="29" index="1"/>
+                        <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="Wi-Fi" name="Wi-Fi" label="Wi-Fi" enabled="true" visible="true" accessible="false" x="60" y="315" width="200" height="21" index="2"/>
+                        <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="HomeNet" name="HomeNet" label="HomeNet" enabled="true" visible="true" accessible="false" x="260" y="315" width="90" height="21" index="3"/>
+                        <XCUIElementTypeImage type="XCUIElementTypeImage" name="chevron" enabled="true" visible="true" accessible="false" x="358" y="318" width="9" height="16" index="4"/>
+                        <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="60" y="347" width="330" height="1" index="5"/>
+                      </XCUIElementTypeOther>
+                    </XCUIElementTypeOther>
+                  </XCUIElementTypeCell>
+                  <XCUIElementTypeCell type="XCUIElementTypeCell" value="On" name="com.example.settings.bluetooth" label="Bluetooth" enabled="true" visible="true" accessible="true" x="0" y="348" width="390" height="44" index="4">
+                    <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="348" width="390" height="44" index="0">
+                      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="348" width="390" height="44" index="0">
+                        <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="348" width="390" height="44" index="0"/>
+                        <XCUIElementTypeImage type="XCUIElementTypeImage" name="com.example.settings.bluetooth.icon" enabled="true" visible="true" accessible="false" x="16" y="355" width="29" height="29" index="1"/>
+                        <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="Bluetooth" name="Bluetooth" label="Bluetooth" enabled="true" visible="true" accessible="false" x="60" y="359" width="200" height="21" index="2"/>
+                        <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="On" name="On" label="On" enabled="true" visible="true" accessible="false" x="260" y="359" width="90" height="21" index="3"/>
+                        <XCUIElementTypeImage type="XCUIElementTypeImage" name="chevron" enabled="true" visible="true" accessible="false" x="358" y="362" width="9" height="16" index="4"/>
+                        <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="60" y="391" width="330" height="1" index="5"/>
+                      </XCUIElementTypeOther>
+                    </XCUIElementTypeOther>
+                  </XCUIElementTypeCell>
+                  <XCUIElementTypeCell type="XCUIElementTypeCell" name="com.example.settings.cellular" label="Cellular" enabled="true" visible="true" accessible="true" x="0" y="392" width="390" height="44" index="5">
+                    <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="392" width="390" height="44" index="0">
+                      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="392" width="390" height="44" index="0">
+                        <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="392" width="390" height="44" index="0"/>
+                        <XCUIElementTypeImage type="XCUIElementTypeImage" name="com.example.settings.cellular.icon" enabled="true" visible="true" accessible="false" x="16" y="399" width="29" height="29" index="1"/>
+                        <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="Cellular" name="Cellular" label="Cellular" enabled="true" visible="true" accessible="false" x="60" y="403" width="200" height="21" index="2"/>
+                        <XCUIElementTypeImage type="XCUIElementTypeImage" name="chevron" enabled="true" visible="true" accessible="false" x="358" y="406" width="9" height="16" index="3"/>
+                        <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="60" y="435" width="330" height="1" index="4"/>
+                      </XCUIElementTypeOther>
+                    </XCUIElementTypeOther>
+                  </XCUIElementTypeCell>
+                  <XCUIElementTypeCell type="XCUIElementTypeCell" value="Off" name="com.example.settings.personal" label="Personal Hotspot" enabled="true" visible="true" accessible="true" x="0" y="436" width="390" height="44" index="6">
+                    <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="436" width="390" height="44" index="0">
+                      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="436" width="390" height="44" index="0">
+                        <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="436" width="390" height="44" index="0"/>
+                        <XCUIElementTypeImage type="XCUIElementTypeImage" name="com.example.settings.personal.icon" enabled="true" visible="true" accessible="false" x="16" y="443" width="29" height="29" index="1"/>
+                        <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="Personal Hotspot" name="Personal Hotspot" label="Personal Hotspot" enabled="true" visible="true" accessible="false" x="60" y="447" width="200" height="21" index="2"/>
+                        <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="Off" name="Off" label="Off" enabled="true" visible="true" accessible="false" x="260" y="447" width="90" height="21" index="3"/>
+                        <XCUIElementTypeImage type="XCUIElementTypeImage" name="chevron" enabled="true" visible="true" accessible="false" x="358" y="450" width="9" height="16" index="4"/>
+                        <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="60" y="479" width="330" height="1" index="5"/>
+                      </XCUIElementTypeOther>
+                    </XCUIElementTypeOther>
+                  </XCUIElementTypeCell>
+                  <XCUIElementTypeCell type="XCUIElementTypeCell" name="com.example.settings.notifications" label="Notifications" enabled="true" visible="true" accessible="true" x="0" y="480" width="390" height="44" index="7">
+                    <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="480" width="390" height="44" index="0">
+                      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="480" width="390" height="44" index="0">
+                        <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="480" width="390" height="44" index="0"/>
+                        <XCUIElementTypeImage type="XCUIElementTypeImage" name="com.example.settings.notifications.icon" enabled="true" visible="true" accessible="false" x="16" y="487" width="29" height="29" index="1"/>
+                        <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="Notifications" name="Notifications" label="Notifications" enabled="true" visible="true" accessible="false" x="60" y="491" width="200" height="21" index="2"/>
+                        <XCUIElementTypeImage type="XCUIElementTypeImage" name="chevron" enabled="true" visible="true" accessible="false" x="358" y="494" width="9" height="16" index="3"/>
+                        <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="60" y="523" width="330" height="1" index="4"/>
+                      </XCUIElementTypeOther>
+                    </XCUIElementTypeOther>
+                  </XCUIElementTypeCell>
+                  <XCUIElementTypeCell type="XCUIElementTypeCell" name="com.example.settings.sounds" label="Sounds &amp; Haptics" enabled="true" visible="true" accessible="true" x="0" y="524" width="390" height="44" index="8">
+                    <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="524" width="390" height="44" index="0">
+                      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="524" width="390" height="44" index="0">
+                        <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="524" width="390" height="44" index="0"/>
+                        <XCUIElementTypeImage type="XCUIElementTypeImage" name="com.example.settings.sounds.icon" enabled="true" visible="true" accessible="false" x="16" y="531" width="29" height="29" index="1"/>
+                        <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="Sounds &amp; Haptics" name="Sounds &amp; Haptics" label="Sounds &amp; Haptics" enabled="true" visible="true" accessible="false" x="60" y="535" width="200" height="21" index="2"/>
+                        <XCUIElementTypeImage type="XCUIElementTypeImage" name="chevron" enabled="true" visible="true" accessible="false" x="358" y="538" width="9" height="16" index="3"/>
+                        <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="60" y="567" width="330" height="1" index="4"/>
+                      </XCUIElementTypeOther>
+                    </XCUIElementTypeOther>
+                  </XCUIElementTypeCell>
+                  <XCUIElementTypeCell type="XCUIElementTypeCell" name="com.example.settings.focus" label="Focus" enabled="true" visible="true" accessible="true" x="0" y="568" width="390" height="44" index="9">
+                    <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="568" width="390" height="44" index="0">
+                      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="568" width="390" height="44" index="0">
+                        <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="568" width="390" height="44" index="0"/>
+                        <XCUIElementTypeImage type="XCUIElementTypeImage" name="com.example.settings.focus.icon" enabled="true" visible="true" accessible="false" x="16" y="575" width="29" height="29" index="1"/>
+                        <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="Focus" name="Focus" label="Focus" enabled="true" visible="true" accessible="false" x="60" y="579" width="200" height="21" index="2"/>
+                        <XCUIElementTypeImage type="XCUIElementTypeImage" name="chevron" enabled="true" visible="true" accessible="false" x="358" y="582" width="9" height="16" index="3"/>
+                        <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="60" y="611" width="330" height="1" index="4"/>
+                      </XCUIElementTypeOther>
+                    </XCUIElementTypeOther>
+                  </XCUIElementTypeCell>
+                  <XCUIElementTypeCell type="XCUIElementTypeCell" name="com.example.settings.screen" label="Screen Time" enabled="true" visible="true" accessible="true" x="0" y="612" width="390" height="44" index="10">
+                    <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="612" width="390" height="44" index="0">
+                      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="612" width="390" height="44" index="0">
+                        <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="612" width="390" height="44" index="0"/>
+                        <XCUIElementTypeImage type="XCUIElementTypeImage" name="com.example.settings.screen.icon" enabled="true" visible="true" accessible="false" x="16" y="619" width="29" height="29" index="1"/>
+                        <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="Screen Time" name="Screen Time" label="Screen Time" enabled="true" visible="true" accessible="false" x="60" y="623" width="200" height="21" index="2"/>
+                        <XCUIElementTypeImage type="XCUIElementTypeImage" name="chevron" enabled="true" visible="true" accessible="false" x="358" y="626" width="9" height="16" index="3"/>
+                        <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="60" y="655" width="330" height="1" index="4"/>
+                      </XCUIElementTypeOther>
+                    </XCUIElementTypeOther>
+                  </XCUIElementTypeCell>
+                  <XCUIElementTypeCell type="XCUIElementTypeCell" name="com.example.settings.general" label="General" enabled="true" visible="true" accessible="true" x="0" y="656" width="390" height="44" index="11">
+                    <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="656" width="390" height="44" index="0">
+                      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="656" width="390" height="44" index="0">
+                        <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="656" width="390" height="44" index="0"/>
+                        <XCUIElementTypeImage type="XCUIElementTypeImage" name="com.example.settings.general.icon" enabled="true" visible="true" accessible="false" x="16" y="663" width="29" height="29" index="1"/>
+                        <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="General" name="General" label="General" enabled="true" visible="true" accessible="false" x="60" y="667" width="200" height="21" index="2"/>
+                        <XCUIElementTypeImage type="XCUIElementTypeImage" name="chevron" enabled="true" visible="true" accessible="false" x="358" y="670" width="9" height="16" index="3"/>
+                        <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="60" y="699" width="330" height="1" index="4"/>
+                      </XCUIElementTypeOther>
+                    </XCUIElementTypeOther>
+                  </XCUIElementTypeCell>
+                  <XCUIElementTypeCell type="XCUIElementTypeCell" name="com.example.settings.control" label="Control Center" enabled="true" visible="true" accessible="true" x="0" y="700" width="390" height="44" index="12">
+                    <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="700" width="390" height="44" index="0">
+                      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="700" width="390" height="44" index="0">
+                        <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="700" width="390" height="44" index="0"/>
+                        <XCUIElementTypeImage type="XCUIElementTypeImage" name="com.example.settings.control.icon" enabled="true" visible="true" accessible="false" x="16" y="707" width="29" height="29" index="1"/>
+                        <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="Control Center" name="Control Center" label="Control Center" enabled="true" visible="true" accessible="false" x="60" y="711" width="200" height="21" index="2"/>
+                        <XCUIElementTypeImage type="XCUIElementTypeImage" name="chevron" enabled="true" visible="true" accessible="false" x="358" y="714" width="9" height="16" index="3"/>
+                        <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="60" y="743" width="330" height="1" index="4"/>
+                      </XCUIElementTypeOther>
+                    </XCUIElementTypeOther>
+                  </XCUIElementTypeCell>
+                  <XCUIElementTypeCell type="XCUIElementTypeCell" name="com.example.settings.display" label="Display &amp; Brightness" enabled="true" visible="true" accessible="true" x="0" y="744" width="390" height="44" index="13">
+                    <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="744" width="390" height="44" index="0">
+                      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="744" width="390" height="44" index="0">
+                        <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="744" width="390" height="44" index="0"/>
+                        <XCUIElementTypeImage type="XCUIElementTypeImage" name="com.example.settings.display.icon" enabled="true" visible="true" accessible="false" x="16" y="751" width="29" height="29" index="1"/>
+                        <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="Display &amp; Brightness" name="Display &amp; Brightness" label="Display &amp; Brightness" enabled="true" visible="true" accessible="false" x="60" y="755" width="200" height="21" index="2"/>
+                        <XCUIElementTypeImage type="XCUIElementTypeImage" name="chevron" enabled="true" visible="true" accessible="false" x="358" y="758" width="9" height="16" index="3"/>
+                        <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="60" y="787" width="330" height="1" index="4"/>
+                      </XCUIElementTypeOther>
+                    </XCUIElementTypeOther>
+                  </XCUIElementTypeCell>
+                  <XCUIElementTypeCell type="XCUIElementTypeCell" name="com.example.settings.privacy" label="Privacy &amp; Security" enabled="true" visible="true" accessible="true" x="0" y="788" width="390" height="44" index="14">
+                    <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="788" width="390" height="44" index="0">
+                      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="788" width="390" height="44" index="0">
+                        <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="788" width="390" height="44" index="0"/>
+                        <XCUIElementTypeImage type="XCUIElementTypeImage" name="com.example.settings.privacy.icon" enabled="true" visible="true" accessible="false" x="16" y="795" width="29" height="29" index="1"/>
+                        <XCUIElementTypeStaticText type="XCUIElementTypeStaticText" value="Privacy &amp; Security" name="Privacy &amp; Security" label="Privacy &amp; Security" enabled="true" visible="true" accessible="false" x="60" y="799" width="200" height="21" index="2"/>
+                        <XCUIElementTypeImage type="XCUIElementTypeImage" name="chevron" enabled="true" visible="true" accessible="false" x="358" y="802" width="9" height="16" index="3"/>
+                        <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="60" y="831" width="330" height="1" index="4"/>
+                      </XCUIElementTypeOther>
+                    </XCUIElementTypeOther>
+                  </XCUIElementTypeCell>
+                  <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="832" width="390" height="12" index="15"/>
+                </XCUIElementTypeTable>
+              </XCUIElementTypeOther>
+            </XCUIElementTypeOther>
+          </XCUIElementTypeOther>
+        </XCUIElementTypeOther>
+      </XCUIElementTypeOther>
+    </XCUIElementTypeWindow>
+    <XCUIElementTypeWindow type="XCUIElementTypeWindow" enabled="true" visible="true" accessible="false" x="0" y="0" width="390" height="844" index="1">
+      <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="0" width="390" height="844" index="0">
+        <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="false" accessible="false" x="0" y="0" width="390" height="844" index="0"/>
+      </XCUIElementTypeOther>
+    </XCUIElementTypeWindow>
+    <XCUIElementTypeWindow type="XCUIElementTypeWindow" enabled="true" visible="true" accessible="false" x="0" y="0" width="390" height="844" index="2">
+      <XCUIElementTypeStatusBar type="XCUIElementTypeStatusBar" enabled="true" visible="true" accessible="false" x="0" y="0" width="390" height="47" index="0">
+        <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="0" width="390" height="47" index="0">
+          <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="0" y="0" width="390" height="47" index="0">
+            <XCUIElementTypeOther type="XCUIElementTypeOther" name="9:41" label="9:41" enabled="true" visible="true" accessible="true" x="36" y="14" width="52" height="22" index="0"/>
+            <XCUIElementTypeOther type="XCUIElementTypeOther" enabled="true" visible="true" accessible="false" x="250" y="14" width="120" height="22" index="1">
+              <XCUIElementTypeOther type="XCUIElementTypeOther" name="3 of 4 bars, Cellular" label="3 of 4 bars, Cellular" enabled="true" visible="true" accessible="true" x="265" y="19" width="18" height="12" index="0"/>
+              <XCUIElementTypeOther type="XCUIElementTypeOther" value="3 of 3 bars" name="Wi-Fi bars" label="Wi-Fi bars" enabled="true" visible="true" accessible="true" x="290" y="19" width="17" height="12" index="1"/>
+              <XCUIElementTypeOther type="XCUIElementTypeOther" name="100% battery power" label="100% battery power" enabled="true" visible="true" accessible="true" x="313" y="18" width="28" height="13" index="2"/>
+            </XCUIElementTypeOther>
+          </XCUIElementTypeOther>
+        </XCUIElementTypeOther>
+      </XCUIElementTypeStatusBar>
+    </XCUIElementTypeWindow>
+  </XCUIElementTypeApplication>
+</AppiumAUT>
