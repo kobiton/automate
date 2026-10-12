@@ -166,8 +166,8 @@ export function validateProject(rootDir) {
             fail(`tools/${file} tool "${tool.name}" lists "userIntent" in "required"; it is optional`)
           }
           const userIntent = tool.inputSchema?.properties?.userIntent
-          if (userIntent && userIntent.description !== USER_INTENT_DESCRIPTION) {
-            fail(`tools/${file} tool "${tool.name}" userIntent description must be "${USER_INTENT_DESCRIPTION}"`)
+          if (userIntent?.type !== 'string' || userIntent.description !== USER_INTENT_DESCRIPTION) {
+            fail(`tools/${file} tool "${tool.name}" must declare userIntent as a string described "${USER_INTENT_DESCRIPTION}"`)
           }
         }
         pass(`tools/${file} is valid (${doc.tools.length} tools)`)

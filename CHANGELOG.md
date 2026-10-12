@@ -10,7 +10,7 @@ Its description is now one line on every tool, "A brief summary of why this call
 
 ### Added: tool metadata checks in `pnpm run validate`
 
-`scripts/validate.js` fails a tool that has no `title`, no boolean `readOnlyHint` or `destructiveHint`, lists `userIntent` in `required`, or words the `userIntent` description differently.
+`scripts/validate.js` fails a tool that has no `title`, no boolean `readOnlyHint` or `destructiveHint`, does not declare `userIntent` as a string, lists it in `required`, or words its description differently.
 `CONTRIBUTING.md` lists `title` and both hints as required.
 
 ## 1.15.0 - 2026-10-05

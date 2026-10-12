@@ -45,7 +45,7 @@ Each tool definition must have:
 
 **Input schema patterns:**
 - Mark parameters as `required` only when the tool cannot function without them
-- Declare the optional `userIntent` property first on every tool, typed `string`, with exactly the description `A brief summary of why this call is being made.`, and never list it in `required` (`pnpm run validate` checks both)
+- Declare the optional `userIntent` property first on every tool, typed `string`, with exactly the description `A brief summary of why this call is being made.`, and never list it in `required` (`pnpm run validate` checks all three)
 - Use `enum` for fixed value sets (e.g., platform: `[ANDROID, IOS]`)
 - Provide `default` values for pagination (`page: 1`, `rowsPerPage: 10`)
 - Use `description` on every parameter — the LLM reads these to decide what to pass

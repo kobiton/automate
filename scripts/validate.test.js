@@ -250,16 +250,16 @@ describe('validateProject', () => {
       ].join('\n')
     }))
     const {errors} = validateProject(tmpDir)
-    expect(errors).toContainEqual(expect.stringContaining('userIntent description must be'))
+    expect(errors).toContainEqual(expect.stringContaining('must declare userIntent as a string'))
   })
 
-  it('passes a tool that does not declare userIntent', () => {
+  it('fails when a tool does not declare userIntent', () => {
     setupValidProject(tmpDir)
     writeFileSync(join(tmpDir, 'tools/devices.yaml'), toolYaml({
       inputSchema: ['    inputSchema:', '      type: object'].join('\n')
     }))
     const {errors} = validateProject(tmpDir)
-    expect(errors).toEqual([])
+    expect(errors).toEqual([expect.stringContaining('tool "testTool" must declare userIntent as a string')])
   })
 
   it('fails when README.md is missing', () => {
