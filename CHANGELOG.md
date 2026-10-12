@@ -5,7 +5,7 @@
 ### Added: lean UI-tree view for the WebDriver skills
 
 `drive-automation-session` and `run-interactive-session` now read a lean view of the page source instead of the whole tree.
-A new shared filter, `skills/drive-automation-session/scripts/ui-tree.js` (Node, no dependencies; `node ui-tree.js <source-file>` prints the lean view), keeps only the elements an agent can target or read — ids, accessibility labels, text, and clickable / scrollable / checkable flags — with their bounds, and preserves element tag names so selectors built from it resolve against the live session.
+A new shared filter, `skills/drive-automation-session/scripts/ui-tree.js` (Node, no dependencies; `node ui-tree.js <source-file>` prints the lean view), keeps only the elements an agent can target or read — ids, accessibility labels, text and hints, clickable / scrollable / checkable flags and the focused element — with their bounds, and preserves element tag names so selectors built from it resolve against the live session.
 Native UiAutomator2 and XCUITest trees are filtered for the first time; on representative settings screens the lean view is about 77% (Android) and 71% (iOS) smaller than the raw source.
 Webview pages keep the existing stripped DOM unchanged.
 The shared WebDriver reference (below) carries the read rule for both skills: the lean view is the default read, the full source is the escape hatch (an unavoidable positional XPath, an expected element missing from the lean view, or `no such element` twice in a row), selectors come from identifying attributes rather than position, and the screenshot is read on demand.
@@ -49,9 +49,9 @@ The `MAX_ITERS` iteration cap and the host-side per-turn bookkeeping snippet are
 
 ### Changed: validation reads say when a result may still be partial
 
-- `getSession` documents `scan_status`: one entry per background validation scan (`accessibility`, `crash`, `response_time`, `flex_correct`), each `complete`, `in_progress` or `not_applicable`; poll `getSession` until the relevant type is no longer `in_progress` before treating a validation list as final.
+- `getSession` documents `scan_status`: one entry per background validation scan (`accessibility`, `crash`, `response_time`, `flex_correct`), each `complete`, `in_progress` or `not_applicable`. A type reads `in_progress` for at most 24 hours after the session ends (accessibility can take several hours); check it before treating a validation list as final, and after a few checks minutes apart report the findings as partial instead of waiting longer.
 - The six per-type validation list tools no longer call an empty result a normal answer: an empty or short result may be partial while the session's validation scan is still running.
-  `listAccessibilityValidations`, `listCrashValidations`, `listResponseTimeValidations` and `listFlexCorrects` point to `getSession` `scan_status`; `listBlockerValidations` and `listElementSelectionValidations` point to `getTestRun` `is_processing` and the execution scanning statuses.
+  `listAccessibilityValidations`, `listCrashValidations`, `listResponseTimeValidations` and `listFlexCorrects` point to `getSession` `scan_status`; `listBlockerValidations` and `listElementSelectionValidations` point to `getTestRun` `is_processing` and the execution scanning statuses, and say to report a still-processing result as possibly partial after a few checks rather than wait.
 - `getAccessibilityValidationsSummary` documents `scan_complete` (true when no more accessibility findings will arrive).
 - `listCrashValidations` documents `pending_count` (crash logs still being processed; when above 0 the list is partial).
 - `getTestRun` documents the per-execution `accessibility_scanning_status`, `crash_scanning_status` and `network_payload_scanning_status` next to `is_processing`.
@@ -59,7 +59,7 @@ The `MAX_ITERS` iteration cap and the host-side per-turn bookkeeping snippet are
 ### Changed: bounded pages on list tools
 
 - `listTestCases`, `listTestSuites` and `listTestRuns` document `rowsPerPage` as default 10, max 20 (larger values are reduced to 20).
-- `getUserInputEvents` `limit` is now documented as default 10, max 20 (was default 50, max 200); page forward by calling again with the newest event's timestamp as `sinceTimestamp` until a call returns fewer than `limit` events.
+- `getUserInputEvents` `limit` is now documented as default 10, max 20 (was default 50, max 200); page forward by calling again with the newest event's timestamp as `sinceTimestamp` until a call returns fewer than `limit` events. The next page skips any other event with exactly that timestamp.
 - `listDevices` documents `private_devices_total`, `cloud_devices_total` and `favorite_devices_total` (one per list returned, counted after the filters and before the limit) and the top-level effective `limit`; when a total exceeds `limit`, narrow with `platform`, `deviceName`, `udid` or `deviceGroup`.
 
 ## 1.14.2 - 2026-10-06

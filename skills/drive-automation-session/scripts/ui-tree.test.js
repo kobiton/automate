@@ -176,6 +176,34 @@ describe('leanNativeTree rules', () => {
     ].join('\n'))
   })
 
+  it('keeps an input whose only label is its hint, and the focused element', () => {
+    const src = [
+      '<hierarchy>',
+      '  <android.widget.EditText text="" hint="Email" resource-id="" clickable="false" focused="false" bounds="[0,0][1,1]" />',
+      '  <android.widget.EditText text="" resource-id="" clickable="false" focused="true" bounds="[0,2][1,3]" />',
+      '  <android.view.View text="" resource-id="" clickable="false" focused="false" bounds="[0,4][1,5]" />',
+      '</hierarchy>'
+    ].join('\n')
+    expect(leanNativeTree(src)).toBe([
+      '<hierarchy>',
+      '  <android.widget.EditText hint="Email" bounds="[0,0][1,1]" />',
+      '  <android.widget.EditText focused="true" bounds="[0,2][1,3]" />',
+      '</hierarchy>',
+      ''
+    ].join('\n'))
+  })
+
+  it('keeps iOS selected only when true', () => {
+    const src = '<AppiumAUT><XCUIElementTypeButton name="Home" selected="true" x="1" y="2" width="3" height="4"/><XCUIElementTypeButton name="Search" selected="false" x="5" y="2" width="3" height="4"/></AppiumAUT>'
+    expect(leanNativeTree(src)).toBe([
+      '<AppiumAUT>',
+      '  <XCUIElementTypeButton name="Home" selected="true" x="1" y="2" width="3" height="4" />',
+      '  <XCUIElementTypeButton name="Search" x="5" y="2" width="3" height="4" />',
+      '</AppiumAUT>',
+      ''
+    ].join('\n'))
+  })
+
   it('keeps iOS enabled / visible only when false', () => {
     const src = '<AppiumAUT><XCUIElementTypeButton type="XCUIElementTypeButton" name="Pay" label="Pay" enabled="false" visible="false" accessible="true" x="1" y="2" width="3" height="4" index="0"/></AppiumAUT>'
     expect(leanNativeTree(src)).toBe([

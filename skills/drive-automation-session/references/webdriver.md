@@ -229,10 +229,10 @@ Neither source says what is on screen: iOS lists rows below the fold with `visib
 What the lean view is depends on what `/source` returned, not on the session type: an HTML page gives the stripped DOM, a native tree gives the native filter.
 A browser session can return the native tree before a page has loaded, so its first observation may be native.
 
-- **Native Android (UiAutomator2):** every element with a non-empty `resource-id`, `content-desc` or `text`, or with `clickable`, `long-clickable`, `checkable` or `scrollable="true"`.
-  Each keeps `resource-id`, `content-desc`, `text`, `hint`, `bounds`, the state flags that are `true` (`clickable`, `long-clickable`, `scrollable`, `password`, `selected`), `checked` on any checkable element, and `enabled="false"` when an element is disabled.
+- **Native Android (UiAutomator2):** every element with a non-empty `resource-id`, `content-desc`, `text` or `hint`, or with `clickable`, `long-clickable`, `checkable`, `scrollable` or `focused="true"`.
+  Each keeps `resource-id`, `content-desc`, `text`, `hint`, `bounds`, the state flags that are `true` (`clickable`, `long-clickable`, `scrollable`, `password`, `selected`, `focused`), `checked` on any checkable element, and `enabled="false"` when an element is disabled.
 - **Native iOS (XCUITest):** every element with a non-empty `name`, `label` or `value`, `accessible="true"`, or a scroll container (`Table`, `CollectionView`, `ScrollView`, `WebView`).
-  Each keeps `name`, `label`, `value`, `x`, `y`, `width`, `height`, plus `enabled` / `visible` when they are `false`.
+  Each keeps `name`, `label`, `value`, `x`, `y`, `width`, `height`, `selected` when it is `true`, plus `enabled` / `visible` when they are `false`.
 - **HTML page** (a loaded page in a browser session or a `WEBVIEW_*` context): the stripped DOM — `<script>` / `<style>` / `<head>` / `<noscript>` and inline base64 images removed, attributes pruned to text, ids, names, classes, `aria-*`, `role`, `href`, `data-testid` and form-control attributes.
 
 Element tag names (`android.widget.Button`, `XCUIElementTypeButton`, `div`) are preserved, so `//<tag>[@attr='…']` selectors built from the lean view resolve against the live session.

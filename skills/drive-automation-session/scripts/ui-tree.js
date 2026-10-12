@@ -85,13 +85,14 @@ function parseTree(xml) {
 
 // ---- Native filter -------------------------------------------------------------
 
-const ANDROID_FLAGS = ['clickable', 'long-clickable', 'checkable', 'scrollable']
+// `focused` marks the one element that takes keys sent without a target.
+const ANDROID_FLAGS = ['clickable', 'long-clickable', 'checkable', 'scrollable', 'focused']
 const ANDROID_KEEP = new Set([
   'resource-id', 'content-desc', 'text', 'hint', 'bounds', 'clickable', 'long-clickable',
-  'checked', 'scrollable', 'password', 'selected', 'enabled'
+  'checked', 'scrollable', 'password', 'selected', 'focused', 'enabled'
 ])
 const ANDROID_NONEMPTY = new Set(['resource-id', 'content-desc', 'text', 'hint'])
-const IOS_KEEP = new Set(['name', 'label', 'value', 'x', 'y', 'width', 'height', 'enabled', 'visible'])
+const IOS_KEEP = new Set(['name', 'label', 'value', 'x', 'y', 'width', 'height', 'enabled', 'visible', 'selected'])
 const IOS_NONEMPTY = new Set(['name', 'label', 'value'])
 // iOS has no scrollable flag; keep scroll containers so swipe targets keep their frame.
 const IOS_SCROLL_CONTAINER = /^XCUIElementType(Table|CollectionView|ScrollView|WebView)$/
@@ -103,7 +104,7 @@ function attrMap(node) {
 }
 
 function qualifiesAndroid(a) {
-  if (a['resource-id'] || a['content-desc'] || a.text) return true
+  if (a['resource-id'] || a['content-desc'] || a.text || a.hint) return true
   return ANDROID_FLAGS.some((f) => a[f] === 'true')
 }
 
@@ -127,6 +128,7 @@ function keepAttrIos(attr) {
   if (!IOS_KEEP.has(name)) return false
   if (IOS_NONEMPTY.has(name)) return value !== ''
   if (name === 'enabled' || name === 'visible') return value === 'false'
+  if (name === 'selected') return value === 'true'
   return true
 }
 
