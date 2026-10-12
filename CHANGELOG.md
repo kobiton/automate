@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.16.0 - 2026-10-12
+
+### Changed: `userIntent` is optional on every tool
+
+No tool lists `userIntent` in `required` any more, so a call without it is no longer rejected; when it is sent, it is still recorded with the call for audit logging.
+Its description is now one line on every tool, "A brief summary of why this call is being made.", which takes about 4,400 characters off the tool definitions a client loads (catalog `@kobiton/mcp-tools` 1.2.0).
+`AGENTS.md` and the skills that call a tool that changes state (`readOnlyHint: false`) say to pass `userIntent` on those calls and to omit it on read-only lookups.
+
+### Added: tool metadata checks in `pnpm run validate`
+
+`scripts/validate.js` fails a tool that has no `title`, no boolean `readOnlyHint` or `destructiveHint`, lists `userIntent` in `required`, or words the `userIntent` description differently.
+`CONTRIBUTING.md` lists `title` and both hints as required.
+
 ## 1.15.0 - 2026-10-05
 
 ### Added: lean UI-tree view for the WebDriver skills
