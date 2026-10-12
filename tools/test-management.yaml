@@ -413,7 +413,9 @@ tools:
       `crash_scanning_status` and `network_payload_scanning_status`, and the
       run's `is_processing` stays true while any of them is still running —
       wait for it to turn false before treating the run's validation findings
-      as final.
+      as final. If it is still true after a few checks a few minutes apart,
+      report the findings as possibly partial instead of waiting longer — a
+      scan that never reports keeps it true.
     annotations:
       readOnlyHint: true
       destructiveHint: false

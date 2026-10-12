@@ -68,11 +68,14 @@ tools:
       `accessibility`, `crash`, `response_time` and `flex_correct` — each
       `complete` (no more findings of that type will arrive), `in_progress`
       (findings may still be arriving) or `not_applicable` (that scan does not
-      apply to this session, e.g. Flex Correct was not requested, or no result
-      ever arrived long after the session ended). Findings can keep arriving for
-      several minutes after a session ends, so before treating a validation
-      list as final, poll getSession until the relevant type is no longer
-      `in_progress`.
+      apply to this session, e.g. Flex Correct was not requested, a CLI or
+      virtual USB session, or no result arrived within 24 hours of the session
+      ending). Crash and response-time results usually settle within minutes of
+      the session ending; accessibility results can take several hours. A type
+      reads `in_progress` for at most 24 hours after the session ends. Before
+      treating a validation list as final, check that its type is no longer
+      `in_progress`; if it still is after a few checks a few minutes apart,
+      report the findings so far as partial instead of waiting longer.
     annotations:
       readOnlyHint: true
       destructiveHint: false
@@ -155,7 +158,8 @@ tools:
             values are reduced to 20). When a call returns `limit` events, more
             may be buffered — page forward by calling again with the newest
             event's timestamp as `sinceTimestamp` until a call returns fewer
-            than `limit`.
+            than `limit`. The next page skips any other event with exactly that
+            timestamp, so a page boundary can drop a rare same-millisecond event.
           default: 10
       required:
         - userIntent
@@ -502,7 +506,9 @@ tools:
       `is_processing` is false (each execution's
       `accessibility_scanning_status`, `crash_scanning_status` and
       `network_payload_scanning_status` show which scans are still running)
-      before treating it as final.
+      before treating it as final. If it is still true after a few checks a
+      few minutes apart, report the result as possibly partial instead of
+      waiting longer — a scan that never reports keeps it true.
     annotations:
       readOnlyHint: true
       destructiveHint: false
@@ -548,7 +554,9 @@ tools:
       `is_processing` is false (each execution's
       `accessibility_scanning_status`, `crash_scanning_status` and
       `network_payload_scanning_status` show which scans are still running)
-      before treating it as final.
+      before treating it as final. If it is still true after a few checks a
+      few minutes apart, report the result as possibly partial instead of
+      waiting longer — a scan that never reports keeps it true.
     annotations:
       readOnlyHint: true
       destructiveHint: false
