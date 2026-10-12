@@ -2,7 +2,30 @@ import {describe, it, expect, beforeEach, afterEach} from 'vitest'
 import {mkdtempSync, mkdirSync, writeFileSync, rmSync} from 'node:fs'
 import {join} from 'node:path'
 import {tmpdir} from 'node:os'
-import {validateProject} from './validate.js'
+import {validateProject, USER_INTENT_DESCRIPTION} from './validate.js'
+
+// One valid tool; each override replaces the YAML lines of that part of the tool
+function toolYaml({title = '    title: Test Tool', annotations, inputSchema} = {}) {
+  return [
+    'tools:',
+    '  - name: testTool',
+    title,
+    '    description: A test tool',
+    annotations ?? [
+      '    annotations:',
+      '      readOnlyHint: true',
+      '      destructiveHint: false',
+    ].join('\n'),
+    inputSchema ?? [
+      '    inputSchema:',
+      '      type: object',
+      '      properties:',
+      '        userIntent:',
+      '          type: string',
+      `          description: ${USER_INTENT_DESCRIPTION}`,
+    ].join('\n'),
+  ].filter(Boolean).join('\n')
+}
 
 function setupValidProject(dir) {
   writeFileSync(join(dir, '.mcp.json'), JSON.stringify({
@@ -78,13 +101,7 @@ function setupValidProject(dir) {
 
   mkdirSync(join(dir, 'tools'))
   for (const file of ['devices.yaml', 'sessions.yaml', 'apps.yaml', 'user.yaml']) {
-    writeFileSync(join(dir, 'tools', file), [
-      'tools:',
-      '  - name: testTool',
-      '    description: A test tool',
-      '    inputSchema:',
-      '      type: object',
-    ].join('\n'))
+    writeFileSync(join(dir, 'tools', file), toolYaml())
   }
 
   writeFileSync(join(dir, 'README.md'), [
@@ -183,6 +200,66 @@ describe('validateProject', () => {
     ].join('\n'))
     const {errors} = validateProject(tmpDir)
     expect(errors).toContainEqual(expect.stringContaining('missing "inputSchema"'))
+  })
+
+  it('fails when a tool is missing its title', () => {
+    setupValidProject(tmpDir)
+    writeFileSync(join(tmpDir, 'tools/devices.yaml'), toolYaml({title: ''}))
+    const {errors} = validateProject(tmpDir)
+    expect(errors).toContainEqual(expect.stringContaining('tool "testTool" missing "title"'))
+  })
+
+  it('fails when a tool is missing its read-only or destructive hint', () => {
+    setupValidProject(tmpDir)
+    writeFileSync(join(tmpDir, 'tools/devices.yaml'), toolYaml({
+      annotations: ['    annotations:', '      readOnlyHint: true'].join('\n')
+    }))
+    const {errors} = validateProject(tmpDir)
+    expect(errors).toContainEqual(expect.stringContaining('missing boolean "annotations.destructiveHint"'))
+    expect(errors).not.toContainEqual(expect.stringContaining('"annotations.readOnlyHint"'))
+  })
+
+  it('fails when a tool lists userIntent in required', () => {
+    setupValidProject(tmpDir)
+    writeFileSync(join(tmpDir, 'tools/devices.yaml'), toolYaml({
+      inputSchema: [
+        '    inputSchema:',
+        '      type: object',
+        '      properties:',
+        '        userIntent:',
+        '          type: string',
+        `          description: ${USER_INTENT_DESCRIPTION}`,
+        '      required:',
+        '        - userIntent',
+      ].join('\n')
+    }))
+    const {errors} = validateProject(tmpDir)
+    expect(errors).toContainEqual(expect.stringContaining('lists "userIntent" in "required"'))
+  })
+
+  it('fails when a tool words the userIntent description differently', () => {
+    setupValidProject(tmpDir)
+    writeFileSync(join(tmpDir, 'tools/devices.yaml'), toolYaml({
+      inputSchema: [
+        '    inputSchema:',
+        '      type: object',
+        '      properties:',
+        '        userIntent:',
+        '          type: string',
+        '          description: Used for audit logging.',
+      ].join('\n')
+    }))
+    const {errors} = validateProject(tmpDir)
+    expect(errors).toContainEqual(expect.stringContaining('userIntent description must be'))
+  })
+
+  it('passes a tool that does not declare userIntent', () => {
+    setupValidProject(tmpDir)
+    writeFileSync(join(tmpDir, 'tools/devices.yaml'), toolYaml({
+      inputSchema: ['    inputSchema:', '      type: object'].join('\n')
+    }))
+    const {errors} = validateProject(tmpDir)
+    expect(errors).toEqual([])
   })
 
   it('fails when README.md is missing', () => {

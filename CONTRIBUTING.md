@@ -25,10 +25,10 @@ Each tool definition must have:
 - `name` (camelCase, <= 64 characters)
 - `description` (clear, specific to what the tool does)
 - `inputSchema` (JSON Schema for arguments)
-
-Optional but recommended:
 - `title` (human-readable display name, e.g., "List Test Cases")
-- `annotations` with `readOnlyHint` and `destructiveHint`
+- `annotations` with boolean `readOnlyHint` and `destructiveHint` (MCP hosts use them to decide when to ask before a call)
+
+`pnpm run validate` fails a tool that is missing `title` or either hint.
 
 **Description writing style:**
 - Describe what the tool returns or does, not how to call it
@@ -45,6 +45,7 @@ Optional but recommended:
 
 **Input schema patterns:**
 - Mark parameters as `required` only when the tool cannot function without them
+- Declare the optional `userIntent` property first on every tool, typed `string`, with exactly the description `A brief summary of why this call is being made.`, and never list it in `required` (`pnpm run validate` checks both)
 - Use `enum` for fixed value sets (e.g., platform: `[ANDROID, IOS]`)
 - Provide `default` values for pagination (`page: 1`, `rowsPerPage: 10`)
 - Use `description` on every parameter — the LLM reads these to decide what to pass
