@@ -14,10 +14,7 @@ tools:
       properties:
         userIntent:
           type: string
-          description: >-
-            A brief summary of what the user is trying to accomplish with this
-            tool call, refined from their original prompt. Used for audit
-            logging.
+          description: A brief summary of why this call is being made.
         state:
           type: string
           enum:
@@ -55,8 +52,6 @@ tools:
           type: integer
           description: Offset for pagination
           default: 0
-      required:
-        - userIntent
   - name: getSession
     title: Get Session
     description: >
@@ -85,15 +80,11 @@ tools:
       properties:
         userIntent:
           type: string
-          description: >-
-            A brief summary of what the user is trying to accomplish with this
-            tool call, refined from their original prompt. Used for audit
-            logging.
+          description: A brief summary of why this call is being made.
         sessionId:
           type: integer
           description: The session ID
       required:
-        - userIntent
         - sessionId
   - name: getSessionArtifacts
     title: Get Session Artifacts
@@ -109,15 +100,11 @@ tools:
       properties:
         userIntent:
           type: string
-          description: >-
-            A brief summary of what the user is trying to accomplish with this
-            tool call, refined from their original prompt. Used for audit
-            logging.
+          description: A brief summary of why this call is being made.
         sessionId:
           type: integer
           description: The session ID
       required:
-        - userIntent
         - sessionId
   - name: getUserInputEvents
     title: Get User Input Events
@@ -138,10 +125,7 @@ tools:
       properties:
         userIntent:
           type: string
-          description: >-
-            A brief summary of what the user is trying to accomplish with this
-            tool call, refined from their original prompt. Used for audit
-            logging.
+          description: A brief summary of why this call is being made.
         sessionId:
           type: integer
           description: The session ID
@@ -162,7 +146,6 @@ tools:
             timestamp, so a page boundary can drop a rare same-millisecond event.
           default: 10
       required:
-        - userIntent
         - sessionId
   - name: terminateSession
     title: Terminate Session
@@ -179,15 +162,11 @@ tools:
       properties:
         userIntent:
           type: string
-          description: >-
-            A brief summary of what the user is trying to accomplish with this
-            tool call, refined from their original prompt. Used for audit
-            logging.
+          description: A brief summary of why this call is being made.
         sessionId:
           type: integer
           description: Session ID to terminate
       required:
-        - userIntent
         - sessionId
   - name: startNativeSession
     title: Start Native Session
@@ -210,10 +189,7 @@ tools:
       properties:
         userIntent:
           type: string
-          description: >-
-            A brief summary of what the user is trying to accomplish with this
-            tool call, refined from their original prompt. Used for audit
-            logging.
+          description: A brief summary of why this call is being made.
         testFramework:
           type: string
           enum:
@@ -311,7 +287,6 @@ tools:
           additionalProperties:
             type: string
       required:
-        - userIntent
         - testFramework
 
   - name: listAccessibilityValidations
@@ -339,10 +314,7 @@ tools:
       properties:
         userIntent:
           type: string
-          description: >-
-            A brief summary of what the user is trying to accomplish with this
-            tool call, refined from their original prompt. Used for audit
-            logging.
+          description: A brief summary of why this call is being made.
         sessionId:
           type: integer
           description: The session ID
@@ -388,7 +360,6 @@ tools:
           description: Item offset for pagination
           default: 0
       required:
-        - userIntent
         - sessionId
 
   - name: listCrashValidations
@@ -418,10 +389,7 @@ tools:
       properties:
         userIntent:
           type: string
-          description: >-
-            A brief summary of what the user is trying to accomplish with this
-            tool call, refined from their original prompt. Used for audit
-            logging.
+          description: A brief summary of why this call is being made.
         sessionId:
           type: integer
           description: The session ID
@@ -439,7 +407,6 @@ tools:
           description: Item offset for pagination
           default: 0
       required:
-        - userIntent
         - sessionId
 
   - name: listResponseTimeValidations
@@ -466,10 +433,7 @@ tools:
       properties:
         userIntent:
           type: string
-          description: >-
-            A brief summary of what the user is trying to accomplish with this
-            tool call, refined from their original prompt. Used for audit
-            logging.
+          description: A brief summary of why this call is being made.
         sessionId:
           type: integer
           description: The session ID
@@ -487,7 +451,6 @@ tools:
           description: Item offset for pagination
           default: 0
       required:
-        - userIntent
         - sessionId
 
   - name: listBlockerValidations
@@ -518,10 +481,7 @@ tools:
       properties:
         userIntent:
           type: string
-          description: >-
-            A brief summary of what the user is trying to accomplish with this
-            tool call, refined from their original prompt. Used for audit
-            logging.
+          description: A brief summary of why this call is being made.
         sessionId:
           type: integer
           description: The session ID
@@ -534,7 +494,6 @@ tools:
           description: Item offset for pagination
           default: 0
       required:
-        - userIntent
         - sessionId
 
   - name: listElementSelectionValidations
@@ -566,10 +525,7 @@ tools:
       properties:
         userIntent:
           type: string
-          description: >-
-            A brief summary of what the user is trying to accomplish with this
-            tool call, refined from their original prompt. Used for audit
-            logging.
+          description: A brief summary of why this call is being made.
         sessionId:
           type: integer
           description: The session ID
@@ -587,7 +543,6 @@ tools:
           description: Item offset for pagination
           default: 0
       required:
-        - userIntent
         - sessionId
 
   - name: listFlexCorrects
@@ -613,10 +568,7 @@ tools:
       properties:
         userIntent:
           type: string
-          description: >-
-            A brief summary of what the user is trying to accomplish with this
-            tool call, refined from their original prompt. Used for audit
-            logging.
+          description: A brief summary of why this call is being made.
         sessionId:
           type: integer
           description: The session ID
@@ -634,7 +586,6 @@ tools:
           description: Item offset for pagination
           default: 0
       required:
-        - userIntent
         - sessionId
 
   - name: getAccessibilityValidationsSummary
@@ -665,13 +616,9 @@ tools:
       properties:
         userIntent:
           type: string
-          description: >-
-            A brief summary of what the user is trying to accomplish with this
-            tool call, refined from their original prompt. Used for audit
-            logging.
+          description: A brief summary of why this call is being made.
         sessionId:
           type: integer
           description: The session ID
       required:
-        - userIntent
         - sessionId

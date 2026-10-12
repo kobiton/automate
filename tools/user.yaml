@@ -27,10 +27,7 @@ tools:
       properties:
         userIntent:
           type: string
-          description: >-
-            A brief summary of what the user is trying to accomplish with this
-            tool call, refined from their original prompt. Used for audit
-            logging.
+          description: A brief summary of why this call is being made.
         challenge:
           type: string
           description: >-
@@ -38,8 +35,6 @@ tools:
             write-credentials.js --init (a 43-character base64url S256
             challenge). If you do not have that script, the plugin is
             outdated: tell the user to update it and do not invent a value.
-      required:
-        - userIntent
   - name: listTeams
     title: List Teams
     description: >
@@ -62,12 +57,7 @@ tools:
       properties:
         userIntent:
           type: string
-          description: >-
-            A brief summary of what the user is trying to accomplish with this
-            tool call, refined from their original prompt. Used for audit
-            logging.
-      required:
-        - userIntent
+          description: A brief summary of why this call is being made.
   - name: getOrgSettings
     title: Get Org Settings
     description: >
@@ -89,9 +79,4 @@ tools:
       properties:
         userIntent:
           type: string
-          description: >-
-            A brief summary of what the user is trying to accomplish with this
-            tool call, refined from their original prompt. Used for audit
-            logging.
-      required:
-        - userIntent
+          description: A brief summary of why this call is being made.

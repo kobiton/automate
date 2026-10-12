@@ -24,15 +24,11 @@ tools:
       properties:
         userIntent:
           type: string
-          description: >-
-            A brief summary of what the user is trying to accomplish with this
-            tool call, refined from their original prompt. Used for audit
-            logging.
+          description: A brief summary of why this call is being made.
         sessionId:
           type: integer
           description: The manual session ID to convert into a test case
       required:
-        - userIntent
         - sessionId
   - name: listTestCases
     title: List Test Cases
@@ -50,10 +46,7 @@ tools:
       properties:
         userIntent:
           type: string
-          description: >-
-            A brief summary of what the user is trying to accomplish with this
-            tool call, refined from their original prompt. Used for audit
-            logging.
+          description: A brief summary of why this call is being made.
         teamId:
           type: integer
           description: >-
@@ -79,8 +72,6 @@ tools:
             Rows per page (default 10, max 20; larger values are reduced to
             20)
           default: 10
-      required:
-        - userIntent
   - name: getTestCase
     title: Get Test Case
     description: >
@@ -96,10 +87,7 @@ tools:
       properties:
         userIntent:
           type: string
-          description: >-
-            A brief summary of what the user is trying to accomplish with this
-            tool call, refined from their original prompt. Used for audit
-            logging.
+          description: A brief summary of why this call is being made.
         testCaseId:
           type: string
           description: The test case ID (v2 UUID)
@@ -111,7 +99,6 @@ tools:
           description: Include app/version metadata in the response
           default: false
       required:
-        - userIntent
         - testCaseId
   - name: updateTestCase
     title: Update Test Case
@@ -133,10 +120,7 @@ tools:
       properties:
         userIntent:
           type: string
-          description: >-
-            A brief summary of what the user is trying to accomplish with this
-            tool call, refined from their original prompt. Used for audit
-            logging.
+          description: A brief summary of why this call is being made.
         testCaseId:
           type: string
           description: The test case ID (v2 UUID)
@@ -208,7 +192,6 @@ tools:
             required:
               - action
       required:
-        - userIntent
         - testCaseId
         - modifications
   - name: deleteTestCase
@@ -227,15 +210,11 @@ tools:
       properties:
         userIntent:
           type: string
-          description: >-
-            A brief summary of what the user is trying to accomplish with this
-            tool call, refined from their original prompt. Used for audit
-            logging.
+          description: A brief summary of why this call is being made.
         testCaseId:
           type: string
           description: The test case ID (v2 UUID) to delete
       required:
-        - userIntent
         - testCaseId
   - name: createTestRun
     title: Create Test Run
@@ -257,10 +236,7 @@ tools:
       properties:
         userIntent:
           type: string
-          description: >-
-            A brief summary of what the user is trying to accomplish with this
-            tool call, refined from their original prompt. Used for audit
-            logging.
+          description: A brief summary of why this call is being made.
         name:
           type: string
           description: Optional name for the new test run
@@ -341,8 +317,6 @@ tools:
             How to allocate devices across the selected test cases. `CROSS_DEVICE`
             (default) runs each test case across all devices; `SINGLE_DEVICE` pins
             a test case to one device. Exact upper-case values required.
-      required:
-        - userIntent
   - name: listTestRuns
     title: List Test Runs
     description: >
@@ -359,10 +333,7 @@ tools:
       properties:
         userIntent:
           type: string
-          description: >-
-            A brief summary of what the user is trying to accomplish with this
-            tool call, refined from their original prompt. Used for audit
-            logging.
+          description: A brief summary of why this call is being made.
         teamId:
           type: integer
           description: >-
@@ -402,8 +373,6 @@ tools:
             - ASC
             - DESC
           description: Sort direction
-      required:
-        - userIntent
   - name: getTestRun
     title: Get Test Run
     description: >
@@ -425,10 +394,7 @@ tools:
       properties:
         userIntent:
           type: string
-          description: >-
-            A brief summary of what the user is trying to accomplish with this
-            tool call, refined from their original prompt. Used for audit
-            logging.
+          description: A brief summary of why this call is being made.
         testRunId:
           type: string
           description: The test run ID
@@ -437,7 +403,6 @@ tools:
           description: Include per-execution revisit-action details
           default: false
       required:
-        - userIntent
         - testRunId
   - name: terminateTestRun
     title: Terminate Test Run
@@ -455,15 +420,11 @@ tools:
       properties:
         userIntent:
           type: string
-          description: >-
-            A brief summary of what the user is trying to accomplish with this
-            tool call, refined from their original prompt. Used for audit
-            logging.
+          description: A brief summary of why this call is being made.
         testRunId:
           type: string
           description: The test run ID to terminate
       required:
-        - userIntent
         - testRunId
   - name: listTestSuites
     title: List Test Suites
@@ -481,10 +442,7 @@ tools:
       properties:
         userIntent:
           type: string
-          description: >-
-            A brief summary of what the user is trying to accomplish with this
-            tool call, refined from their original prompt. Used for audit
-            logging.
+          description: A brief summary of why this call is being made.
         teamId:
           type: integer
           description: >-
@@ -510,8 +468,6 @@ tools:
             Rows per page (default 10, max 20; larger values are reduced to
             20)
           default: 10
-      required:
-        - userIntent
   - name: getTestSuite
     title: Get Test Suite
     description: >
@@ -526,10 +482,7 @@ tools:
       properties:
         userIntent:
           type: string
-          description: >-
-            A brief summary of what the user is trying to accomplish with this
-            tool call, refined from their original prompt. Used for audit
-            logging.
+          description: A brief summary of why this call is being made.
         testSuiteId:
           type: string
           description: The test suite ID
@@ -538,7 +491,6 @@ tools:
           description: Include app/version metadata for member test cases
           default: false
       required:
-        - userIntent
         - testSuiteId
   - name: createTestSuite
     title: Create Test Suite
@@ -556,10 +508,7 @@ tools:
       properties:
         userIntent:
           type: string
-          description: >-
-            A brief summary of what the user is trying to accomplish with this
-            tool call, refined from their original prompt. Used for audit
-            logging.
+          description: A brief summary of why this call is being made.
         teamId:
           type: integer
           description: >-
@@ -585,7 +534,6 @@ tools:
             type: string
           description: Test case IDs (v2 UUIDs) to include in the new suite
       required:
-        - userIntent
         - name
         - platformName
         - testCaseIds
@@ -606,10 +554,7 @@ tools:
       properties:
         userIntent:
           type: string
-          description: >-
-            A brief summary of what the user is trying to accomplish with this
-            tool call, refined from their original prompt. Used for audit
-            logging.
+          description: A brief summary of why this call is being made.
         testSuiteId:
           type: string
           description: The test suite ID to update
@@ -630,7 +575,6 @@ tools:
             type: string
           description: Test case IDs (v2 UUIDs) to remove from the suite
       required:
-        - userIntent
         - testSuiteId
   - name: deleteTestSuite
     title: Delete Test Suite
@@ -648,13 +592,9 @@ tools:
       properties:
         userIntent:
           type: string
-          description: >-
-            A brief summary of what the user is trying to accomplish with this
-            tool call, refined from their original prompt. Used for audit
-            logging.
+          description: A brief summary of why this call is being made.
         testSuiteId:
           type: string
           description: The test suite ID to delete
       required:
-        - userIntent
         - testSuiteId

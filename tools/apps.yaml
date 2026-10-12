@@ -14,10 +14,7 @@ tools:
       properties:
         userIntent:
           type: string
-          description: >-
-            A brief summary of what the user is trying to accomplish with this
-            tool call, refined from their original prompt. Used for audit
-            logging.
+          description: A brief summary of why this call is being made.
         keyword:
           type: string
           description: Search by app name, tag, or ID
@@ -31,8 +28,6 @@ tools:
           type: integer
           description: Maximum number of apps to return (max 20)
           default: 5
-      required:
-        - userIntent
   - name: uploadAppToStore
     title: Upload App to Store
     description: >
@@ -54,10 +49,7 @@ tools:
       properties:
         userIntent:
           type: string
-          description: >-
-            A brief summary of what the user is trying to accomplish with this
-            tool call, refined from their original prompt. Used for audit
-            logging.
+          description: A brief summary of why this call is being made.
         filename:
           type: string
           description: App filename with extension (e.g., "my-app.apk")
@@ -68,7 +60,6 @@ tools:
             - IOS
           description: App platform
       required:
-        - userIntent
         - filename
         - platform
   - name: confirmAppUpload
@@ -93,10 +84,7 @@ tools:
       properties:
         userIntent:
           type: string
-          description: >-
-            A brief summary of what the user is trying to accomplish with this
-            tool call, refined from their original prompt. Used for audit
-            logging.
+          description: A brief summary of why this call is being made.
         appPath:
           type: string
           description: The app_path value returned by uploadAppToStore
@@ -104,7 +92,6 @@ tools:
           type: string
           description: Original filename with extension (e.g., "my-app.apk")
       required:
-        - userIntent
         - appPath
         - filename
   - name: getAppParsingStatus
@@ -124,15 +111,11 @@ tools:
       properties:
         userIntent:
           type: string
-          description: >-
-            A brief summary of what the user is trying to accomplish with this
-            tool call, refined from their original prompt. Used for audit
-            logging.
+          description: A brief summary of why this call is being made.
         versionId:
           type: integer
           description: The versionId returned by confirmAppUpload
       required:
-        - userIntent
         - versionId
   - name: getApp
     title: Get App
@@ -148,10 +131,7 @@ tools:
       properties:
         userIntent:
           type: string
-          description: >-
-            A brief summary of what the user is trying to accomplish with this
-            tool call, refined from their original prompt. Used for audit
-            logging.
+          description: A brief summary of why this call is being made.
         appId:
           type: integer
           description: App ID
@@ -160,5 +140,4 @@ tools:
           description: Include all app versions
           default: false
       required:
-        - userIntent
         - appId
