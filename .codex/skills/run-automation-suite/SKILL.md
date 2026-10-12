@@ -60,6 +60,8 @@ If the skill is invoked and no MCP connection is established, abort step 1 and s
 
 ## Instructions
 
+> **`userIntent`.** Pass a one-sentence `userIntent` (why the call is made) on the calls that change state: `uploadAppToStore`, `confirmAppUpload`, `reserveDevice`, `terminateSession`. Omit it on read-only calls such as `listApps`, `listDevices`, `getAppParsingStatus` and `getSession`.
+
 ### 1. Identify the app
 
 **IMPORTANT: Always ask the user this question, even if they already provided an app file path. Do NOT skip ahead or start uploading automatically.**

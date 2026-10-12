@@ -54,6 +54,10 @@ user wants, then offer to watch it. Two phases:
 > `getOrgSettings`, `listDevices`, `getTestCase`, `getTestSuite`). The host
 > resolves the prefix (`mcp__plugin_automate_kobiton__createTestRun`,
 > `mcp__kobiton__createTestRun`, etc.).
+>
+> **`userIntent`.** Pass a one-sentence `userIntent` (why the run is being created)
+> on `createTestRun`; omit it on the read-only lookups (`getOrgSettings`,
+> `listDevices`, `getTestCase`, `getTestSuite`).
 
 ## Inputs
 

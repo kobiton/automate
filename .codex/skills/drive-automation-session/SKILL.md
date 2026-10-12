@@ -46,6 +46,8 @@ Drive a Kobiton device from a natural-language intent. The caller provides:
 The skill opens an **automation-type** Appium session (with `appium:newCommandTimeout: 1800` so the session survives pauses while the model asks for guidance), runs an observe-decide-act loop, and returns the session id. The returned session is consumable by the Kobiton MCP tools `getSession`, `getSessionArtifacts`, and `saveTestCase` exactly like any other automation session.
 
 > **Tool naming.** This doc refers to Kobiton MCP tools by their bare names (`getSession`, `reserveDevice`, `terminateSession`, …). The exact registered name depends on how the host loaded the MCP server (e.g. Claude Code as a plugin exposes `mcp__plugin_automate_kobiton__getSession`; a repo-local `.mcp.json` or `claude mcp add` exposes `mcp__kobiton__getSession`; other hosts differ). Models fuzzy-match on the bare name, so use it and let the host resolve the prefix.
+>
+> **`userIntent`.** Pass a one-sentence `userIntent` (why the call is made) on the calls that change state: `reserveDevice`, `uploadAppToStore`, `confirmAppUpload`, `saveTestCase`. Omit it on read-only calls such as `listDevices`, `getDeviceStatus`, `getSession` and `getAppParsingStatus`.
 
 This skill complements — and does NOT replace — `run-interactive-session`. They serve different session types:
 

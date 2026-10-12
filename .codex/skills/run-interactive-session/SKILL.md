@@ -371,7 +371,7 @@ These commands require an active session. Run `$KOBITON_BIN <command> --help` to
 
 "Test run" names two unrelated features on this platform. The **CLI's `test run`** executes a native instrumentation bundle you built (UIAutomator/Espresso on Android, XCUITest on iOS) against a device and streams the runner's output. The **`createTestRun` MCP tool** (and the `create-test-run` skill) re-executes the *recorded steps* of a saved test case on one or more devices. If the user has an APK/IPA plus a test-runner bundle, this command is the path; if they have a saved test case, route to `create-test-run`.
 
-`test run` books its own device - it does **not** need a `session create` first. Upload the app under test and the runner with the `uploadAppToStore` MCP tool (then `confirmAppUpload`) and pass the returned store ids, or pass URLs directly:
+`test run` books its own device - it does **not** need a `session create` first. Upload the app under test and the runner with the `uploadAppToStore` MCP tool (then `confirmAppUpload`; pass a one-sentence `userIntent` on both) and pass the returned store ids, or pass URLs directly:
 
     # Android: app + androidTest runner from the Kobiton store, run to completion
     $KOBITON_BIN test run --app 12345 --runner 12346 -d "Pixel 8*" uiautomator --follow
