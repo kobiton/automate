@@ -47,7 +47,7 @@ The skill opens an **automation-type** Appium session (with `appium:newCommandTi
 
 > **Tool naming.** This doc refers to Kobiton MCP tools by their bare names (`getSession`, `reserveDevice`, `terminateSession`, …). The exact registered name depends on how the host loaded the MCP server (e.g. Claude Code as a plugin exposes `mcp__plugin_automate_kobiton__getSession`; a repo-local `.mcp.json` or `claude mcp add` exposes `mcp__kobiton__getSession`; other hosts differ). Models fuzzy-match on the bare name, so use it and let the host resolve the prefix.
 >
-> **`userIntent`.** Pass a one-sentence `userIntent` (why the call is made) on the calls that change state: `reserveDevice`, `uploadAppToStore`, `confirmAppUpload`, `saveTestCase`. Omit it on read-only calls such as `listDevices`, `getDeviceStatus`, `getSession` and `getAppParsingStatus`.
+> **`userIntent`.** Optional: pass one sentence on why when the tool name and arguments show what the call does but not why (e.g. `terminateSession`, `deleteTestCase`); omit it when the reason is obvious from the call (e.g. `listDevices`, `getSession`).
 
 This skill complements — and does NOT replace — `run-interactive-session`. They serve different session types:
 

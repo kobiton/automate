@@ -47,7 +47,7 @@ It prints one line, `CHALLENGE <challenge>`. Keep `<challenge>` for Step 2. Each
 
 ## Step 2: Request a setup token via MCP
 
-Call the MCP tool `getCredential` with `userIntent: "Bootstrap ~/.kobiton/.credentials for the automate plugin"` and `challenge: "<challenge>"` from Step 1.
+Call the MCP tool `getCredential` with `challenge: "<challenge>"` from Step 1.
 
 The tool returns:
 

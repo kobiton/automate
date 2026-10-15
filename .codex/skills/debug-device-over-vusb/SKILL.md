@@ -77,7 +77,7 @@ Every client call goes through the wrapper at `~/.kobiton/bin/vusb`, which:
 ## Conventions
 
 - **Never reserve.** Do not call `reserveDevice` before `connect` (the connect would be refused as already retained) and do not call `terminateReservation` after; `disconnect --udid` is the only release.
-- **`userIntent` on `configureHostingMachine`.** Pass a one-sentence `userIntent` (why the host machine is being changed); omit it on the read-only `listDevices` and `listHostingMachines` calls.
+- **`userIntent`.** Optional: pass one sentence on why when the tool name and arguments show what the call does but not why (e.g. `terminateSession`, `deleteTestCase`); omit it when the reason is obvious from the call (e.g. `listDevices`, `getSession`).
 - **Always disconnect.** Step 9 runs after every path that reached Step 6, including failures - a device left attached stays booked for the user's organization.
 - **Parse `status`, never `$?`.** Connected ⇔ the UDID appears in `status` output with no `Failed` / `error` line; released ⇔ it no longer appears.
 - **Never loop on a human step.** The administrator dialog, UAC, and the "Allow USB debugging" prompt are answered by the user; ask once, wait for them to say it is done, then continue. Never re-run the preflight in a loop.

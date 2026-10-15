@@ -6,7 +6,7 @@
 
 No tool lists `userIntent` in `required` any more, so a call without it is no longer rejected; when it is sent, it is still recorded with the call for audit logging.
 Its description is now one line on every tool, "A brief summary of why this call is being made.", which takes about 4,400 characters off the tool definitions a client loads (catalog `@kobiton/mcp-tools` 1.2.0).
-`AGENTS.md` and the skills that call a tool that changes state (`readOnlyHint: false`) say to pass `userIntent` on those calls and to omit it on read-only lookups.
+`AGENTS.md` and the skills say to pass `userIntent` when a call's tool name and arguments show what it does but not why, and to omit it when the reason is obvious from the call; `/automate:setup` calls `getCredential` without it.
 
 ### Added: tool metadata checks in `pnpm run validate`
 

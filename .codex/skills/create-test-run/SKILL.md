@@ -55,9 +55,10 @@ user wants, then offer to watch it. Two phases:
 > resolves the prefix (`mcp__plugin_automate_kobiton__createTestRun`,
 > `mcp__kobiton__createTestRun`, etc.).
 >
-> **`userIntent`.** Pass a one-sentence `userIntent` (why the run is being created)
-> on `createTestRun`; omit it on the read-only lookups (`getOrgSettings`,
-> `listDevices`, `getTestCase`, `getTestSuite`).
+> **`userIntent`.** Optional: pass one sentence on why when the tool name and
+> arguments show what the call does but not why (e.g. `terminateSession`,
+> `deleteTestCase`); omit it when the reason is obvious from the call (e.g.
+> `listDevices`, `getSession`).
 
 ## Inputs
 
