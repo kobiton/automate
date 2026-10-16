@@ -34,10 +34,7 @@ tools:
       properties:
         userIntent:
           type: string
-          description: >-
-            A brief summary of what the user is trying to accomplish with this
-            tool call, refined from their original prompt. Used for audit
-            logging.
+          description: A brief summary of why this call is being made.
         platform:
           type: string
           enum:
@@ -89,8 +86,6 @@ tools:
             Maximum number of devices to return per list (default 5, max 20;
             larger values are reduced to 20)
           default: 5
-      required:
-        - userIntent
   - name: listHostingMachines
     title: List Hosting Machines
     description: >
@@ -131,10 +126,7 @@ tools:
       properties:
         userIntent:
           type: string
-          description: >-
-            A brief summary of what the user is trying to accomplish with this
-            tool call, refined from their original prompt. Used for audit
-            logging.
+          description: A brief summary of why this call is being made.
         udid:
           type: string
           maxLength: 255
@@ -157,8 +149,6 @@ tools:
           type: integer
           description: Maximum number of machines to return (max 50)
           default: 20
-      required:
-        - userIntent
   - name: configureHostingMachine
     title: Configure Hosting Machine
     description: >
@@ -197,10 +187,7 @@ tools:
       properties:
         userIntent:
           type: string
-          description: >-
-            A brief summary of what the user is trying to accomplish with this
-            tool call, refined from their original prompt. Used for audit
-            logging.
+          description: A brief summary of why this call is being made.
         machineId:
           type: integer
           minimum: 1
@@ -257,7 +244,6 @@ tools:
             - mode
           additionalProperties: false
       required:
-        - userIntent
         - machineId
   - name: getDeviceStatus
     title: Get Device Status
@@ -273,15 +259,11 @@ tools:
       properties:
         userIntent:
           type: string
-          description: >-
-            A brief summary of what the user is trying to accomplish with this
-            tool call, refined from their original prompt. Used for audit
-            logging.
+          description: A brief summary of why this call is being made.
         deviceId:
           type: integer
           description: The device ID
       required:
-        - userIntent
         - deviceId
   - name: reserveDevice
     title: Reserve Device
@@ -300,10 +282,7 @@ tools:
       properties:
         userIntent:
           type: string
-          description: >-
-            A brief summary of what the user is trying to accomplish with this
-            tool call, refined from their original prompt. Used for audit
-            logging.
+          description: A brief summary of why this call is being made.
         udid:
           type: string
           description: The device UDID to reserve (from listDevices)
@@ -312,7 +291,6 @@ tools:
           description: Reservation duration in minutes
           default: 30
       required:
-        - userIntent
         - udid
   - name: terminateReservation
     title: Terminate Reservation
@@ -330,13 +308,9 @@ tools:
       properties:
         userIntent:
           type: string
-          description: >-
-            A brief summary of what the user is trying to accomplish with this
-            tool call, refined from their original prompt. Used for audit
-            logging.
+          description: A brief summary of why this call is being made.
         reservationId:
           type: integer
           description: Reservation ID from reserveDevice or listDevices
       required:
-        - userIntent
         - reservationId

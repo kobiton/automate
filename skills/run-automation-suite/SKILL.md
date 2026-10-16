@@ -60,6 +60,8 @@ If the skill is invoked and no MCP connection is established, abort step 1 and s
 
 ## Instructions
 
+> **`userIntent`.** Optional: pass one sentence on why when the tool name and arguments show what the call does but not why (e.g. `terminateSession`, `deleteTestCase`); omit it when the reason is obvious from the call (e.g. `listDevices`, `getSession`).
+
 ### 1. Identify the app
 
 **IMPORTANT: Always ask the user this question, even if they already provided an app file path. Do NOT skip ahead or start uploading automatically.**

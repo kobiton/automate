@@ -16,7 +16,7 @@ The MCP server runs at `https://api.kobiton.com/mcp`. Authentication is OAuth 2.
 
 ## userIntent format
 
-Every tool call requires a `userIntent` argument summarizing what the user is trying to accomplish, a natural-language sentence is sufficient (e.g., `"reserve a Pixel 7 to run the checkout suite"`). The plugin's audit logging consumes this; include it on every tool call.
+`userIntent` is an optional argument on every tool: one sentence on why the call is being made (e.g., `"stop the stuck Galaxy S22 session so the device can be reused"`). The server records it with the call for audit logging. A tool's name and arguments always show what a call does; pass `userIntent` when they don't show why, as with `terminateSession` (which session, not why it was stopped), `deleteTestCase` or `configureHostingMachine`. Omit it when the reason is obvious from the call itself, as with `listDevices`, `getSession` or `uploadAppToStore`.
 
 ## Getting started (new users)
 

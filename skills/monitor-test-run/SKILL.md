@@ -61,6 +61,10 @@ summary), not a value returned to a caller. It changes nothing server-side excep
 > `mcp__kobiton__getOrgSettings`; other hosts differ). Use the bare name and let the host resolve the
 > prefix. (Run state is read by the bundled poller over REST, not via the MCP `getTestRun` tool — a
 > background process can't call MCP tools.)
+>
+> **`userIntent`.** Optional: pass one sentence on why when the tool name and arguments show what the call
+> does but not why (e.g. `terminateSession`, `deleteTestCase`); omit it when the reason is obvious from the
+> call (e.g. `listDevices`, `getSession`).
 
 ## Prerequisites
 

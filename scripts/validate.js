@@ -2,6 +2,9 @@ import {readFileSync, existsSync, readdirSync} from 'node:fs'
 import {resolve, join} from 'node:path'
 import {load} from 'js-yaml'
 
+// userIntent is optional audit context; every tool that declares it uses this wording
+export const USER_INTENT_DESCRIPTION = 'A brief summary of why this call is being made.'
+
 export function validateProject(rootDir) {
   const errors = []
   const passes = []
@@ -149,6 +152,22 @@ export function validateProject(rootDir) {
           }
           if (!tool.inputSchema) {
             fail(`tools/${file} tool "${tool.name}" missing "inputSchema"`)
+          }
+          // MCP hosts label tools by title and decide when to ask before a call from these hints
+          if (!tool.title) {
+            fail(`tools/${file} tool "${tool.name}" missing "title"`)
+          }
+          for (const hint of ['readOnlyHint', 'destructiveHint']) {
+            if (typeof tool.annotations?.[hint] !== 'boolean') {
+              fail(`tools/${file} tool "${tool.name}" missing boolean "annotations.${hint}"`)
+            }
+          }
+          if (tool.inputSchema?.required?.includes('userIntent')) {
+            fail(`tools/${file} tool "${tool.name}" lists "userIntent" in "required"; it is optional`)
+          }
+          const userIntent = tool.inputSchema?.properties?.userIntent
+          if (userIntent?.type !== 'string' || userIntent.description !== USER_INTENT_DESCRIPTION) {
+            fail(`tools/${file} tool "${tool.name}" must declare userIntent as a string described "${USER_INTENT_DESCRIPTION}"`)
           }
         }
         pass(`tools/${file} is valid (${doc.tools.length} tools)`)

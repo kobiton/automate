@@ -197,7 +197,7 @@ When modifying `scripts/install-cli.sh` (or adding any new script that hooks inv
 
 Tool response payloads must stay under 25,000 tokens — trim in the backend handler, not the schema.
 
-Other YAML conventions: tool `name` is camelCase ≤ 64 chars; each tool needs `description`, `annotations`, `inputSchema` (JSON Schema). `CONTRIBUTING.md` § Tool Schema Conventions has the broader contract — note that its "add to `toolFiles` / `skillDirs` array" guidance under "Adding New Tools or Skills to Validation" is stale (the validator auto-discovers; only the fixture update in `setupValidProject` is still relevant).
+Other YAML conventions: tool `name` is camelCase ≤ 64 chars; each tool needs `description`, `title`, `annotations` with boolean `readOnlyHint` / `destructiveHint`, and `inputSchema` (JSON Schema). Every tool declares an optional `userIntent` string property with the description pinned in `scripts/validate.js` (`USER_INTENT_DESCRIPTION`); `validate.js` fails a tool that doesn't declare it, lists it in `required` or words it differently, or that lacks `title` or either hint. `CONTRIBUTING.md` § Tool Schema Conventions has the broader contract — note that its "add to `toolFiles` / `skillDirs` array" guidance under "Adding New Tools or Skills to Validation" is stale (the validator auto-discovers; only the fixture update in `setupValidProject` is still relevant).
 
 ## Skill conventions
 

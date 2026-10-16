@@ -31,7 +31,7 @@ It prints one line, `CHALLENGE <challenge>`. Keep `<challenge>` for Step 2. Each
 
 ## Step 2: Request a setup token via the `kobiton` MCP server
 
-Call the MCP tool `getCredential` with `userIntent: "Bootstrap ~/.kobiton/.credentials for the automate plugin"` and `challenge: "<challenge>"`. It returns `{username, portal, exchangeToken, expiresAt}`. The exchange token is single-use, expires in a few minutes, and is not an API key.
+Call the MCP tool `getCredential` with `challenge: "<challenge>"`. It returns `{username, portal, exchangeToken, expiresAt}`. The exchange token is single-use, expires in a few minutes, and is not an API key.
 
 - If the result has no `exchangeToken`: tell the user "The Kobiton server has not been updated for this plugin version yet. Try again later." Stop.
 - On auth error (401, "Unauthorized"): tell the user to run `/mcp auth kobiton` to complete the OAuth flow, then retry `/automate:setup`. Stop.
