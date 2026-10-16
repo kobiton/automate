@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.16.0 - 2026-10-12
+## 1.16.0 - 2026-10-16
 
 ### Changed: `userIntent` is optional on every tool
 
