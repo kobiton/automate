@@ -16,6 +16,7 @@ Plugin for the [Kobiton](https://kobiton.com) mobile testing platform. Works wit
   - [Codex CLI](#codex-cli)
   - [Cursor CLI](#cursor-cli)
   - [Cursor IDE](#cursor-ide)
+  - [AWS Kiro](#aws-kiro)
   - [Other MCP Clients](#other-mcp-clients)
   - [Claude Surface Compatibility](#claude-surface-compatibility)
 - [Login](#login)
@@ -180,6 +181,45 @@ curl -sLO --output-dir .cursor https://raw.githubusercontent.com/kobiton/automat
 
 Works for both the Cursor IDE and the `agent` CLI. You won't get the bundled skills, the setup and doctor commands, or the CLI wrapper.
 </details>
+
+
+### AWS Kiro
+
+AWS Kiro supports connecting to the Kobiton MCP server, allowing you to manage devices, execute tests, and retrieve session results directly from Kiro.
+
+#### Setup Instructions
+
+1. Open **AWS Kiro**.
+2. Press `Cmd + Shift + P` (macOS) or `Ctrl + Shift + P` (Windows/Linux) to open the Command Palette.
+3. Search for **MCP** and select **Kiro: Open User MCP Config (JSON)**.
+4. Add the following configuration to `mcp.json`:
+
+   ```json
+   {
+     "mcpServers": {
+       "kobiton": {
+         "url": "https://api.kobiton.com/mcp",
+         "disabled": false
+       }
+     }
+   }
+   ```
+
+5. Save the configuration file.
+6. Open the Command Palette and select **Kiro: MCP: Enable All Servers**.
+7. Open the Command Palette again and select **Kiro: Focus on MCP Servers View**.
+8. Locate **kobiton** in the MCP Servers panel and complete the OAuth authentication when prompted.
+9. Verify that the Kobiton MCP server displays **Connected** and its available tools.
+
+#### Verify the Connection
+
+Once connected, open the Kiro chat and enter:
+
+> List all available Android and iOS devices in my Kobiton organization, including their models and OS versions.
+
+Kiro should retrieve the device information directly from the Kobiton MCP server.
+
+**Note:** Authentication is handled through OAuth. No API key or additional credentials are required in the MCP configuration file.
 
 ### Other MCP Clients
 
