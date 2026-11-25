@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.1
+
+- `getCredential` and its `challenge` input name every client that can print a challenge and redeem the token: `kobiton login --begin` / `--exchange-token`, `vusb login --begin` / `--exchange-token`, and the plugin's write-credentials.js (`/automate:setup`).
+  The input schema is unchanged.
+
 ## 1.2.0
 
 - `userIntent` is optional on every tool: it is no longer listed in `required`, and its description is one line, "A brief summary of why this call is being made."

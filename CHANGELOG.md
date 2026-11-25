@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.16.1 - 2026-11-25
+
+### Changed: `getCredential` covers the CLI sign-ins
+
+The `getCredential` description and its `challenge` input now name `kobiton login --begin` and `vusb login --begin` next to `/automate:setup`, so an AI host knows that a challenge printed by either CLI is valid input and that the CLI redeems the returned token itself (catalog `@kobiton/mcp-tools` 1.2.1).
+The input schema and the plugin's skills and commands are unchanged.
+
 ## 1.16.0 - 2026-10-16
 
 ### Changed: `userIntent` is optional on every tool
