@@ -468,7 +468,7 @@ Every step above uses only what this plugin ships: the app tools (`uploadAppToSt
 
 | Tool | Description |
 |------|-------------|
-| `getCredential` | Return a single-use setup token (never the API key) that the local setup script redeems to write `~/.kobiton/.credentials` — backs `/automate:setup` |
+| `getCredential` | Return a single-use sign-in token (never the API key) that a local client redeems: the setup script behind `/automate:setup` (writes `~/.kobiton/.credentials`), `kobiton login`, or `vusb login` |
 | `listTeams` | List the teams the calling user belongs to (for team-scoped test-management calls) |
 | `getOrgSettings` | Return your organization's feature flags and preferences (e.g. live remediation) — read up front by `create-test-run` and `monitor-test-run` |
 

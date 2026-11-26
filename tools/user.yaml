@@ -3,18 +3,24 @@ tools:
   - name: getCredential
     title: Get Credential
     description: >
-      Start the /automate:setup credential bootstrap for the current
-      authenticated user. Pass the `challenge` printed by the plugin's
-      write-credentials.js --init. Returns the username, the canonical API
-      base URL (`portal`), and a single-use `exchangeToken` that is valid
-      until `expiresAt` (a few minutes). It never returns an API key:
-      the plugin's local script redeems the token together with a secret
-      only it holds, and writes ~/.kobiton/.credentials itself, so the key
-      never passes through the AI host. The key written is a dedicated key
-      with alias "kobiton-mcp-<host>" (<host> is the lowercased originating
-      AI workspace - claude, copilot, chatgpt, gemini, codex, cursor, or
+      Start a sign-in that gives a local client the current user's API key
+      without passing it through the AI host. Pass the `challenge` printed
+      by `kobiton login --begin`, `vusb login --begin`, or the plugin's
+      write-credentials.js --init (/automate:setup). Returns the username,
+      the canonical API base URL (`portal`), and a single-use
+      `exchangeToken` that is valid until `expiresAt` (a few minutes). It
+      never returns an API key: the client that printed the challenge
+      redeems the token together with a secret only it holds
+      (`kobiton login --exchange-token <token>`,
+      `vusb login --exchange-token <token>`, or write-credentials.js
+      --token, which writes ~/.kobiton/.credentials), so the key never
+      passes through the AI host. When `portal` is not
+      https://api.kobiton.com, pass it to the CLI as well (`--portal` for
+      kobiton, `--apibaseurl` for vusb). The key is a dedicated key with
+      alias "kobiton-mcp-<host>" (<host> is the lowercased originating AI
+      workspace - claude, copilot, chatgpt, gemini, codex, cursor, or
       unknown - derived from the X-AI-Tool-Name header), created on first
-      use and reused on every later setup from the same host; no key is
+      use and reused on every later sign-in from the same host; no key is
       rotated. Called without a valid challenge, the tool returns an error
       asking the user to update the plugin.
     annotations:
@@ -31,10 +37,12 @@ tools:
         challenge:
           type: string
           description: >-
-            The value printed as `CHALLENGE <value>` by the plugin's
+            The value printed as `CHALLENGE <value>` by
+            `kobiton login --begin`, `vusb login --begin`, or the plugin's
             write-credentials.js --init (a 43-character base64url S256
-            challenge). If you do not have that script, the plugin is
-            outdated: tell the user to update it and do not invent a value.
+            challenge). Never invent a value: run one of those commands
+            first, and if it has no --begin (or --init), tell the user to
+            update that CLI or the plugin.
   - name: listTeams
     title: List Teams
     description: >
